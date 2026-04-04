@@ -87,6 +87,11 @@ func handleSystemDiag(ctx *actions.Context) error {
 	}
 
 	for _, t := range cfg.Tunnels {
+		// Direct transports use system services (sshd, microsocks), not slipgate-managed ones
+		if t.IsDirectTransport() {
+			continue
+		}
+
 		tag := t.Tag
 
 		// Service status
@@ -228,6 +233,7 @@ func handleSystemDiag(ctx *actions.Context) error {
 	knownSvc := map[string]bool{
 		"slipgate-dnsrouter": true,
 		"slipgate-socks5":    true,
+		"slipgate-warp":      true,
 	}
 	for _, t := range cfg.Tunnels {
 		knownSvc[service.TunnelServiceName(t.Tag)] = true
