@@ -34,13 +34,15 @@ func handleTunnelAdd(ctx *actions.Context) error {
 		}
 	}
 	// Direct transports have an implicit backend
-	isDirect := transport_ == config.TransportSSH || transport_ == config.TransportSOCKS
+	isDirect := transport_ == config.TransportSSH || transport_ == config.TransportSOCKS || transport_ == config.TransportStunTLS
 	if isDirect {
 		switch transport_ {
 		case config.TransportSSH:
 			backend = config.BackendSSH
 		case config.TransportSOCKS:
 			backend = config.BackendSOCKS
+		case config.TransportStunTLS:
+			backend = config.BackendSSH
 		}
 	}
 	if backend == "" {
@@ -348,6 +350,27 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 		}
 		tunnel.VayDNS = vayCfg
 		out.Success(fmt.Sprintf("Public key: %s", pubKey))
+
+	case config.TransportStunTLS:
+		certPath := filepath.Join(tunnelDir, "cert.pem")
+		keyPath := filepath.Join(tunnelDir, "key.pem")
+		out.Info("Generating self-signed TLS certificate...")
+		if err := certs.GenerateSelfSigned(certPath, keyPath, tag); err != nil {
+			return actions.NewError(actions.TunnelAdd, "cert generation failed", err)
+		}
+		portStr, err := prompt.String("TLS listen port", "443")
+		if err != nil {
+			return err
+		}
+		tlsPort := 443
+		if n, e := fmt.Sscanf(portStr, "%d", &tlsPort); n != 1 || e != nil {
+			tlsPort = 443
+		}
+		tunnel.StunTLS = &config.StunTLSConfig{
+			Cert: certPath,
+			Key:  keyPath,
+			Port: tlsPort,
+		}
 
 	case config.TransportNaive:
 		email := ctx.GetArg("email")

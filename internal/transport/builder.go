@@ -18,6 +18,8 @@ func CreateService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 		return createVayDNSService(tunnel, cfg)
 	case config.TransportNaive:
 		return createNaiveService(tunnel, cfg)
+	case config.TransportStunTLS:
+		return createStunTLSService(tunnel, cfg)
 	case config.TransportSSH, config.TransportSOCKS:
 		// Direct transports use existing system services (sshd, microsocks)
 		return nil

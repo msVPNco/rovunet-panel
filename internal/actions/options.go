@@ -7,6 +7,7 @@ var TransportOptions = []SelectOption{
 	{Value: "slipstream", Label: "Slipstream — QUIC DNS tunnel"},
 	{Value: "vaydns", Label: "VayDNS — KCP DNS tunnel"},
 	{Value: "naive", Label: "NaiveProxy — HTTPS proxy with Caddy"},
+	{Value: "stuntls", Label: "StunTLS — SSH over TLS + WebSocket proxy"},
 	{Value: "direct-ssh", Label: "SSH — Direct SSH tunnel"},
 	{Value: "direct-socks5", Label: "SOCKS5 — Direct SOCKS5 proxy"},
 }
