@@ -273,7 +273,11 @@ func handleSystemInstall(ctx *actions.Context) error {
 		if selectedTransport == config.TransportVayDNS {
 			rtOpts := make([]actions.SelectOption, len(config.ValidVayDNSRecordTypes))
 			for i, rt := range config.ValidVayDNSRecordTypes {
-				rtOpts[i] = actions.SelectOption{Value: rt, Label: rt}
+				label := rt
+				if i == 0 {
+					label = rt + " (default)"
+				}
+				rtOpts[i] = actions.SelectOption{Value: rt, Label: label}
 			}
 			var err error
 			sharedRecordType, err = prompt.Select("DNS record type", rtOpts)
@@ -560,11 +564,17 @@ func handleSystemInstall(ctx *actions.Context) error {
 
 	// ── Step 6b: WARP outbound (default off) ──────────────────────
 	out.Print("")
-	enableWarp, err := prompt.Confirm("Enable WARP outbound (Cloudflare)?")
-	if err != nil {
-		return err
+	enableWarp := cfg.Warp.Enabled
+	if !enableWarp {
+		var err error
+		enableWarp, err = prompt.Confirm("Enable WARP outbound (Cloudflare)?")
+		if err != nil {
+			return err
+		}
+	} else {
+		out.Info("WARP outbound already enabled — skipping")
 	}
-	if enableWarp {
+	if enableWarp && !cfg.Warp.Enabled {
 		out.Info("Setting up Cloudflare WARP...")
 		if err := warp.Setup(cfg, func(msg string) { out.Info(msg) }); err != nil {
 			out.Warning("WARP setup failed: " + err.Error())

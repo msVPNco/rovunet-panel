@@ -193,8 +193,17 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 			return actions.NewError(actions.TunnelAdd, "key setup failed", err)
 		}
 
+		mtuStr, err := prompt.String("MTU", fmt.Sprintf("%d", config.DefaultMTU))
+		if err != nil {
+			return err
+		}
+		mtu := config.DefaultMTU
+		if n, e := fmt.Sscanf(mtuStr, "%d", &mtu); n != 1 || e != nil {
+			mtu = config.DefaultMTU
+		}
+
 		tunnel.DNSTT = &config.DNSTTConfig{
-			MTU:        config.DefaultMTU,
+			MTU:        mtu,
 			PrivateKey: privKeyPath,
 			PublicKey:  pubKey,
 		}
@@ -254,7 +263,11 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 		if recordType == "" {
 			rtOpts := make([]actions.SelectOption, len(config.ValidVayDNSRecordTypes))
 			for i, rt := range config.ValidVayDNSRecordTypes {
-				rtOpts[i] = actions.SelectOption{Value: rt, Label: rt}
+				label := rt
+				if i == 0 {
+					label = rt + " (default)"
+				}
+				rtOpts[i] = actions.SelectOption{Value: rt, Label: label}
 			}
 			var err error
 			recordType, err = prompt.Select("DNS record type", rtOpts)
@@ -263,28 +276,74 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 			}
 		}
 
+		mtuStr, err := prompt.String("MTU", fmt.Sprintf("%d", config.DefaultMTU))
+		if err != nil {
+			return err
+		}
+		mtu := config.DefaultMTU
+		if n, e := fmt.Sscanf(mtuStr, "%d", &mtu); n != 1 || e != nil {
+			mtu = config.DefaultMTU
+		}
+
 		vayCfg := &config.VayDNSConfig{
-			MTU:        config.DefaultMTU,
+			MTU:        mtu,
 			PrivateKey: privKeyPath,
 			PublicKey:  pubKey,
 			RecordType: recordType,
 		}
+
 		if v := ctx.GetArg("idle-timeout"); v != "" {
 			vayCfg.IdleTimeout = v
+		} else {
+			v, err := prompt.String("Idle timeout", vayCfg.ResolvedIdleTimeout())
+			if err != nil {
+				return err
+			}
+			if v != "" {
+				vayCfg.IdleTimeout = v
+			}
 		}
+
 		if v := ctx.GetArg("keep-alive"); v != "" {
 			vayCfg.KeepAlive = v
+		} else {
+			v, err := prompt.String("Keep alive", vayCfg.ResolvedKeepAlive())
+			if err != nil {
+				return err
+			}
+			if v != "" {
+				vayCfg.KeepAlive = v
+			}
 		}
+
 		if v := ctx.GetArg("clientid-size"); v != "" {
 			var n int
 			if _, e := fmt.Sscanf(v, "%d", &n); e == nil {
 				vayCfg.ClientIDSize = n
 			}
+		} else {
+			v, err := prompt.String("Client ID size", fmt.Sprintf("%d", vayCfg.ResolvedClientIDSize()))
+			if err != nil {
+				return err
+			}
+			if n, e := fmt.Sscanf(v, "%d", &vayCfg.ClientIDSize); n != 1 || e != nil {
+				vayCfg.ClientIDSize = 0
+			}
 		}
+
 		if v := ctx.GetArg("queue-size"); v != "" {
 			var n int
 			if _, e := fmt.Sscanf(v, "%d", &n); e == nil {
 				vayCfg.QueueSize = n
+			}
+		} else {
+			defQS := 512
+			v, err := prompt.String("Queue size", fmt.Sprintf("%d", defQS))
+			if err != nil {
+				return err
+			}
+			if n, e := fmt.Sscanf(v, "%d", &vayCfg.QueueSize); n != 1 || e != nil {
+				vayCfg.QueueSize = 0
 			}
 		}
 		tunnel.VayDNS = vayCfg
@@ -307,10 +366,19 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 				return err
 			}
 		}
+		portStr, err := prompt.String("Port", "443")
+		if err != nil {
+			return err
+		}
+		naivePort := 443
+		if n, e := fmt.Sscanf(portStr, "%d", &naivePort); n != 1 || e != nil {
+			naivePort = 443
+		}
+
 		tunnel.Naive = &config.NaiveConfig{
 			Email:    email,
 			DecoyURL: decoyURL,
-			Port:     443,
+			Port:     naivePort,
 		}
 
 	}

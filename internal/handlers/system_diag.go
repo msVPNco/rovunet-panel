@@ -208,44 +208,6 @@ func handleSystemDiag(ctx *actions.Context) error {
 		}
 	}
 
-	// ── DNS Resolution ──────────────────────────────────────
-	domainsChecked := false
-	for _, t := range cfg.Tunnels {
-		if t.Domain == "" || t.IsDirectTransport() {
-			continue
-		}
-		if !domainsChecked {
-			out.Print("")
-			out.Print("  DNS Resolution")
-			out.Print("  ──────────────")
-			domainsChecked = true
-		}
-		if t.IsDNSTunnel() {
-			// DNS tunnels use NS records, not A records
-			nss, err := net.LookupNS(t.Domain)
-			if err != nil || len(nss) == 0 {
-				check(fmt.Sprintf("[%s] %s NS", t.Tag, t.Domain), false, "NS record not found")
-			} else {
-				nsHost := nss[0].Host
-				check(fmt.Sprintf("[%s] %s NS", t.Tag, t.Domain), true, nsHost)
-				// Verify the nameserver resolves to an IP
-				addrs, err := net.LookupHost(strings.TrimSuffix(nsHost, "."))
-				if err != nil {
-					check(fmt.Sprintf("[%s] %s A", t.Tag, strings.TrimSuffix(nsHost, ".")), false, "not resolving")
-				} else {
-					check(fmt.Sprintf("[%s] %s A", t.Tag, strings.TrimSuffix(nsHost, ".")), true, strings.Join(addrs, ", "))
-				}
-			}
-		} else {
-			addrs, err := net.LookupHost(t.Domain)
-			if err != nil {
-				check(fmt.Sprintf("[%s] %s", t.Tag, t.Domain), false, "not resolving")
-			} else {
-				check(fmt.Sprintf("[%s] %s", t.Tag, t.Domain), true, strings.Join(addrs, ", "))
-			}
-		}
-	}
-
 	// ── Orphaned Services ───────────────────────────────────
 	allSvc := service.ListSlipgateServices()
 	knownSvc := map[string]bool{

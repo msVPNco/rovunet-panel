@@ -118,7 +118,11 @@ func handleQuickWizard(ctx *actions.Context) error {
 		if tr == config.TransportVayDNS {
 			rtOpts := make([]actions.SelectOption, len(config.ValidVayDNSRecordTypes))
 			for i, rt := range config.ValidVayDNSRecordTypes {
-				rtOpts[i] = actions.SelectOption{Value: rt, Label: rt}
+				label := rt
+				if i == 0 {
+					label = rt + " (default)"
+				}
+				rtOpts[i] = actions.SelectOption{Value: rt, Label: label}
 			}
 			recordType, err = prompt.Select("DNS record type", rtOpts)
 			if err != nil {

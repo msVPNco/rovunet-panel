@@ -78,6 +78,9 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 	case config.TransportVayDNS:
 		if tunnel.VayDNS != nil {
 			fields[FPublicKey] = tunnel.VayDNS.PublicKey
+			if tunnel.VayDNS.RecordType != "" {
+				fields[FDNSTransport] = tunnel.VayDNS.RecordType
+			}
 		}
 
 	case config.TransportSlipstream:
