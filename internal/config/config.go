@@ -194,10 +194,17 @@ func (c *Config) GetUser(username string) *UserConfig {
 	return nil
 }
 
-// AddUser adds a user to the config.
+// AddUser adds a user to the config. If a user with the same username
+// already exists, it is updated in place instead of creating a duplicate.
 func (c *Config) AddUser(u UserConfig) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	for i := range c.Users {
+		if c.Users[i].Username == u.Username {
+			c.Users[i] = u
+			return
+		}
+	}
 	c.Users = append(c.Users, u)
 }
 
