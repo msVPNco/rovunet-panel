@@ -32,12 +32,7 @@ BINARY="slipgate-${OS}-${ARCH}"
 
 # Override with: SLIPGATE_RELEASE_TAG=v1.5.1 bash install.sh
 RELEASE_TAG="${SLIPGATE_RELEASE_TAG:-}"
-CHANNEL="dev"  # ← set to "dev" on dev branch, empty on main
-
-if [[ -z "$RELEASE_TAG" && "$CHANNEL" == "dev" ]]; then
-    # Dev branch: use the dev pre-release tag directly
-    RELEASE_TAG="v1.6.0-dev"
-fi
+CHANNEL=""  # ← set to "dev" on dev branch, empty on main
 
 if [[ -n "$RELEASE_TAG" ]]; then
     URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${BINARY}"
