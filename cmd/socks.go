@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"log"
 	"strings"
 
 	"github.com/anonvector/slipgate/internal/proxy"
@@ -39,10 +38,6 @@ func init() {
 				}
 			}
 
-			log.Printf("SOCKS5: loaded %d credential(s)", len(creds))
-			for u := range creds {
-				log.Printf("SOCKS5: user %q configured", u)
-			}
 			return proxy.ServeMulti(addr, port, creds)
 		},
 		SilenceUsage:  true,
