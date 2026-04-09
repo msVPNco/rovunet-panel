@@ -39,6 +39,9 @@ func handleSystemUpdate(ctx *actions.Context) error {
 
 	if runtime.GOOS == "linux" {
 		if err := os.Rename(tmpPath, execPath); err != nil {
+			// Rename fails across filesystems (EXDEV). Remove the running
+			// binary first to avoid ETXTBSY, then copy the new one in.
+			os.Remove(execPath)
 			cpCmd := exec.Command("cp", tmpPath, execPath)
 			if err := cpCmd.Run(); err != nil {
 				return actions.NewError(actions.SystemUpdate, "failed to replace binary", err)
