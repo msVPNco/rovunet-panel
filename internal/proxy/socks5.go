@@ -218,6 +218,7 @@ func (s *Server) authenticate(conn net.Conn) bool {
 		conn.Write([]byte{0x01, 0x00}) // success
 		return true
 	}
+	log.Printf("auth failed: user=%q (known=%v, total_users=%d)", user, s.credentials[user] != "", len(s.credentials))
 	conn.Write([]byte{0x01, 0x01}) // failure
 	return false
 }
