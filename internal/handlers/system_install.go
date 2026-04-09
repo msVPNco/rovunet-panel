@@ -96,15 +96,12 @@ func handleSystemInstall(ctx *actions.Context) error {
 	needsHTTPS := false
 	needsSSHPort := false
 	needsSOCKSPort := false
-	needsTLSPort := false
 	for _, t := range transports {
 		switch t {
 		case config.TransportDNSTT, config.TransportSlipstream, config.TransportVayDNS:
 			needsDNS = true
 		case config.TransportNaive:
 			needsHTTPS = true
-		case config.TransportStunTLS:
-			needsTLSPort = true
 		case config.TransportSSH:
 			needsSSHPort = true
 		case config.TransportSOCKS:
@@ -138,12 +135,6 @@ func handleSystemInstall(ctx *actions.Context) error {
 			out.Warning("Failed to open port 1080/tcp: " + err.Error())
 		}
 	}
-	if needsTLSPort {
-		if err := network.AllowPort(443, "tcp"); err != nil {
-			out.Warning("Failed to open port 443/tcp: " + err.Error())
-		}
-	}
-
 	// Load existing config or create defaults for fresh install
 	cfg, err := config.Load()
 	if err != nil {
@@ -225,7 +216,15 @@ func handleSystemInstall(ctx *actions.Context) error {
 				if err := certs.GenerateSelfSigned(certPath, keyPath, tag); err != nil {
 					return actions.NewError(actions.SystemInstall, "cert generation failed", err)
 				}
-				portStr, err := prompt.String("TLS listen port", "443")
+				// Default to 8443 if NaiveProxy is also selected (it uses 443)
+				defaultPort := "443"
+				for _, t := range transports {
+					if t == config.TransportNaive {
+						defaultPort = "8443"
+						break
+					}
+				}
+				portStr, err := prompt.String("TLS listen port", defaultPort)
 				if err != nil {
 					return err
 				}
@@ -238,6 +237,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 					Key:  keyPath,
 					Port: tlsPort,
 				}
+				_ = network.AllowPort(tlsPort, "tcp")
 			}
 
 			if err := cfg.ValidateNewTunnel(&tunnel); err != nil {

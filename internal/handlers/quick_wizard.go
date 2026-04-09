@@ -146,7 +146,15 @@ func handleQuickWizard(ctx *actions.Context) error {
 
 		tlsPort := 443
 		if tr == config.TransportStunTLS {
-			portStr, err := prompt.String("TLS listen port", "443")
+			// Default to 8443 if NaiveProxy is also selected (it uses 443)
+			defaultPort := "443"
+			for _, other := range selectedTransports {
+				if other == config.TransportNaive {
+					defaultPort = "8443"
+					break
+				}
+			}
+			portStr, err := prompt.String("TLS listen port", defaultPort)
 			if err != nil {
 				return err
 			}
