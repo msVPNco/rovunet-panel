@@ -33,13 +33,18 @@ func SwitchActive(cfg *config.Config, tag string) error {
 	}
 
 	if cfg.Route.Active != "" && cfg.Route.Active != tag {
-		oldName := service.TunnelServiceName(cfg.Route.Active)
-		_ = service.Stop(oldName)
+		old := cfg.GetTunnel(cfg.Route.Active)
+		if old != nil && old.HasManagedService() {
+			oldName := service.TunnelServiceName(cfg.Route.Active)
+			_ = service.Stop(oldName)
+		}
 	}
 
-	newName := service.TunnelServiceName(tag)
-	if err := service.Start(newName); err != nil {
-		return err
+	if tunnel.HasManagedService() {
+		newName := service.TunnelServiceName(tag)
+		if err := service.Start(newName); err != nil {
+			return err
+		}
 	}
 
 	return dnsrouter.RestartRouterService()

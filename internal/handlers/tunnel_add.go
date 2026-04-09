@@ -454,8 +454,10 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 		}
 	}
 
-	// Create and start systemd service
-	out.Info("Creating systemd service...")
+	// Create and start systemd service (skip for external — user manages their own)
+	if tunnel.HasManagedService() {
+		out.Info("Creating systemd service...")
+	}
 	if err := transport.CreateService(&tunnel, cfg); err != nil {
 		return actions.NewError(actions.TunnelAdd, "failed to create service", err)
 	}
@@ -464,7 +466,11 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 		out.Warning("Failed to register with router: " + err.Error())
 	}
 
-	out.Success(fmt.Sprintf("Tunnel %q created and started", tag))
-	out.Info(fmt.Sprintf("Share with: slipgate tunnel share %s", tag))
+	if transport_ == config.TransportExternal {
+		out.Success(fmt.Sprintf("Tunnel %q created — DNS queries for %s will route to 127.0.0.1:%d", tag, domain, tunnel.Port))
+	} else {
+		out.Success(fmt.Sprintf("Tunnel %q created and started", tag))
+		out.Info(fmt.Sprintf("Share with: slipgate tunnel share %s", tag))
+	}
 	return nil
 }
