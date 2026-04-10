@@ -170,7 +170,11 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 		fields[FSSHEnabled] = "1"
 		fields[FSSHUser] = username
 		fields[FSSHPass] = password
-		fields[FSSHPort] = "22"
+		if backend != nil {
+			if _, port, err := net.SplitHostPort(backend.Address); err == nil {
+				fields[FSSHPort] = port
+			}
+		}
 		fields[FSSHHost] = getServerIP()
 	}
 

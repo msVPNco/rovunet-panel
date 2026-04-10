@@ -179,8 +179,8 @@ sudo slipgate tunnel add \
 sudo slipgate tunnel add \
   --transport external \
   --tag my-proto \
-  --domain j.example.com
-# → prompts for target UDP port (e.g. 5301)
+  --domain j.example.com \
+  --port 5301
 # Queries for j.example.com route to 127.0.0.1:5301
 
 # Direct SSH / SOCKS5 transports

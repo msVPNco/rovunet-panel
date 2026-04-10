@@ -357,8 +357,11 @@ func ensureWireGuardTools() error {
 		return nil
 	}
 
-	// Try apt (Debian/Ubuntu) with noninteractive frontend
-	cmd := exec.Command("apt-get", "install", "-y", "wireguard-tools")
+	// Try apt (Debian/Ubuntu) — install the "wireguard" meta-package which
+	// pulls in both wireguard-tools and the kernel module (wireguard-dkms on
+	// older kernels). Installing only wireguard-tools leaves the kernel
+	// module missing on some Debian systems, causing wg-quick to fail.
+	cmd := exec.Command("apt-get", "install", "-y", "wireguard")
 	cmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

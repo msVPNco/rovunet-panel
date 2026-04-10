@@ -14,6 +14,11 @@ func createStunTLSService(tunnel *config.TunnelConfig, cfg *config.Config) error
 		return fmt.Errorf("stuntls config is nil")
 	}
 
+	backend := cfg.GetBackend(tunnel.Backend)
+	if backend == nil {
+		return fmt.Errorf("backend %q not found", tunnel.Backend)
+	}
+
 	// slipgate binary itself serves as the TLS proxy — no external binary needed
 	execPath, err := os.Executable()
 	if err != nil {
@@ -25,7 +30,7 @@ func createStunTLSService(tunnel *config.TunnelConfig, cfg *config.Config) error
 		port = 443
 	}
 
-	sshAddr := "127.0.0.1:22"
+	sshAddr := backend.Address
 
 	unit := &service.Unit{
 		Name:        service.TunnelServiceName(tunnel.Tag),

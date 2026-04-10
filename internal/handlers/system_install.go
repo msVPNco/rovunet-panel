@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/anonvector/slipgate/internal/actions"
@@ -126,8 +128,18 @@ func handleSystemInstall(ctx *actions.Context) error {
 		}
 	}
 	if needsSSHPort {
-		if err := network.AllowPort(22, "tcp"); err != nil {
-			out.Warning("Failed to open port 22/tcp: " + err.Error())
+		sshPort := 22
+		if c, e := config.Load(); e == nil {
+			if b := c.GetBackend(config.BackendSSH); b != nil {
+				if _, p, e2 := net.SplitHostPort(b.Address); e2 == nil {
+					if v, e3 := strconv.Atoi(p); e3 == nil {
+						sshPort = v
+					}
+				}
+			}
+		}
+		if err := network.AllowPort(sshPort, "tcp"); err != nil {
+			out.Warning(fmt.Sprintf("Failed to open port %d/tcp: %s", sshPort, err.Error()))
 		}
 	}
 	if needsSOCKSPort {

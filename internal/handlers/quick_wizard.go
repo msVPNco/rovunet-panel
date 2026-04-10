@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/anonvector/slipgate/internal/actions"
@@ -235,7 +237,17 @@ func handleQuickWizard(ctx *actions.Context) error {
 		case config.TransportStunTLS:
 			_ = network.AllowPort(s.tlsPort, "tcp")
 		case config.TransportSSH:
-			_ = network.AllowPort(22, "tcp")
+			sshPort := 22
+			if c, e := config.Load(); e == nil {
+				if b := c.GetBackend(config.BackendSSH); b != nil {
+					if _, p, e2 := net.SplitHostPort(b.Address); e2 == nil {
+						if v, e3 := strconv.Atoi(p); e3 == nil {
+							sshPort = v
+						}
+					}
+				}
+			}
+			_ = network.AllowPort(sshPort, "tcp")
 		case config.TransportSOCKS:
 			_ = network.AllowPort(1080, "tcp")
 		}

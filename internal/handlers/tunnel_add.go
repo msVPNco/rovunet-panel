@@ -387,9 +387,13 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 		for usedPorts[defaultPort] {
 			defaultPort++
 		}
-		portStr, err := prompt.String("Target UDP port", fmt.Sprintf("%d", defaultPort))
-		if err != nil {
-			return err
+		portStr := ctx.GetArg("port")
+		if portStr == "" {
+			var err error
+			portStr, err = prompt.String("Target UDP port", fmt.Sprintf("%d", defaultPort))
+			if err != nil {
+				return err
+			}
 		}
 		extPort := defaultPort
 		if n, e := fmt.Sscanf(portStr, "%d", &extPort); n != 1 || e != nil {
