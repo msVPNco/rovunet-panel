@@ -102,7 +102,21 @@ func Enable() error {
 func Disable() error {
 	_ = runQuiet("systemctl", "stop", ServiceName+".service")
 	_ = runQuiet("systemctl", "disable", ServiceName+".service")
+	// Clean up any leftover policy routing rules that wg-quick down
+	// may have failed to remove. Without this, managed user UIDs
+	// remain routed to table 200 which has no routes after the
+	// WireGuard interface is torn down — blackholing their traffic.
+	flushRoutingRules()
 	return nil
+}
+
+// flushRoutingRules removes all ip rules pointing to our routing table.
+func flushRoutingRules() {
+	for {
+		if runQuiet("ip", "rule", "del", "table", fmt.Sprintf("%d", RouteTable)) != nil {
+			break
+		}
+	}
 }
 
 // IsRunning checks if the WARP interface is active.
