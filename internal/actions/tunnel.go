@@ -83,7 +83,7 @@ func init() {
 		Name:     "Edit Tunnel",
 		Category: "tunnel",
 		Inputs: []InputField{
-			{Key: "tag", Label: "Tunnel tag"},
+			{Key: "tag", Label: "Tunnel tag", CLIOnly: true},
 			{Key: "new-tag", Label: "New tag name", CLIOnly: true},
 			{Key: "domain", Label: "Domain", CLIOnly: true},
 			{Key: "mtu", Label: "MTU", CLIOnly: true},
