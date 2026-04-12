@@ -52,8 +52,31 @@ func handleSystemUpdate(ctx *actions.Context) error {
 
 	out.Success("slipgate updated")
 
-	// Update transport binaries
+	// Hand off to the newly installed binary for transport updates and
+	// service regeneration so the new code's URLs and logic are used.
 	out.Print("")
+	postCmd := exec.Command(execPath, "post-update")
+	postCmd.Stdout = os.Stdout
+	postCmd.Stderr = os.Stderr
+	postCmd.Stdin = os.Stdin
+	if err := postCmd.Run(); err != nil {
+		out.Warning(fmt.Sprintf("Post-update handoff failed: %v", err))
+		out.Info("Falling back to current process...")
+		return runPostUpdate(ctx)
+	}
+	return nil
+}
+
+// HandlePostUpdate runs the post-update steps (transport binary updates,
+// service regeneration). Exported for use by the hidden post-update command.
+func HandlePostUpdate(ctx *actions.Context) error {
+	return runPostUpdate(ctx)
+}
+
+func runPostUpdate(ctx *actions.Context) error {
+	out := ctx.Output
+
+	// Update transport binaries
 	out.Info("Updating transport binaries...")
 
 	transportBins := []string{"dnstt-server", "slipstream-server", "vaydns-server", "caddy-naive"}

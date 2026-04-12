@@ -39,6 +39,24 @@ func init() {
 
 	// Register action-based subcommands
 	registerActionCommands()
+
+	// Hidden internal command: called by 'update' after replacing the binary
+	// so that transport downloads and service regeneration use the new code.
+	rootCmd.AddCommand(&cobra.Command{
+		Use:    "post-update",
+		Hidden: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, _ := loadOrDefaultConfig()
+			ctx := &actions.Context{
+				Args:   make(map[string]string),
+				Output: &actions.StdOutput{},
+				Config: cfg,
+			}
+			return handlers.HandlePostUpdate(ctx)
+		},
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	})
 }
 
 func registerActionCommands() {
