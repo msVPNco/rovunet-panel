@@ -170,12 +170,16 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 		fields[FSSHEnabled] = "1"
 		fields[FSSHUser] = username
 		fields[FSSHPass] = password
-		if backend != nil {
+		// Only set port/host from the SSH backend when the transport
+		// hasn't already filled them in (e.g. StunTLS sets the TLS port).
+		if fields[FSSHPort] == "" && backend != nil {
 			if _, port, err := net.SplitHostPort(backend.Address); err == nil {
 				fields[FSSHPort] = port
 			}
 		}
-		fields[FSSHHost] = getServerIP()
+		if fields[FSSHHost] == "" {
+			fields[FSSHHost] = getServerIP()
+		}
 	}
 
 	// NaiveProxy requires naiveUsername/naivePassword (fields 29/30)
