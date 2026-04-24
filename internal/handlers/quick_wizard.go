@@ -311,13 +311,19 @@ func handleQuickWizard(ctx *actions.Context) error {
 	for _, s := range allSettings {
 		var sharedDNSTTKey string
 		var sharedDNSTTSrcDir string
-		for _, b := range s.backends {
+		for bIdx, b := range s.backends {
+			// NaiveProxy is a single Caddy forward-proxy — one instance on :443
+			// serves both SOCKS and SSH clients (client picks via CONNECT target).
+			// Creating a second tunnel would EADDRINUSE-loop both services.
+			if s.transport == config.TransportNaive && bIdx > 0 {
+				break
+			}
 			tag := cfg.UniqueTag(s.transport)
 			tunnelDomain := s.domain
 
-			if s.backend == "both" {
+			if s.backend == "both" && s.transport != config.TransportNaive {
 				tag = cfg.UniqueTag(s.transport + "-" + b)
-				if b == config.BackendSSH && s.transport != config.TransportNaive {
+				if b == config.BackendSSH {
 					parentDomain := baseDomain(s.domain)
 					sshHint := "ts." + parentDomain
 					if s.transport == config.TransportSlipstream {
@@ -574,7 +580,9 @@ func handleQuickWizard(ctx *actions.Context) error {
 	out.Print("    DNS Records Required:")
 	shownRecords := make(map[string]bool)
 	for _, t := range allTunnels {
-		if t.IsDirectTransport() {
+		// Skip direct transports (SSH/SOCKS5) and any tunnel without a
+		// domain (e.g. stuntls) — those don't need DNS records at all.
+		if t.IsDirectTransport() || t.Domain == "" {
 			continue
 		}
 		if t.Transport == config.TransportNaive {
@@ -602,31 +610,37 @@ func handleQuickWizard(ctx *actions.Context) error {
 	out.Print("    Client Configs:")
 	out.Print("")
 	for _, t := range allTunnels {
-		backendCfg := cfg.GetBackend(t.Backend)
-		if backendCfg == nil {
-			continue
-		}
-		modes := []string{""}
-		if t.Transport == config.TransportDNSTT {
-			modes = []string{clientcfg.ClientModeDNSTT, clientcfg.ClientModeNoizDNS}
-		}
-		for _, mode := range modes {
-			opts := clientcfg.URIOptions{
-				ClientMode: mode,
-				Username:   username,
-				Password:   password,
-			}
-			uri, uriErr := clientcfg.GenerateURI(&t, backendCfg, cfg, opts)
-			if uriErr != nil {
+		for _, v := range naiveAwareVariants(&t) {
+			backendCfg := cfg.GetBackend(v.backend)
+			if backendCfg == nil {
 				continue
 			}
-			label := t.Tag
-			if mode == clientcfg.ClientModeNoizDNS {
-				label = strings.ReplaceAll(label, "dnstt", "noizdns")
+			variantTunnel := t
+			variantTunnel.Backend = v.backend
+			variantTunnel.Tag = v.tag
+
+			modes := []string{""}
+			if t.Transport == config.TransportDNSTT {
+				modes = []string{clientcfg.ClientModeDNSTT, clientcfg.ClientModeNoizDNS}
 			}
-			out.Print(fmt.Sprintf("    [%s] %s", label, username))
-			out.Print(fmt.Sprintf("    %s", uri))
-			out.Print("")
+			for _, mode := range modes {
+				opts := clientcfg.URIOptions{
+					ClientMode: mode,
+					Username:   username,
+					Password:   password,
+				}
+				uri, uriErr := clientcfg.GenerateURI(&variantTunnel, backendCfg, cfg, opts)
+				if uriErr != nil {
+					continue
+				}
+				label := variantTunnel.Tag
+				if mode == clientcfg.ClientModeNoizDNS {
+					label = strings.ReplaceAll(label, "dnstt", "noizdns")
+				}
+				out.Print(fmt.Sprintf("    [%s] %s", label, username))
+				out.Print(fmt.Sprintf("    %s", uri))
+				out.Print("")
+			}
 		}
 	}
 

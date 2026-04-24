@@ -334,12 +334,18 @@ func handleSystemInstall(ctx *actions.Context) error {
 		}
 
 			for bIdx, b := range backends {
+			// NaiveProxy is a single Caddy forward-proxy — one instance on :443
+			// serves both SOCKS and SSH clients (client picks via CONNECT target).
+			// Creating a second tunnel would EADDRINUSE-loop both services.
+			if selectedTransport == config.TransportNaive && bIdx > 0 {
+				break
+			}
 			tag := cfg.UniqueTag(selectedTransport)
 			tunnelDomain := domain
-			if backend == "both" {
+			if backend == "both" && selectedTransport != config.TransportNaive {
 				tag = cfg.UniqueTag(selectedTransport + "-" + b)
 				// SSH backend needs its own subdomain (separate dnstt/slipstream instance)
-				if b == config.BackendSSH && selectedTransport != config.TransportNaive {
+				if b == config.BackendSSH {
 					parentDomain := baseDomain(domain)
 					sshHint := "ts." + parentDomain
 					if selectedTransport == config.TransportSlipstream {
@@ -702,7 +708,9 @@ func handleSystemInstall(ctx *actions.Context) error {
 	out.Print("    DNS Records Required:")
 	shownRecords := make(map[string]bool)
 	for _, t := range allTunnels {
-		if t.IsDirectTransport() {
+		// Skip direct transports (SSH/SOCKS5) and any tunnel without a
+		// domain (e.g. stuntls) — those don't need DNS records at all.
+		if t.IsDirectTransport() || t.Domain == "" {
 			continue
 		}
 		if t.Transport == config.TransportNaive {
@@ -736,37 +744,42 @@ func handleSystemInstall(ctx *actions.Context) error {
 	}
 	for _, u := range users {
 		for _, t := range allTunnels {
-			backendCfg := cfg.GetBackend(t.Backend)
-			if backendCfg == nil {
-				continue
-			}
-
-			modes := []string{""}
-			if t.Transport == config.TransportDNSTT {
-				modes = []string{clientcfg.ClientModeDNSTT, clientcfg.ClientModeNoizDNS}
-			}
-
-			for _, mode := range modes {
-				opts := clientcfg.URIOptions{
-					ClientMode: mode,
-					Username:   u.Username,
-					Password:   u.Password,
-				}
-				uri, err := clientcfg.GenerateURI(&t, backendCfg, cfg, opts)
-				if err != nil {
+			for _, v := range naiveAwareVariants(&t) {
+				backendCfg := cfg.GetBackend(v.backend)
+				if backendCfg == nil {
 					continue
 				}
-				label := t.Tag
-				if mode == clientcfg.ClientModeNoizDNS {
-					label = strings.ReplaceAll(label, "dnstt", "noizdns")
+				variantTunnel := t
+				variantTunnel.Backend = v.backend
+				variantTunnel.Tag = v.tag
+
+				modes := []string{""}
+				if t.Transport == config.TransportDNSTT {
+					modes = []string{clientcfg.ClientModeDNSTT, clientcfg.ClientModeNoizDNS}
 				}
-				if u.Username != "" {
-					out.Print(fmt.Sprintf("    [%s] %s", label, u.Username))
-				} else {
-					out.Print(fmt.Sprintf("    [%s] (no auth)", label))
+
+				for _, mode := range modes {
+					opts := clientcfg.URIOptions{
+						ClientMode: mode,
+						Username:   u.Username,
+						Password:   u.Password,
+					}
+					uri, err := clientcfg.GenerateURI(&variantTunnel, backendCfg, cfg, opts)
+					if err != nil {
+						continue
+					}
+					label := variantTunnel.Tag
+					if mode == clientcfg.ClientModeNoizDNS {
+						label = strings.ReplaceAll(label, "dnstt", "noizdns")
+					}
+					if u.Username != "" {
+						out.Print(fmt.Sprintf("    [%s] %s", label, u.Username))
+					} else {
+						out.Print(fmt.Sprintf("    [%s] (no auth)", label))
+					}
+					out.Print(fmt.Sprintf("    %s", uri))
+					out.Print("")
 				}
-				out.Print(fmt.Sprintf("    %s", uri))
-				out.Print("")
 			}
 		}
 	}
@@ -781,6 +794,30 @@ func handleSystemInstall(ctx *actions.Context) error {
 	out.Print("")
 
 	return nil
+}
+
+// naiveURIVariant is one client-visible flavor of a server-side NaiveProxy
+// tunnel. Naive is a single Caddy forward-proxy — it serves both SOCKS and
+// SSH clients from one listen port — but the slipnet:// client needs one
+// URI per backend type so it knows which local loopback port to CONNECT to.
+type naiveURIVariant struct {
+	backend string
+	tag     string
+}
+
+// naiveAwareVariants returns the (backend, tag) pairs that should each
+// produce a slipnet:// URI for the given tunnel. Naive tunnels emit two
+// (socks + ssh); everything else emits one (the tunnel's own backend+tag).
+func naiveAwareVariants(t *config.TunnelConfig) []naiveURIVariant {
+	if t.Transport != config.TransportNaive {
+		return []naiveURIVariant{{backend: t.Backend, tag: t.Tag}}
+	}
+	base := strings.TrimSuffix(t.Tag, "-socks")
+	base = strings.TrimSuffix(base, "-ssh")
+	return []naiveURIVariant{
+		{backend: config.BackendSOCKS, tag: base + "-socks"},
+		{backend: config.BackendSSH, tag: base + "-ssh"},
+	}
 }
 
 // baseDomain extracts the parent domain from a subdomain.
