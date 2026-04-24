@@ -49,6 +49,14 @@ func Setup(cfg *config.Config, log func(string)) error {
 		return fmt.Errorf("install wireguard-tools: %w", err)
 	}
 
+	log("Configuring public DNS resolvers for WARP-routed services...")
+	if err := ensurePublicResolvers(); err != nil {
+		// Non-fatal: warn only. Install shouldn't abort on a DNS config
+		// mishap, but the operator should know why naiveproxy / outbound
+		// HTTPS from WARP-routed users will fail at runtime.
+		log(fmt.Sprintf("warn: public resolvers setup failed: %v", err))
+	}
+
 	// Load or create WARP account
 	account, err := LoadAccount()
 	if err != nil {
@@ -247,6 +255,7 @@ func Uninstall() {
 	_ = Disable()
 	_ = removeService()
 	_ = os.RemoveAll(WarpDir)
+	removePublicResolversOverride()
 	// Clean up legacy wgcf binary if present
 	_ = os.Remove("/usr/local/bin/wgcf")
 }
@@ -460,6 +469,54 @@ func removeService() error {
 		return err
 	}
 	return exec.Command("systemctl", "daemon-reload").Run()
+}
+
+// resolvedDropIn is the systemd-resolved drop-in slipgate installs so that
+// WARP-routed services can resolve DNS. Removed on Uninstall.
+const resolvedDropIn = "/etc/systemd/resolved.conf.d/slipgate-warp-dns.conf"
+
+// ensurePublicResolvers makes the system use public DNS resolvers reachable
+// from behind WARP. Many cloud providers default to LAN-only resolvers
+// (DigitalOcean: 67.207.67.x, AWS: 169.254.169.253, GCP: 169.254.169.254)
+// that silently drop queries originating from outside their network — so
+// any WARP-routed slipgate service (NaiveProxy, per-user SOCKS egress, etc.)
+// can't resolve anything. That breaks Caddy's Let's Encrypt acquisition on
+// first install and every outbound HTTPS call after.
+//
+// When systemd-resolved is active, we configure it via drop-in so it
+// advertises 1.1.1.1/8.8.8.8 as the primary DNS — persisting across reboots
+// and network events. When it's not, we write /etc/resolv.conf directly,
+// unlinking any existing symlink first (otherwise os.WriteFile follows the
+// link into /run/systemd/resolve/... which the system regenerates).
+func ensurePublicResolvers() error {
+	if err := exec.Command("systemctl", "is-active", "systemd-resolved").Run(); err == nil {
+		if err := os.MkdirAll(filepath.Dir(resolvedDropIn), 0755); err != nil {
+			return fmt.Errorf("create resolved.conf.d: %w", err)
+		}
+		conf := "[Resolve]\nDNS=1.1.1.1 8.8.8.8\nFallbackDNS=1.0.0.1 8.8.4.4\n"
+		if err := os.WriteFile(resolvedDropIn, []byte(conf), 0644); err != nil {
+			return fmt.Errorf("write %s: %w", resolvedDropIn, err)
+		}
+		return run("systemctl", "restart", "systemd-resolved")
+	}
+
+	// No systemd-resolved — write /etc/resolv.conf directly. Remove first
+	// in case it's a symlink to a managed file.
+	_ = os.Remove("/etc/resolv.conf")
+	return os.WriteFile("/etc/resolv.conf",
+		[]byte("nameserver 1.1.1.1\nnameserver 8.8.8.8\n"), 0644)
+}
+
+// removePublicResolversOverride reverses ensurePublicResolvers when WARP is
+// uninstalled. No-op if the drop-in doesn't exist.
+func removePublicResolversOverride() {
+	if _, err := os.Stat(resolvedDropIn); os.IsNotExist(err) {
+		return
+	}
+	_ = os.Remove(resolvedDropIn)
+	if err := exec.Command("systemctl", "is-active", "systemd-resolved").Run(); err == nil {
+		_ = runQuiet("systemctl", "restart", "systemd-resolved")
+	}
 }
 
 func ensureWireGuardTools() error {

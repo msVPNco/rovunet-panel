@@ -89,13 +89,18 @@ func DisableResolvedStub() error {
 		return fmt.Errorf("write resolved config: %w", err)
 	}
 
-	// Restart systemd-resolved
+	// Restart systemd-resolved — after this, /etc/resolv.conf (whether a
+	// symlink to /run/systemd/resolve/resolv.conf or a static file
+	// managed elsewhere) will list the uplink DNS servers directly
+	// rather than the stub at 127.0.0.53. We intentionally do NOT write
+	// /etc/resolv.conf here: on most distros it's a symlink into
+	// systemd's runtime directory, so os.WriteFile follows the link and
+	// the target gets regenerated on the next network event. If you want
+	// public resolvers (for WARP compatibility), see
+	// warp.ensurePublicResolvers which sets them via resolved drop-in.
 	if err := run("systemctl", "restart", "systemd-resolved"); err != nil {
 		return fmt.Errorf("restart systemd-resolved: %w", err)
 	}
-
-	// Fix /etc/resolv.conf to use real DNS (not the stub)
-	_ = os.WriteFile("/etc/resolv.conf", []byte("nameserver 8.8.8.8\nnameserver 1.1.1.1\n"), 0644)
 
 	return nil
 }
