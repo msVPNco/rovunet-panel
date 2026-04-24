@@ -627,14 +627,26 @@ func handleSystemInstall(ctx *actions.Context) error {
 		if err != nil {
 			return err
 		}
-	} else {
-		out.Info("WARP outbound already enabled — skipping")
 	}
-	if enableWarp && !cfg.Warp.Enabled {
-		out.Info("Setting up Cloudflare WARP...")
+	if enableWarp {
+		// warp.Setup is idempotent — every step either check-and-skips
+		// (wg-tools, service users, account registration) or rewrites
+		// the same content (wg0.conf, resolved drop-in, systemd unit).
+		// Running it unconditionally when WARP is already enabled turns
+		// `slipgate install` into a recovery path for bugs that ship
+		// new setup steps in binary upgrades (e.g. the DNS resolver
+		// override added in c219d39). Without this, a user on an
+		// already-WARP'd box can't pick up new fixes without manually
+		// running the individual setup steps.
+		action := "Setting up"
+		if cfg.Warp.Enabled {
+			action = "Refreshing"
+		}
+		out.Info(fmt.Sprintf("%s Cloudflare WARP...", action))
 		if err := warp.Setup(cfg, func(msg string) { out.Info(msg) }); err != nil {
 			out.Warning("WARP setup failed: " + err.Error())
-		} else {
+		} else if !cfg.Warp.Enabled {
+			// First-time enable: start service + persist config
 			if err := warp.Enable(); err != nil {
 				out.Warning("Failed to start WARP: " + err.Error())
 			} else {
@@ -644,6 +656,8 @@ func handleSystemInstall(ctx *actions.Context) error {
 				}
 				out.Success("WARP enabled — tunnel user traffic routes through Cloudflare")
 			}
+		} else {
+			out.Success("WARP configuration refreshed")
 		}
 	}
 
