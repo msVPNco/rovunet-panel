@@ -4,8 +4,71 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
+
+const (
+	iptablesRulesPath = "/etc/iptables/slipgate-rules.v4"
+	iptablesUnitPath  = "/etc/systemd/system/slipgate-iptables.service"
+)
+
+// iptables-restore is invoked early at boot to re-apply rules saved by
+// iptablesPersist. %s placeholders are filled with the absolute restore-binary
+// path and the rules file path at write time.
+const iptablesUnitTemplate = `[Unit]
+Description=Restore slipgate iptables rules
+DefaultDependencies=no
+Before=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=%s %s
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+`
+
+// HostFirewallActive reports whether the host is actually filtering inbound
+// traffic. Used to decide whether to hint about external/cloud firewalls —
+// merely having an iptables binary installed (e.g., pulled in by Docker or
+// fail2ban) does not count if the INPUT chain still defaults to ACCEPT.
+func HostFirewallActive() bool {
+	if _, err := exec.LookPath("ufw"); err == nil && ufwActive() {
+		return true
+	}
+	if _, err := exec.LookPath("firewall-cmd"); err == nil && firewalldActive() {
+		return true
+	}
+	if _, err := exec.LookPath("iptables"); err == nil && iptablesFiltering() {
+		return true
+	}
+	return false
+}
+
+// iptablesFiltering reports whether the INPUT chain is actually blocking
+// traffic — either the default policy isn't ACCEPT, or there's at least one
+// DROP/REJECT rule. ACCEPT-only chains don't filter anything.
+func iptablesFiltering() bool {
+	out, err := exec.Command("iptables", "-S", "INPUT").Output()
+	if err != nil {
+		return false
+	}
+	for _, line := range splitLines(string(out)) {
+		if strings.HasPrefix(line, "-P INPUT ") {
+			if !strings.HasSuffix(line, " ACCEPT") {
+				return true
+			}
+			continue
+		}
+		if strings.Contains(line, "-j DROP") || strings.Contains(line, "-j REJECT") {
+			return true
+		}
+	}
+	return false
+}
 
 // AllowPort opens a port using the first available firewall tool.
 func AllowPort(port int, proto string) error {
@@ -24,7 +87,8 @@ func AllowPort(port int, proto string) error {
 		return iptablesAllow(port, proto)
 	}
 
-	return fmt.Errorf("no supported firewall found (ufw, firewalld, iptables)")
+	// No active firewall — port is already reachable, nothing to do.
+	return nil
 }
 
 // RemovePort removes a firewall rule for a port.
@@ -37,7 +101,11 @@ func RemovePort(port int, proto string) error {
 		return run("firewall-cmd", "--reload")
 	}
 	if _, err := exec.LookPath("iptables"); err == nil {
-		return run("iptables", "-D", "INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT")
+		if err := run("iptables", "-D", "INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT"); err != nil {
+			return err
+		}
+		_ = iptablesPersist()
+		return nil
 	}
 	return nil
 }
@@ -68,7 +136,54 @@ func firewalldAllow(port int, proto string) error {
 }
 
 func iptablesAllow(port int, proto string) error {
-	return run("iptables", "-A", "INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT")
+	// -C returns exit 0 if an identical rule already exists; skip the append
+	// in that case so re-runs don't stack duplicate ACCEPT rules.
+	check := exec.Command("iptables", "-C", "INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT")
+	if check.Run() == nil {
+		return nil
+	}
+	if err := run("iptables", "-A", "INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT"); err != nil {
+		return err
+	}
+	// Best-effort: persist so the rule survives reboot. The runtime rule is
+	// already in effect either way, so we don't surface persistence failures.
+	_ = iptablesPersist()
+	return nil
+}
+
+// iptablesPersist saves the current iptables ruleset and ensures a oneshot
+// systemd unit re-applies it on boot. Idempotent.
+func iptablesPersist() error {
+	restorePath, err := exec.LookPath("iptables-restore")
+	if err != nil {
+		return err
+	}
+
+	out, err := exec.Command("iptables-save").Output()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(iptablesRulesPath), 0755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(iptablesRulesPath, out, 0644); err != nil {
+		return err
+	}
+
+	unit := fmt.Sprintf(iptablesUnitTemplate, restorePath, iptablesRulesPath)
+	existing, _ := os.ReadFile(iptablesUnitPath)
+	if string(existing) != unit {
+		if err := os.WriteFile(iptablesUnitPath, []byte(unit), 0644); err != nil {
+			return err
+		}
+		if err := run("systemctl", "daemon-reload"); err != nil {
+			return err
+		}
+		if err := run("systemctl", "enable", "slipgate-iptables.service"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // DisableResolvedStub disables systemd-resolved's DNS stub listener on port 53

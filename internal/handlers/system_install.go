@@ -147,6 +147,9 @@ func handleSystemInstall(ctx *actions.Context) error {
 			out.Warning("Failed to open port 1080/tcp: " + err.Error())
 		}
 	}
+	if (needsDNS || needsHTTPS || needsSSHPort || needsSOCKSPort) && !network.HostFirewallActive() {
+		out.Info("No host firewall detected. If your VPS has an external firewall (cloud security groups, provider firewall), open the required ports there.")
+	}
 	// Load existing config or create defaults for fresh install
 	cfg, err := config.Load()
 	if err != nil {
