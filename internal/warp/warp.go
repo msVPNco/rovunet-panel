@@ -30,6 +30,16 @@ const (
 	// NaiveUser is a dedicated system user for the Caddy/NaiveProxy
 	// process so its forward-proxy traffic can be routed through WARP.
 	NaiveUser = "slipgate-naive"
+
+	// PublicAddrRulePref is the `ip rule` priority for "from <public-ip>
+	// lookup main" rules. Set well below the default uidrange rule pref
+	// (~32766) so it wins for traffic sourced from the host's public IPs
+	// — i.e. replies on already-accepted inbound TCP connections. Without
+	// this, a SOCKS5 client SYN arrives on eth0 but the SYN-ACK exits wg0
+	// (because the SOCKS user's UID rule sends everything to table 200);
+	// Cloudflare drops it because the source isn't a WARP-assigned address,
+	// and the client sees "connected, no traffic".
+	PublicAddrRulePref = 100
 )
 
 var httpClient = &http.Client{Timeout: 120 * time.Second}
@@ -97,7 +107,19 @@ func Setup(cfg *config.Config, log func(string)) error {
 		return fmt.Errorf("generate wg config: %w", err)
 	}
 
-	return createService()
+	if err := createService(); err != nil {
+		return err
+	}
+
+	// If WARP is already running, the new wg0.conf won't take effect until
+	// the interface is restarted — which would drop every in-flight TCP
+	// stream. Live-install the public-addr rules now so existing servers
+	// upgrading via `slipgate install` get the asymmetric-routing fix
+	// without a restart.
+	if IsRunning() {
+		ensurePublicAddrRules()
+	}
+	return nil
 }
 
 // Enable starts the WARP WireGuard interface.
@@ -120,11 +142,22 @@ func Disable() error {
 	return nil
 }
 
-// flushRoutingRules removes all ip rules pointing to our routing table.
+// flushRoutingRules removes all ip rules pointing to our routing table,
+// plus the public-addr "lookup main" rules. The public-addr rules look up
+// the main table (not table 200), so the table-based loop above doesn't
+// catch them; we delete by pref instead. Both v4 and v6 rule tables are
+// independent, so iterate each family separately.
 func flushRoutingRules() {
 	for {
 		if runQuiet("ip", "rule", "del", "table", fmt.Sprintf("%d", RouteTable)) != nil {
 			break
+		}
+	}
+	for _, fam := range []string{"-4", "-6"} {
+		for {
+			if runQuiet("ip", fam, "rule", "del", "pref", strconv.Itoa(PublicAddrRulePref)) != nil {
+				break
+			}
 		}
 	}
 }
@@ -155,6 +188,7 @@ func RefreshRouting(cfg *config.Config) error {
 	}
 	if IsRunning() {
 		syncLiveRules(collectUserUIDs(cfg))
+		ensurePublicAddrRules()
 	}
 	return nil
 }
@@ -250,6 +284,95 @@ func listLiveRuleUIDs() ([]int, error) {
 	return uids, nil
 }
 
+// addrEntry pairs a public IP address with the `ip` family flag (`-4`/`-6`)
+// needed to manipulate its rule. Family is explicit because `ip rule` does
+// not infer it from the address argument.
+type addrEntry struct {
+	family string
+	addr   string
+}
+
+// detectPublicAddrs returns the host's public IP addresses (v4 and v6) by
+// reading the source of the default route in the main routing table. These
+// are the addresses inbound TCP connections (e.g. SOCKS5 clients) target,
+// so reply traffic must be routed back via the same interface — not into
+// table 200 — to avoid asymmetric routing where SYN-ACKs exit wg0 and
+// Cloudflare drops them. Best-effort: returns nil if no default route is
+// configured (unusual; would mean the host has no internet at all).
+func detectPublicAddrs() []addrEntry {
+	var addrs []addrEntry
+	for _, fam := range []string{"-4", "-6"} {
+		if a, err := defaultRouteSrcAddr(fam); err == nil && a != "" {
+			addrs = append(addrs, addrEntry{family: fam, addr: a})
+		}
+	}
+	return addrs
+}
+
+func defaultRouteSrcAddr(family string) (string, error) {
+	out, err := exec.Command("ip", family, "route", "show", "default", "table", "main").Output()
+	if err != nil {
+		return "", err
+	}
+	fields := strings.Fields(string(out))
+	var iface string
+	for i := 0; i+1 < len(fields); i++ {
+		if fields[i] == "dev" {
+			iface = fields[i+1]
+			break
+		}
+	}
+	if iface == "" {
+		return "", fmt.Errorf("no dev in default route")
+	}
+	out, err = exec.Command("ip", family, "-o", "addr", "show", "dev", iface, "scope", "global").Output()
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		f := strings.Fields(line)
+		for i := 0; i+1 < len(f); i++ {
+			if f[i] == "inet" || f[i] == "inet6" {
+				return strings.SplitN(f[i+1], "/", 2)[0], nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no global-scope address on %s", iface)
+}
+
+// ensurePublicAddrRules adds "from <pub-ip> lookup main pref 100" rules for
+// each detected public address that doesn't already have one. Idempotent;
+// safe to run while WARP is active (no connections are dropped).
+func ensurePublicAddrRules() {
+	addrs := detectPublicAddrs()
+	if len(addrs) == 0 {
+		log.Printf("warp: could not detect public address; reverse-route rule not applied (inbound SOCKS may break)")
+		return
+	}
+	for _, e := range addrs {
+		if hasPublicAddrRule(e) {
+			continue
+		}
+		out, err := exec.Command("ip", e.family, "rule", "add", "from", e.addr,
+			"lookup", "main", "pref", strconv.Itoa(PublicAddrRulePref)).CombinedOutput()
+		if err != nil {
+			log.Printf("warp: ip %s rule add from %s: %v: %s",
+				e.family, e.addr, err, strings.TrimSpace(string(out)))
+		}
+	}
+}
+
+func hasPublicAddrRule(e addrEntry) bool {
+	out, err := exec.Command("ip", e.family, "rule", "show",
+		"pref", strconv.Itoa(PublicAddrRulePref)).Output()
+	if err != nil {
+		return false
+	}
+	// Kernel may render the source as "<addr>" or "<addr>/32" (or /128 for v6).
+	return strings.Contains(string(out), "from "+e.addr+" ") ||
+		strings.Contains(string(out), "from "+e.addr+"/")
+}
+
 // Uninstall removes all WARP configuration and services.
 func Uninstall() {
 	_ = Disable()
@@ -286,6 +409,18 @@ func generateWgConf(cfg *config.Config) error {
 	// default route to table 200.  PostUp/PostDown only need ip-rule entries
 	// to steer specific UIDs into that table.
 	var postUp, postDown []string
+
+	// "from <public-ip> lookup main" overrides the per-UID WARP rule for
+	// reply traffic on accepted inbound connections — see PublicAddrRulePref.
+	// Best-effort: skip silently if detection fails (rare on cloud hosts;
+	// would require no default route).
+	for _, e := range detectPublicAddrs() {
+		postUp = append(postUp, fmt.Sprintf("ip %s rule add from %s lookup main pref %d",
+			e.family, e.addr, PublicAddrRulePref))
+		postDown = append(postDown, fmt.Sprintf("ip %s rule del from %s lookup main pref %d",
+			e.family, e.addr, PublicAddrRulePref))
+	}
+
 	for _, uid := range uids {
 		postUp = append(postUp, fmt.Sprintf("ip rule add uidrange %d-%d table %d", uid, uid, RouteTable))
 		postDown = append(postDown, fmt.Sprintf("ip rule del uidrange %d-%d table %d", uid, uid, RouteTable))
