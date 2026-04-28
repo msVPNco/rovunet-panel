@@ -30,6 +30,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 		action, err = prompt.Select("Action", []actions.SelectOption{
 			{Value: "add", Label: "Add user"},
 			{Value: "bulk_add", Label: "Add multiple users (random creds)"},
+			{Value: "edit_password", Label: "Edit user password"},
 			{Value: "remove", Label: "Remove user"},
 			{Value: "list", Label: "List users & configs"},
 		})
@@ -173,6 +174,72 @@ func handleSystemUsers(ctx *actions.Context) error {
 			}
 		}
 
+	case "edit_password":
+		if username == "" {
+			if len(cfg.Users) == 0 {
+				return actions.NewError(actions.SystemUsers, "no users configured", nil)
+			}
+			userOpts := make([]actions.SelectOption, 0, len(cfg.Users))
+			for _, u := range cfg.Users {
+				userOpts = append(userOpts, actions.SelectOption{Value: u.Username, Label: u.Username})
+			}
+			selected, err := prompt.Select("User to edit", userOpts)
+			if err != nil {
+				return err
+			}
+			username = selected
+		}
+		username = strings.TrimSpace(username)
+		if username == "" {
+			return actions.NewError(actions.SystemUsers, "username is required", nil)
+		}
+		if cfg.GetUser(username) == nil {
+			return actions.NewError(actions.SystemUsers, fmt.Sprintf("user %q not found", username), nil)
+		}
+
+		password := strings.TrimSpace(ctx.GetArg("password"))
+		if password == "" {
+			var err error
+			password, err = prompt.String("New password (leave blank to generate)", "")
+			if err != nil {
+				return err
+			}
+		}
+		if password == "" {
+			password = system.GeneratePassword(16)
+			out.Info(fmt.Sprintf("Generated password: %s", password))
+		} else if err := config.ValidatePassword(password); err != nil {
+			return actions.NewError(actions.SystemUsers, err.Error(), nil)
+		}
+
+		// AddSSHUser is upsert-style: existing OS user keeps their entry and
+		// just gets chpasswd'd. Same for cfg.AddUser, which updates in place.
+		if err := system.AddSSHUser(username, password); err != nil {
+			return actions.NewError(actions.SystemUsers, "failed to update SSH password: "+err.Error(), err)
+		}
+		cfg.AddUser(config.UserConfig{Username: username, Password: password})
+
+		if err := cfg.Save(); err != nil {
+			return actions.NewError(actions.SystemUsers, "failed to save config", err)
+		}
+
+		if cfg.Warp.Enabled {
+			proxy.RunAsUser = warp.SocksUser
+		}
+		if err := proxy.SetupSOCKSWithUsers(cfg.Users); err != nil {
+			out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
+		}
+
+		out.Success(fmt.Sprintf("Password updated for %q", username))
+
+		if len(cfg.Tunnels) > 0 {
+			show, _ := prompt.Confirm("Show updated tunnel configs?")
+			if show {
+				out.Print("")
+				showUserConfigs(cfg, username, password, out)
+			}
+		}
+
 	case "remove":
 		if username == "" {
 			var err error
@@ -181,12 +248,13 @@ func handleSystemUsers(ctx *actions.Context) error {
 				return err
 			}
 		}
+		username = strings.TrimSpace(username)
 		if username == "" {
 			return actions.NewError(actions.SystemUsers, "username is required", nil)
 		}
 
 		if err := system.RemoveSSHUser(username); err != nil {
-			out.Warning("Failed to remove SSH user: " + err.Error())
+			return actions.NewError(actions.SystemUsers, "failed to remove SSH user: "+err.Error(), err)
 		}
 
 		cfg.RemoveUser(username)

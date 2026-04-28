@@ -94,9 +94,11 @@ func AddSSHUser(username, password string) error {
 
 // RemoveSSHUser kills active sessions and removes a user from the system.
 func RemoveSSHUser(username string) error {
-	// Kill all processes owned by the user to disconnect active SSH sessions
-	_ = run("pkill", "-u", username)
-	return run("userdel", username)
+	// SIGKILL all processes owned by the user so userdel isn't blocked by a
+	// live SSH session. pkill returns before the kernel reaps the processes,
+	// so userdel -f forces removal even if a process is briefly still listed.
+	_ = run("pkill", "-KILL", "-u", username)
+	return run("userdel", "-f", username)
 }
 
 // ListSSHUsers returns all users in the slipgate-ssh group.
