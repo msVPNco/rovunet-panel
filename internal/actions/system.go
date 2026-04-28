@@ -33,10 +33,12 @@ func init() {
 			{Key: "action", Label: "Action", Required: true, Options: []SelectOption{
 				{Value: "add", Label: "Add user"},
 				{Value: "bulk_add", Label: "Add multiple users (random creds)"},
+				{Value: "edit_password", Label: "Edit user password"},
 				{Value: "remove", Label: "Remove user"},
 				{Value: "list", Label: "List users"},
 			}},
-			{Key: "username", Label: "Username", DependsOn: "action", DependsOnValues: []string{"add", "remove"}},
+			{Key: "username", Label: "Username", DependsOn: "action", DependsOnValues: []string{"add", "edit_password", "remove"}},
+			{Key: "password", Label: "New password (leave blank to generate)", DependsOn: "action", DependsOnValues: []string{"edit_password"}},
 			{Key: "count", Label: "How many users", DependsOn: "action", DependsOnValues: []string{"bulk_add"}},
 			{Key: "prefix", Label: "Username prefix", DependsOn: "action", DependsOnValues: []string{"bulk_add"}},
 		},
