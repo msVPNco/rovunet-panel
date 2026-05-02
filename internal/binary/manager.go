@@ -80,7 +80,7 @@ func binaryURLTemplates() map[string]string {
 	return map[string]string{
 		"dnstt-server":      stableDownloadBase + "/dnstt-server-%s-%s",
 		"slipstream-server": stableDownloadBase + "/slipstream-server-%s-%s",
-		"vaydns-server":     "https://github.com/net2share/vaydns/releases/download/v0.2.8/vaydns-server-%s-%s",
+		"vaydns-server":     stableDownloadBase + "/vaydns-server-%s-%s",
 		"caddy-naive":       stableDownloadBase + "/caddy-naive-%s-%s",
 	}
 }
