@@ -8,7 +8,7 @@ Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, S
 > curl -fsSL https://raw.githubusercontent.com/msVPNco/slipgate/main/install.sh | sudo bash
 > ```
 >
-> A Persian guide is in [docs/VLESS_FA.md](docs/VLESS_FA.md).
+> A Persian guide is in [docs/VLESS_FA.md](docs/VLESS_FA.md); release notes are in [CHANGELOG.md](CHANGELOG.md).
 
 ## What this fork changes
 

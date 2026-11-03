@@ -61,8 +61,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ steps.tag.outputs.tag }}" \
+          tag="${{ steps.tag.outputs.tag }}"
+          # Notes come from this version's CHANGELOG.md section when there is one
+          awk -v h="## $tag" '$0==h{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md > notes.md || true
+          if [ -s notes.md ]; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
+          gh release create "$tag" \
             slipgate-linux-amd64 slipgate-linux-arm64 SHA256SUMS \
             --target "$GITHUB_SHA" \
-            --title "SlipGate ${{ steps.tag.outputs.tag }}" \
-            --generate-notes
+            --title "SlipGate $tag" \
+            "${notes[@]}"
