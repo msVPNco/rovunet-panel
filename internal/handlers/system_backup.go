@@ -240,10 +240,20 @@ func handleSystemRestore(ctx *actions.Context) error {
 
 	out.Print("")
 	out.Success(fmt.Sprintf("Restore complete: %d tunnel(s), %d user(s)", len(cfg.Tunnels), len(cfg.Users)))
-	if records := cfg.ServerHostnames(); len(records) > 0 {
+	records := cfg.ServerHostnames()
+	var vlessDomains []string
+	for _, t := range cfg.Tunnels {
+		if t.VLESS != nil && t.Domain != "" {
+			vlessDomains = append(vlessDomains, t.Domain)
+		}
+	}
+	if len(records) > 0 || len(vlessDomains) > 0 {
 		out.Info("Point these DNS records at this server's IP; clients then work unchanged (same keys and passwords):")
 		for _, r := range records {
 			out.Print("      A  record: " + r)
+		}
+		for _, d := range vlessDomains {
+			out.Print("      A  record: " + d + " (VLESS: keep it Proxied at Cloudflare)")
 		}
 	}
 	if cfg.PublicAddress != "" {
