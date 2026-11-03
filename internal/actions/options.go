@@ -16,9 +16,23 @@ var TransportOptions = []SelectOption{
 	{Value: "direct-socks5", Label: "SOCKS5 — Direct SOCKS5 proxy"},
 }
 
-// InstallTransportOptions is the subset shown in the install/wizard flows.
+// QuickTransportOptions is the subset shown in the quick wizard.
 // External is excluded because it routes to a user-managed service that
 // wouldn't exist yet during initial setup.
+var QuickTransportOptions = []SelectOption{
+	{Value: "dnstt", Label: "DNSTT / NoizDNS — DNS tunnel"},
+	{Value: "slipstream", Label: "Slipstream — QUIC DNS tunnel"},
+	{Value: "vaydns", Label: "VayDNS — KCP DNS tunnel"},
+	{Value: "soar", Label: "Soar — multipath DNS tunnel (soar-client compatible)"},
+	{Value: "naive", Label: "NaiveProxy — HTTPS proxy with Caddy"},
+	{Value: "stuntls", Label: "StunTLS — SSH over TLS + WebSocket proxy"},
+	{Value: "direct-ssh", Label: "SSH — Direct SSH tunnel"},
+	{Value: "direct-socks5", Label: "SOCKS5 — Direct SOCKS5 proxy"},
+}
+
+// InstallTransportOptions is the list `slipgate install` shows: the quick
+// wizard's plus VLESS, which install sets up with no further questions than
+// its domain.
 var InstallTransportOptions = []SelectOption{
 	{Value: "dnstt", Label: "DNSTT / NoizDNS — DNS tunnel"},
 	{Value: "slipstream", Label: "Slipstream — QUIC DNS tunnel"},
@@ -26,6 +40,7 @@ var InstallTransportOptions = []SelectOption{
 	{Value: "soar", Label: "Soar — multipath DNS tunnel (soar-client compatible)"},
 	{Value: "naive", Label: "NaiveProxy — HTTPS proxy with Caddy"},
 	{Value: "stuntls", Label: "StunTLS — SSH over TLS + WebSocket proxy"},
+	{Value: "vless", Label: "VLESS — over WebSocket behind Cloudflare (ready with just a domain)"},
 	{Value: "direct-ssh", Label: "SSH — Direct SSH tunnel"},
 	{Value: "direct-socks5", Label: "SOCKS5 — Direct SOCKS5 proxy"},
 }

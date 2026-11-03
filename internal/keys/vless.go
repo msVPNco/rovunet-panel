@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -29,6 +30,39 @@ func GenerateVLESSSecret(path string) error {
 		return fmt.Errorf("write vless secret: %w", err)
 	}
 	return nil
+}
+
+// EnsureVLESSSecret returns the secret at path, creating it first when absent.
+// One secret serves every VLESS tunnel on the server and outlives them:
+// removing and re-adding a tunnel gives users the same UUIDs, so links
+// already handed out keep working.
+func EnsureVLESSSecret(path string) error {
+	if _, err := LoadVLESSSecret(path); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0750); err != nil {
+		return err
+	}
+	return GenerateVLESSSecret(path)
+}
+
+// VLESSDefaultPath derives a tunnel's default WebSocket path from the server
+// secret and its domain: it looks like an ordinary API route, can't be
+// guessed, and comes out the same whenever the same domain is set up again.
+func VLESSDefaultPath(secret []byte, domain string) string {
+	mac := hmac.New(sha256.New, secret)
+	mac.Write([]byte("slipgate-vless-path-v1"))
+	mac.Write([]byte{0})
+	mac.Write([]byte(domain))
+	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+	sum := mac.Sum(nil)
+	b := make([]byte, 10)
+	for i := range b {
+		b[i] = chars[int(sum[i])%len(chars)]
+	}
+	return "/api/" + string(b)
 }
 
 // LoadVLESSSecret reads a secret written by GenerateVLESSSecret.

@@ -173,7 +173,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 	// destinations itself, so it has none)
 	needsBackend := false
 	for _, t := range transports {
-		if t != config.TransportSSH && t != config.TransportSOCKS && t != config.TransportStunTLS && t != config.TransportSoar {
+		if t != config.TransportSSH && t != config.TransportSOCKS && t != config.TransportStunTLS && t != config.TransportSoar && t != config.TransportVLESS {
 			needsBackend = true
 			break
 		}
@@ -269,6 +269,55 @@ func handleSystemInstall(ctx *actions.Context) error {
 				}
 				out.Success(fmt.Sprintf("Tunnel %q added", tag))
 			}
+			continue
+		}
+
+		// VLESS behind Cloudflare: only the domain is asked for; the rest is
+		// the usual setup, so the user has working links when install ends.
+		if selectedTransport == config.TransportVLESS {
+			hint, def := "cdn.example.com", ""
+			if knownParent != "" {
+				hint, def = "cdn."+knownParent, "cdn."+knownParent
+			}
+			out.Info("The hostname needs an A record to this server, proxied by Cloudflare (orange cloud)")
+			domain, err := prompt.String(fmt.Sprintf("Domain for VLESS (e.g. %s)", hint), def)
+			if err != nil {
+				return err
+			}
+			if domain == "" {
+				out.Warning("Skipping VLESS (no domain)")
+				continue
+			}
+			tag := cfg.UniqueTag("vless")
+			tunnel := config.TunnelConfig{
+				Tag:       tag,
+				Transport: config.TransportVLESS,
+				Backend:   config.BackendDirect,
+				Domain:    domain,
+				Enabled:   true,
+			}
+			if err := cfg.ValidateNewTunnel(&tunnel); err != nil {
+				out.Warning(fmt.Sprintf("Skip %s: %v", tag, err))
+				continue
+			}
+			tunnelDir := config.TunnelDir(tag)
+			if err := os.MkdirAll(tunnelDir, 0750); err != nil {
+				return actions.NewError(actions.SystemInstall, "failed to create tunnel dir", err)
+			}
+			v, err := setupVLESS(ctx, cfg, tunnelDir, domain, true)
+			if err != nil {
+				_ = os.RemoveAll(tunnelDir)
+				out.Warning(fmt.Sprintf("Skip %s: %v", tag, err))
+				continue
+			}
+			tunnel.VLESS = v
+			cfg.AddTunnel(tunnel)
+			allTunnels = append(allTunnels, tunnel)
+			_ = network.AllowPort(v.Port, "tcp")
+			if knownParent == "" {
+				knownParent = baseDomain(domain)
+			}
+			out.Success(fmt.Sprintf("Tunnel %q added (port %d, path %s)", tag, v.Port, v.Path))
 			continue
 		}
 
@@ -781,7 +830,13 @@ func handleSystemInstall(ctx *actions.Context) error {
 		if t.IsDirectTransport() || t.Domain == "" {
 			continue
 		}
-		if t.Transport == config.TransportNaive {
+		if t.Transport == config.TransportVLESS {
+			rec := fmt.Sprintf("A:%s", t.Domain)
+			if !shownRecords[rec] {
+				shownRecords[rec] = true
+				out.Print(fmt.Sprintf("      A  record: %s → your server IP, Proxied (orange cloud)", t.Domain))
+			}
+		} else if t.Transport == config.TransportNaive {
 			rec := fmt.Sprintf("A:%s", t.Domain)
 			if !shownRecords[rec] {
 				shownRecords[rec] = true
@@ -806,6 +861,12 @@ func handleSystemInstall(ctx *actions.Context) error {
 	out.Print("    Client Configs:")
 	out.Print("")
 	printClientConfigs(cfg, out, allTunnels)
+
+	for i := range allTunnels {
+		if allTunnels[i].VLESS != nil {
+			printVLESSSetup(out, &allTunnels[i])
+		}
+	}
 
 	out.Print("  ══════════════════════════════════════════════════════")
 	out.Print("")

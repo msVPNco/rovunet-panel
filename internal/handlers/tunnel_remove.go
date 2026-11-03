@@ -91,6 +91,17 @@ func removeSingleTunnel(ctx *actions.Context, cfg *config.Config, tag string) {
 	// Remove from router
 	_ = router.RemoveTunnel(cfg, tag)
 
+	// Removing the last direct SOCKS5 tunnel takes the proxy off the network
+	wasDirectSOCKS := false
+	if t := cfg.GetTunnel(tag); t != nil && t.Transport == config.TransportSOCKS {
+		wasDirectSOCKS = true
+	}
+	defer func() {
+		if wasDirectSOCKS {
+			_ = setupSOCKS(cfg)
+		}
+	}()
+
 	// Remove tunnel directory
 	tunnelDir := config.TunnelDir(tag)
 	if err := os.RemoveAll(tunnelDir); err != nil {

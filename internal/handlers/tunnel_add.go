@@ -487,7 +487,7 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 		}
 
 	case config.TransportVLESS:
-		v, err := setupVLESS(ctx, cfg, tunnelDir, domain)
+		v, err := setupVLESS(ctx, cfg, tunnelDir, domain, false)
 		if err != nil {
 			_ = os.RemoveAll(tunnelDir)
 			return actions.NewError(actions.TunnelAdd, "vless setup failed", err)
@@ -599,6 +599,17 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 
 	if err := router.AddTunnel(cfg, &tunnel); err != nil {
 		out.Warning("Failed to register with router: " + err.Error())
+	}
+
+	// A direct SOCKS5 tunnel is the shared SOCKS5 service listening on all
+	// interfaces: rebind it (it starts out on localhost only) and open 1080.
+	if transport_ == config.TransportSOCKS {
+		if err := setupSOCKS(cfg); err != nil {
+			out.Warning("Failed to expose the SOCKS5 proxy: " + err.Error())
+		}
+		if err := network.AllowPort(1080, "tcp"); err != nil {
+			out.Warning("Failed to open port 1080/tcp: " + err.Error())
+		}
 	}
 
 	if tunnel.VLESS != nil {

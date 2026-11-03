@@ -170,6 +170,11 @@ type VLESSConfig struct {
 	BlockPorts string `json:"block_ports,omitempty"` // destination ports refused; empty = DefaultVLESSBlockPorts, "none" = no limit
 }
 
+// DefaultVLESSSecret is the server-wide secret behind every VLESS tunnel's
+// user UUIDs; it is not inside a tunnel's directory, so removing a tunnel
+// doesn't lose it.
+const DefaultVLESSSecret = "/etc/slipgate/vless.secret"
+
 // DefaultVLESSBlockPorts keeps users from sending mail straight from the
 // server's IP, the usual way a proxy gets the IP blacklisted.
 const DefaultVLESSBlockPorts = "25"

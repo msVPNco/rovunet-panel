@@ -1,9 +1,7 @@
 package handlers
 
 import (
-	"crypto/rand"
 	"fmt"
-	"math/big"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -18,18 +16,29 @@ import (
 )
 
 // setupVLESS asks for (or takes from flags) a VLESS tunnel's settings and
-// creates its secret and certificate in tunnelDir.
-func setupVLESS(ctx *actions.Context, cfg *config.Config, tunnelDir, domain string) (*config.VLESSConfig, error) {
+// creates its certificate in tunnelDir. With quiet it asks nothing and takes
+// the usual setup behind Cloudflare: proxied domain, TLS to the origin, a free
+// Cloudflare port, and the path derived from the server secret.
+func setupVLESS(ctx *actions.Context, cfg *config.Config, tunnelDir, domain string, quiet bool) (*config.VLESSConfig, error) {
 	out := ctx.Output
 	v := &config.VLESSConfig{}
+
+	// One secret for the whole server, kept when a tunnel is removed, so the
+	// same domain always gets the same path and users keep their UUIDs.
+	if err := keys.EnsureVLESSSecret(config.DefaultVLESSSecret); err != nil {
+		return nil, err
+	}
+	secret, err := keys.LoadVLESSSecret(config.DefaultVLESSSecret)
+	if err != nil {
+		return nil, err
+	}
 
 	// The domain goes into every client config as Host and SNI
 	if net.ParseIP(domain) != nil || config.ValidatePublicAddress(domain) != nil {
 		return nil, fmt.Errorf("invalid domain %q: give the hostname clients connect to, e.g. cdn.example.com", domain)
 	}
 
-	var err error
-	if v.CDN, err = argOrConfirm(ctx, "cdn", "Is the domain proxied by Cloudflare (orange cloud)?"); err != nil {
+	if v.CDN, err = argOrConfirm(ctx, "cdn", "Is the domain proxied by Cloudflare (orange cloud)?", quiet); err != nil {
 		return nil, err
 	}
 
@@ -38,12 +47,15 @@ func setupVLESS(ctx *actions.Context, cfg *config.Config, tunnelDir, domain stri
 	// destination to DPI.
 	v.TLS = true
 	if v.CDN {
-		if v.TLS, err = argOrConfirm(ctx, "tls", "Use TLS between Cloudflare and this server? (Cloudflare SSL/TLS mode: Full)"); err != nil {
+		if v.TLS, err = argOrConfirm(ctx, "tls", "Use TLS between Cloudflare and this server? (Cloudflare SSL/TLS mode: Full)", quiet); err != nil {
 			return nil, err
 		}
 	}
 
 	portStr := ctx.GetArg("listen-port")
+	if portStr == "" && quiet {
+		portStr = strconv.Itoa(suggestVLESSPort(cfg, v.TLS))
+	}
 	if portStr == "" {
 		portStr, err = prompt.String("Listen port", strconv.Itoa(suggestVLESSPort(cfg, v.TLS)))
 		if err != nil {
@@ -66,7 +78,10 @@ func setupVLESS(ctx *actions.Context, cfg *config.Config, tunnelDir, domain stri
 
 	v.Path = ctx.GetArg("path")
 	if v.Path == "" {
-		if v.Path, err = prompt.String("WebSocket path", randomWSPath()); err != nil {
+		def := keys.VLESSDefaultPath(secret, domain)
+		if quiet {
+			v.Path = def
+		} else if v.Path, err = prompt.String("WebSocket path", def); err != nil {
 			return nil, err
 		}
 	}
@@ -75,7 +90,7 @@ func setupVLESS(ctx *actions.Context, cfg *config.Config, tunnelDir, domain stri
 	}
 
 	v.CDNAddress = ctx.GetArg("cdn-address")
-	if v.CDNAddress == "" && v.CDN {
+	if v.CDNAddress == "" && v.CDN && !quiet {
 		if v.CDNAddress, err = prompt.String("Clean Cloudflare IP for client configs (blank = use the domain)", ""); err != nil {
 			return nil, err
 		}
@@ -84,10 +99,7 @@ func setupVLESS(ctx *actions.Context, cfg *config.Config, tunnelDir, domain stri
 
 	v.BlockPorts = ctx.GetArg("block-ports")
 
-	v.SecretFile = filepath.Join(tunnelDir, "vless.secret")
-	if err := keys.GenerateVLESSSecret(v.SecretFile); err != nil {
-		return nil, err
-	}
+	v.SecretFile = config.DefaultVLESSSecret
 	if v.TLS {
 		v.Cert = filepath.Join(tunnelDir, "cert.pem")
 		v.Key = filepath.Join(tunnelDir, "key.pem")
@@ -104,14 +116,17 @@ func setupVLESS(ctx *actions.Context, cfg *config.Config, tunnelDir, domain stri
 }
 
 // argOrConfirm reads a yes/no flag ("yes"/"no", "true"/"false") or asks,
-// defaulting to yes.
-func argOrConfirm(ctx *actions.Context, key, question string) (bool, error) {
+// defaulting to yes (without asking when quiet).
+func argOrConfirm(ctx *actions.Context, key, question string, quiet bool) (bool, error) {
 	switch strings.ToLower(strings.TrimSpace(ctx.GetArg(key))) {
 	case "yes", "y", "true", "1", "on":
 		return true, nil
 	case "no", "n", "false", "0", "off":
 		return false, nil
 	case "":
+		if quiet {
+			return true, nil
+		}
 		return prompt.ConfirmYes(question)
 	default:
 		return false, fmt.Errorf("--%s takes yes or no", key)
@@ -166,17 +181,6 @@ func tcpPortFree(p int) bool {
 	}
 	ln.Close()
 	return true
-}
-
-// randomWSPath returns a path that looks like an ordinary API route.
-func randomWSPath() string {
-	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, 10)
-	for i := range b {
-		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
-		b[i] = chars[n.Int64()]
-	}
-	return "/api/" + string(b)
 }
 
 func joinPorts(ports []int) string {

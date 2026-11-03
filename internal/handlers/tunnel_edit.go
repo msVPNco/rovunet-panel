@@ -87,7 +87,10 @@ func handleTunnelEdit(ctx *actions.Context) error {
 			tunnel.StunTLS.Key = filepath.Join(newDir, "key.pem")
 		}
 		if v := tunnel.VLESS; v != nil {
-			v.SecretFile = filepath.Join(newDir, "vless.secret")
+			// A secret kept inside the tunnel's own directory moves with it
+			if filepath.Dir(v.SecretFile) == oldDir {
+				v.SecretFile = filepath.Join(newDir, "vless.secret")
+			}
 			if v.TLS {
 				v.Cert = filepath.Join(newDir, "cert.pem")
 				v.Key = filepath.Join(newDir, "key.pem")

@@ -152,7 +152,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 		if cfg.Warp.Enabled {
 			proxy.RunAsUser = warp.SocksUser
 		}
-		if err := proxy.SetupSOCKSWithUsers(cfg.Users); err != nil {
+		if err := setupSOCKS(cfg); err != nil {
 			out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
 		}
 
@@ -233,7 +233,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 		if cfg.Warp.Enabled {
 			proxy.RunAsUser = warp.SocksUser
 		}
-		if err := proxy.SetupSOCKSWithUsers(cfg.Users); err != nil {
+		if err := setupSOCKS(cfg); err != nil {
 			out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
 		}
 
@@ -269,11 +269,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 		if cfg.Warp.Enabled {
 			proxy.RunAsUser = warp.SocksUser
 		}
-		if len(cfg.Users) > 0 {
-			_ = proxy.SetupSOCKSWithUsers(cfg.Users)
-		} else {
-			_ = proxy.SetupSOCKS()
-		}
+		_ = setupSOCKS(cfg)
 
 		if err := cfg.Save(); err != nil {
 			return actions.NewError(actions.SystemUsers, "failed to save config", err)
@@ -341,7 +337,7 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 	if cfg.Warp.Enabled {
 		proxy.RunAsUser = warp.SocksUser
 	}
-	if err := proxy.SetupSOCKSWithUsers(cfg.Users); err != nil {
+	if err := setupSOCKS(cfg); err != nil {
 		out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
 	}
 
