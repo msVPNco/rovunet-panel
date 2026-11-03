@@ -192,12 +192,18 @@ func joinPorts(ports []int) string {
 }
 
 // printVLESSSetup tells the operator what to set at Cloudflare.
-func printVLESSSetup(out actions.OutputWriter, t *config.TunnelConfig) {
+func printVLESSSetup(out actions.OutputWriter, cfg *config.Config, t *config.TunnelConfig) {
 	v := t.VLESS
 	if v == nil {
 		return
 	}
 	out.Print("")
+	if f := cfg.VLESSFront(t); f != nil {
+		out.Info(fmt.Sprintf("VLESS is served by NaiveProxy on %s:%d with its Let's Encrypt certificate", f.Domain, f.Naive.Port))
+		out.Print("    DNS        : " + f.Domain + " stays DNS only (grey cloud); " + t.Domain + " is no longer needed")
+		out.Print("    Wrong paths and probes see the decoy website, like any other HTTPS site")
+		return
+	}
 	if v.CDN {
 		out.Info("Cloudflare setup for " + t.Domain + ":")
 		out.Print("    DNS        : A record " + t.Domain + " → this server's IP, Proxy status: Proxied (orange cloud)")
@@ -248,7 +254,7 @@ func printVLESSLinks(out actions.OutputWriter, cfg *config.Config, tunnel *confi
 		out.Warning(fmt.Sprintf("[%s] %v", tunnel.Tag, err))
 		return
 	}
-	link, err := clientcfg.GenerateVLESSLink(tunnel, username, password)
+	link, err := clientcfg.GenerateVLESSLink(tunnel, cfg, username, password)
 	if err != nil {
 		out.Warning(fmt.Sprintf("[%s] %v", tunnel.Tag, err))
 		return

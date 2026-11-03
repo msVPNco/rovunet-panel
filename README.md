@@ -256,6 +256,10 @@ sudo slipgate tunnel edit --tag mydnstt --mtu 1232
 # Put a clean Cloudflare IP into future VLESS configs ("-" goes back to the domain)
 sudo slipgate tunnel edit --tag myvless --cdn-address 104.16.0.1
 
+# Serve VLESS through NaiveProxy's Caddy: port 443, its Let's Encrypt
+# certificate, the decoy site for probes, no Cloudflare ("-" undoes it)
+sudo slipgate tunnel edit --tag myvless --front naive
+
 # Set MTU for all DNSTT/NoizDNS/VayDNS tunnels at once (rewrites and restarts each service)
 sudo slipgate mtu 1200
 

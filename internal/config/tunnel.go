@@ -168,7 +168,14 @@ type VLESSConfig struct {
 	CDN        bool   `json:"cdn"`                   // Domain is proxied by a CDN (Cloudflare orange cloud)
 	CDNAddress string `json:"cdn_address,omitempty"` // address clients dial (clean CDN IP); empty = Domain
 	BlockPorts string `json:"block_ports,omitempty"` // destination ports refused; empty = DefaultVLESSBlockPorts, "none" = no limit
+	// Front is the tag of a NaiveProxy tunnel whose Caddy serves this
+	// VLESS path on its own port (443) with its real Let's Encrypt
+	// certificate. The VLESS server then listens on localhost only.
+	Front string `json:"front,omitempty"`
 }
+
+// Fronted reports whether the tunnel is served through a NaiveProxy Caddy.
+func (v *VLESSConfig) Fronted() bool { return v != nil && v.Front != "" }
 
 // DefaultVLESSSecret is the server-wide secret behind every VLESS tunnel's
 // user UUIDs; it is not inside a tunnel's directory, so removing a tunnel

@@ -65,7 +65,7 @@ func TestGenerateURIVLESS(t *testing.T) {
 
 func TestGenerateVLESSLink(t *testing.T) {
 	tunnel := testVLESSTunnel(t, nil)
-	link, err := GenerateVLESSLink(tunnel, "alice", "s3cret")
+	link, err := GenerateVLESSLink(tunnel, nil, "alice", "s3cret")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,13 +90,13 @@ func TestGenerateVLESSLink(t *testing.T) {
 	}
 
 	direct := testVLESSTunnel(t, func(v *config.VLESSConfig) { v.CDN = false; v.CDNAddress = "2001:4860::1" })
-	link, _ = GenerateVLESSLink(direct, "alice", "s3cret")
+	link, _ = GenerateVLESSLink(direct, nil, "alice", "s3cret")
 	if !strings.Contains(link, "@[2001:4860::1]:8443?") || !strings.Contains(link, "allowInsecure=1") {
 		t.Errorf("direct link %s", link)
 	}
 
 	plain := testVLESSTunnel(t, func(v *config.VLESSConfig) { v.TLS = false; v.Port = 8080 })
-	link, _ = GenerateVLESSLink(plain, "alice", "s3cret")
+	link, _ = GenerateVLESSLink(plain, nil, "alice", "s3cret")
 	if u, _ := url.Parse(link); u.Query().Get("security") != "none" || u.Query().Get("sni") != "" {
 		t.Errorf("plain link %s", link)
 	}
@@ -114,5 +114,39 @@ func TestVLESSUUIDChangesWithPassword(t *testing.T) {
 	// Version 4, RFC 4122 variant
 	if a[14] != '4' || !strings.ContainsRune("89ab", rune(a[19])) {
 		t.Errorf("uuid %s lacks v4 bits", a)
+	}
+}
+
+func TestVLESSFrontedByNaive(t *testing.T) {
+	dir := t.TempDir()
+	secret := filepath.Join(dir, "vless.secret")
+	if err := keys.GenerateVLESSSecret(secret); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{Tunnels: []config.TunnelConfig{
+		{Tag: "naive", Transport: config.TransportNaive, Domain: "example.com", Naive: &config.NaiveConfig{Port: 443}},
+		{Tag: "vless", Transport: config.TransportVLESS, Backend: config.BackendDirect, Domain: "cdn.example.com",
+			VLESS: &config.VLESSConfig{Port: 2053, Path: "/api/x", TLS: true, CDN: true, SecretFile: secret, Front: "naive"}},
+	}}
+	tun := &cfg.Tunnels[1]
+	link, err := GenerateVLESSLink(tun, cfg, "alice", "pw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"@example.com:443?", "sni=example.com", "host=example.com", "security=tls"} {
+		if !strings.Contains(link, want) {
+			t.Fatalf("missing %q in %s", want, link)
+		}
+	}
+	if strings.Contains(link, "allowInsecure") {
+		t.Fatalf("fronted link must not skip verification: %s", link)
+	}
+	uri, err := GenerateURI(tun, nil, cfg, URIOptions{Username: "alice", Password: "pw"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := decodeFields(t, uri)
+	if f[FDomain] != "example.com" || f[FCdnIP] != "example.com" || f[FCdnPort] != "443" || f[FVlessSecurity] != "tls" {
+		t.Fatalf("slipnet fields: domain=%q cdn=%q port=%q sec=%q", f[FDomain], f[FCdnIP], f[FCdnPort], f[FVlessSecurity])
 	}
 }

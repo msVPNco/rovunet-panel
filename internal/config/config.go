@@ -124,6 +124,19 @@ func Default() *Config {
 }
 
 // GetTunnel returns a tunnel by tag.
+// VLESSFront returns the NaiveProxy tunnel that fronts a VLESS tunnel, or
+// nil when the tunnel is not fronted (or its front no longer exists).
+func (c *Config) VLESSFront(t *TunnelConfig) *TunnelConfig {
+	if t == nil || t.VLESS == nil || t.VLESS.Front == "" {
+		return nil
+	}
+	f := c.GetTunnel(t.VLESS.Front)
+	if f == nil || f.Transport != TransportNaive || f.Naive == nil {
+		return nil
+	}
+	return f
+}
+
 func (c *Config) GetTunnel(tag string) *TunnelConfig {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

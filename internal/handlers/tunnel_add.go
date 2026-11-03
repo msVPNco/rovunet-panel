@@ -629,7 +629,7 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 			printSoarLinks(cfg, out, []config.TunnelConfig{tunnel})
 		} else {
 			if tunnel.VLESS != nil {
-				printVLESSSetup(out, &tunnel)
+				printVLESSSetup(out, cfg, &tunnel)
 			}
 			out.Info(fmt.Sprintf("Share with: slipgate tunnel share %s", tag))
 		}

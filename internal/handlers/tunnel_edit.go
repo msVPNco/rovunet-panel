@@ -41,6 +41,7 @@ func handleTunnelEdit(ctx *actions.Context) error {
 	}
 
 	changed := false
+	resyncNaive := false
 
 	// Show current settings
 	out.Print(fmt.Sprintf("  Editing tunnel %q (%s/%s)", tag, tunnel.Transport, tunnel.Backend))
@@ -403,12 +404,29 @@ func handleTunnelEdit(ctx *actions.Context) error {
 			}
 			edited.BlockPorts = blockPorts
 
+			front, err := askVLESSFront(ctx, cfg, v.Front)
+			if err != nil {
+				return actions.NewError(actions.TunnelEdit, "invalid front", err)
+			}
+			edited.Front = front
+
 			if err := config.ValidateVLESS(&edited); err != nil {
 				return actions.NewError(actions.TunnelEdit, "invalid vless settings", err)
 			}
 			if edited != *v {
 				if edited.Path != v.Path {
 					out.Warning("The WebSocket path changed: share the tunnel's configs again")
+				}
+				if edited.Front != v.Front {
+					if edited.Front != "" {
+						out.Success(fmt.Sprintf("VLESS is now served by %q on its domain and port with a real certificate", edited.Front))
+					} else {
+						out.Info("VLESS is served on its own port again")
+					}
+					out.Warning("The client address changed: share the tunnel's configs again")
+				}
+				if edited.Front != "" || v.Front != "" {
+					resyncNaive = true
 				}
 				*v = edited
 				changed = true
@@ -469,6 +487,48 @@ func handleTunnelEdit(ctx *actions.Context) error {
 		}
 	}
 
+	if resyncNaive {
+		syncNaive(cfg, out)
+	}
+
 	out.Success(fmt.Sprintf("Tunnel %q updated", tag))
 	return nil
+}
+
+// askVLESSFront reads the "front" argument (or asks when a NaiveProxy tunnel
+// exists) and checks that it names a NaiveProxy tunnel. "-" or "none" clears it.
+func askVLESSFront(ctx *actions.Context, cfg *config.Config, current string) (string, error) {
+	front, given := ctx.Args["front"]
+	if !given {
+		var naive []string
+		for _, t := range cfg.Tunnels {
+			if t.Transport == config.TransportNaive {
+				naive = append(naive, t.Tag)
+			}
+		}
+		if len(naive) == 0 {
+			return current, nil
+		}
+		def := current
+		if def == "" {
+			def = "-"
+		}
+		var err error
+		front, err = prompt.String(fmt.Sprintf(`Serve VLESS through NaiveProxy on 443 with its real certificate (%s, or "-" = own port)`, strings.Join(naive, ", ")), def)
+		if err != nil {
+			return "", err
+		}
+	}
+	front = strings.TrimSpace(front)
+	if front == "-" || strings.EqualFold(front, "none") {
+		return "", nil
+	}
+	if front == "" {
+		return current, nil
+	}
+	t := cfg.GetTunnel(front)
+	if t == nil || t.Transport != config.TransportNaive || t.Naive == nil {
+		return "", fmt.Errorf("%q is not a NaiveProxy tunnel", front)
+	}
+	return front, nil
 }

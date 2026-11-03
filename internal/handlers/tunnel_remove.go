@@ -9,6 +9,7 @@ import (
 	"github.com/anonvector/slipgate/internal/prompt"
 	"github.com/anonvector/slipgate/internal/router"
 	"github.com/anonvector/slipgate/internal/service"
+	"github.com/anonvector/slipgate/internal/transport"
 )
 
 func handleTunnelRemove(ctx *actions.Context) error {
@@ -108,8 +109,32 @@ func removeSingleTunnel(ctx *actions.Context, cfg *config.Config, tag string) {
 		ctx.Output.Warning(fmt.Sprintf("Failed to remove tunnel dir: %v", err))
 	}
 
+	// Note VLESS/NaiveProxy fronting before the tunnel leaves the config
+	removed := cfg.GetTunnel(tag)
+	frontedVLESS := removed != nil && removed.VLESS.Fronted()
+	wasNaive := removed != nil && removed.Transport == config.TransportNaive
+
 	// Remove from config
 	cfg.RemoveTunnel(tag)
+
+	if frontedVLESS {
+		// Drop the VLESS path from Caddy's routes
+		syncNaive(cfg, ctx.Output)
+	}
+	if wasNaive {
+		// VLESS tunnels it fronted go back to serving on their own port
+		for i := range cfg.Tunnels {
+			t := &cfg.Tunnels[i]
+			if t.VLESS != nil && t.VLESS.Front == tag {
+				t.VLESS.Front = ""
+				if err := transport.CreateService(t, cfg); err != nil {
+					ctx.Output.Warning(fmt.Sprintf("Failed to restart %q on its own port: %v", t.Tag, err))
+				} else {
+					ctx.Output.Warning(fmt.Sprintf("%q is served on its own port again: share its configs again", t.Tag))
+				}
+			}
+		}
+	}
 	if cfg.Route.Active == tag {
 		cfg.Route.Active = ""
 		if len(cfg.Tunnels) > 0 {

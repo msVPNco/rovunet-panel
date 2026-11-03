@@ -356,6 +356,9 @@ func ValidateVLESS(v *VLESSConfig) error {
 	if v.SecretFile == "" {
 		return fmt.Errorf("vless secret file is required")
 	}
+	if v.Front != "" && !tagRegex.MatchString(v.Front) {
+		return fmt.Errorf("invalid vless front tunnel %q", v.Front)
+	}
 	return nil
 }
 

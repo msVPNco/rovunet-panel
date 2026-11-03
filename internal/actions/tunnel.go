@@ -27,6 +27,7 @@ func init() {
 			{Key: "path", Label: "WebSocket path (VLESS)", CLIOnly: true},
 			{Key: "cdn-address", Label: "Clean CDN IP for client configs (VLESS)", CLIOnly: true},
 			{Key: "block-ports", Label: `Destination ports to refuse, or "none" (VLESS, default 25)`, CLIOnly: true},
+			{Key: "front", Label: `NaiveProxy tunnel to serve VLESS on 443 with its real certificate, or "-" (VLESS)`, CLIOnly: true},
 		},
 	})
 
@@ -108,6 +109,7 @@ func init() {
 			{Key: "path", Label: "WebSocket path (VLESS)", CLIOnly: true},
 			{Key: "cdn-address", Label: "Clean CDN IP for client configs (VLESS)", CLIOnly: true},
 			{Key: "block-ports", Label: `Destination ports to refuse, or "none" (VLESS)`, CLIOnly: true},
+			{Key: "front", Label: `NaiveProxy tunnel to serve VLESS on 443 with its real certificate, or "-" (VLESS)`, CLIOnly: true},
 		},
 	})
 

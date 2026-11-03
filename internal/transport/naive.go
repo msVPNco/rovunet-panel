@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/anonvector/slipgate/internal/config"
 	"github.com/anonvector/slipgate/internal/service"
@@ -33,7 +34,7 @@ func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 			tunnel.Naive.DecoyURL = existingDecoy(string(old))
 		}
 	}
-	caddyfile := buildCaddyfile(tunnel, cfg.Users)
+	caddyfile := buildCaddyfile(tunnel, cfg.Users, vlessRoutes(cfg, tunnel.Tag))
 	if err := os.WriteFile(caddyfilePath, []byte(caddyfile), 0600); err != nil {
 		return fmt.Errorf("write Caddyfile: %w", err)
 	}
@@ -80,7 +81,25 @@ func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 	return service.Start(unit.Name)
 }
 
-func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig) string {
+// vlessRoute is a VLESS WebSocket path Caddy hands to a local VLESS server.
+type vlessRoute struct {
+	Path string
+	Port int
+}
+
+// vlessRoutes lists the VLESS tunnels fronted by the NaiveProxy tunnel tag.
+func vlessRoutes(cfg *config.Config, naiveTag string) []vlessRoute {
+	var r []vlessRoute
+	for i := range cfg.Tunnels {
+		t := &cfg.Tunnels[i]
+		if t.Transport == config.TransportVLESS && t.VLESS != nil && t.VLESS.Front == naiveTag {
+			r = append(r, vlessRoute{Path: t.VLESS.Path, Port: t.VLESS.Port})
+		}
+	}
+	return r
+}
+
+func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vless []vlessRoute) string {
 	naiveCfg := tunnel.Naive
 
 	user := naiveCfg.User
@@ -113,7 +132,7 @@ func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig) stri
 :%d, %s {
   tls %s
   route {
-    forward_proxy {
+%s    forward_proxy {
 %s      hide_ip
       hide_via
       probe_resistance
@@ -123,7 +142,19 @@ func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig) stri
     }
   }
 }
-`, port, tunnel.Domain, naiveCfg.Email, naiveAuthLines(user, pass, users), decoy)
+`, port, tunnel.Domain, naiveCfg.Email, vlessRouteLines(vless), naiveAuthLines(user, pass, users), decoy)
+}
+
+// vlessRouteLines sends each fronted VLESS WebSocket path to its local
+// server. They come before forward_proxy, and every other request still
+// falls through to the decoy site, so the host looks like an ordinary
+// website with a valid certificate on 443.
+func vlessRouteLines(routes []vlessRoute) string {
+	var b strings.Builder
+	for _, r := range routes {
+		fmt.Fprintf(&b, "    reverse_proxy %s 127.0.0.1:%d {\n      flush_interval -1\n    }\n", r.Path, r.Port)
+	}
+	return b.String()
 }
 
 // naiveAuthLines lists the tunnel's own credential plus one basic_auth line
@@ -167,9 +198,9 @@ func existingDecoy(caddyfile string) string {
 	return ""
 }
 
-// SyncNaiveUsers rewrites every NaiveProxy Caddyfile with the current user
-// list and restarts the service when it changed.
-func SyncNaiveUsers(cfg *config.Config) error {
+// SyncNaive rewrites every NaiveProxy Caddyfile with the current users and
+// fronted VLESS paths, and restarts the service when it changed.
+func SyncNaive(cfg *config.Config) error {
 	var firstErr error
 	for i := range cfg.Tunnels {
 		t := &cfg.Tunnels[i]
@@ -184,11 +215,34 @@ func SyncNaiveUsers(cfg *config.Config) error {
 		if t.Naive.DecoyURL == "" {
 			t.Naive.DecoyURL = existingDecoy(string(old))
 		}
-		next := buildCaddyfile(t, cfg.Users)
+		next := buildCaddyfile(t, cfg.Users, vlessRoutes(cfg, t.Tag))
 		if next == string(old) {
 			continue
 		}
-		if err := os.WriteFile(path, []byte(next), 0600); err != nil {
+		// Validate a candidate first: a bad Caddyfile would take NaiveProxy
+		// (and everything it fronts) down on restart.
+		candidate := path + ".new"
+		if err := os.WriteFile(candidate, []byte(next), 0600); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		bin := filepath.Join(config.DefaultBinDir, "caddy-naive")
+		if outB, err := exec.Command(bin, "validate", "--config", candidate, "--adapter", "caddyfile").CombinedOutput(); err != nil {
+			_ = os.Remove(candidate)
+			if firstErr == nil {
+				firstErr = fmt.Errorf("new Caddyfile rejected, kept the old one: %v: %s", err, lastLine(string(outB)))
+			}
+			continue
+		}
+		// Keep the old file's owner: with WARP, Caddy runs as its own user
+		if fi, err := os.Stat(path); err == nil {
+			if st, ok := fi.Sys().(*syscall.Stat_t); ok {
+				_ = os.Chown(candidate, int(st.Uid), int(st.Gid))
+			}
+		}
+		if err := os.Rename(candidate, path); err != nil {
 			if firstErr == nil {
 				firstErr = err
 			}
@@ -199,4 +253,9 @@ func SyncNaiveUsers(cfg *config.Config) error {
 		}
 	}
 	return firstErr
+}
+
+func lastLine(s string) string {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	return lines[len(lines)-1]
 }

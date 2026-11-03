@@ -57,15 +57,23 @@ func buildVLESSExecStart(tunnel *config.TunnelConfig, cfg *config.Config) (strin
 		usersFile = config.DefaultConfigFile
 	}
 
+	// Behind Caddy the server is reached only through the local reverse
+	// proxy; Caddy terminates TLS with its real certificate.
+	listen := fmt.Sprintf("0.0.0.0:%d", v.Port)
+	fronted := cfg.VLESSFront(tunnel) != nil
+	if fronted {
+		listen = fmt.Sprintf("127.0.0.1:%d", v.Port)
+	}
+
 	args := []string{
 		execPath, "vless", "serve",
-		"--listen", fmt.Sprintf("0.0.0.0:%d", v.Port),
+		"--listen", listen,
 		"--path", v.Path,
 		"--secret-file", v.SecretFile,
 		"--users-file", usersFile,
 		"--block-ports", v.ResolvedBlockPorts(),
 	}
-	if v.TLS {
+	if v.TLS && !fronted {
 		args = append(args, "--cert", v.Cert, "--key", v.Key)
 	}
 	return strings.Join(args, " "), nil

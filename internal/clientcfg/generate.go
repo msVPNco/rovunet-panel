@@ -192,16 +192,17 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 		}
 		// Domain is the WebSocket Host and the TLS SNI; the app dials the
 		// CDN address, which can be swapped for a clean CDN IP in the app.
-		fields[FDomain] = tunnel.Domain
+		ep := VLESSEndpointFor(tunnel, cfg)
+		fields[FDomain] = ep.Host
 		fields[FVlessUUID] = id
 		fields[FVlessSecurity] = "none"
-		if v.TLS {
+		if ep.TLS {
 			fields[FVlessSecurity] = "tls"
 		}
 		fields[FVlessTransport] = "ws"
 		fields[FVlessWsPath] = v.Path
-		fields[FCdnIP] = v.ClientAddress(tunnel.Domain)
-		fields[FCdnPort] = fmt.Sprintf("%d", v.Port)
+		fields[FCdnIP] = ep.Address
+		fields[FCdnPort] = fmt.Sprintf("%d", ep.Port)
 		fields[FVlessSNI] = ""
 		// SNI fragmentation slows the TLS handshake to the CDN down enough to
 		// time out on some networks, and a CDN's own certificate needs no

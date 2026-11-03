@@ -279,7 +279,11 @@ func handleSystemInstall(ctx *actions.Context) error {
 			if knownParent != "" {
 				hint, def = "cdn."+knownParent, "cdn."+knownParent
 			}
-			out.Info("The hostname needs an A record to this server, proxied by Cloudflare (orange cloud)")
+			if containsTransport(transports, config.TransportNaive) {
+				out.Info("VLESS will be served by NaiveProxy on 443 with a real certificate; this hostname is only a Cloudflare fallback")
+			} else {
+				out.Info("The hostname needs an A record to this server, proxied by Cloudflare (orange cloud)")
+			}
 			domain, err := prompt.String(fmt.Sprintf("Domain for VLESS (e.g. %s)", hint), def)
 			if err != nil {
 				return err
@@ -612,6 +616,11 @@ func handleSystemInstall(ctx *actions.Context) error {
 		}
 	}
 
+	// With NaiveProxy installed, serve VLESS through its Caddy: port 443, a
+	// real Let's Encrypt certificate and the decoy site for probes, which is
+	// faster than Cloudflare and harder to tell from an ordinary website.
+	frontVLESSWithNaive(cfg, allTunnels, out)
+
 	// Create and start systemd services
 	for i := range allTunnels {
 		// Free the port in case a stale process is holding it
@@ -830,6 +839,9 @@ func handleSystemInstall(ctx *actions.Context) error {
 		if t.IsDirectTransport() || t.Domain == "" {
 			continue
 		}
+		if t.Transport == config.TransportVLESS && t.VLESS.Fronted() {
+			continue
+		}
 		if t.Transport == config.TransportVLESS {
 			rec := fmt.Sprintf("A:%s", t.Domain)
 			if !shownRecords[rec] {
@@ -864,7 +876,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 
 	for i := range allTunnels {
 		if allTunnels[i].VLESS != nil {
-			printVLESSSetup(out, &allTunnels[i])
+			printVLESSSetup(out, cfg, &allTunnels[i])
 		}
 	}
 
@@ -927,7 +939,7 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 				if err != nil {
 					continue
 				}
-				link, err := clientcfg.GenerateVLESSLink(&t, u.Username, u.Password)
+				link, err := clientcfg.GenerateVLESSLink(&t, cfg, u.Username, u.Password)
 				if err != nil {
 					continue
 				}
@@ -1016,4 +1028,43 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, data, 0600)
+}
+
+// containsTransport reports whether the selected transports include t.
+func containsTransport(transports []string, t string) bool {
+	for _, x := range transports {
+		if x == t {
+			return true
+		}
+	}
+	return false
+}
+
+// frontVLESSWithNaive puts every new VLESS tunnel behind the first NaiveProxy
+// tunnel of this install.
+func frontVLESSWithNaive(cfg *config.Config, tunnels []config.TunnelConfig, out actions.OutputWriter) {
+	naive := ""
+	for _, t := range tunnels {
+		if t.Transport == config.TransportNaive && t.Naive != nil {
+			naive = t.Tag
+			break
+		}
+	}
+	if naive == "" {
+		return
+	}
+	for i := range tunnels {
+		v := tunnels[i].VLESS
+		if tunnels[i].Transport != config.TransportVLESS || v == nil || v.Front != "" {
+			continue
+		}
+		v.Front = naive
+		if ct := cfg.GetTunnel(tunnels[i].Tag); ct != nil && ct.VLESS != nil {
+			ct.VLESS.Front = naive
+		}
+		out.Info(fmt.Sprintf("VLESS %q will be served by NaiveProxy %q on port 443", tunnels[i].Tag, naive))
+	}
+	if err := cfg.Save(); err != nil {
+		out.Warning("Failed to save config: " + err.Error())
+	}
 }
