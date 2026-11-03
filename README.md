@@ -2,6 +2,12 @@
 
 Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar) and HTTPS proxies (NaiveProxy) with systemd services, multi-tunnel DNS routing, and user management. Designed for use with the [SlipNet](https://github.com/anonvector/SlipNet) Android VPN app.
 
+> **This fork** ([msVPNco/slipgate](https://github.com/msVPNco/slipgate)) adds a built-in **VLESS over WebSocket** transport for Cloudflare-fronted servers. It installs and self-updates from this fork's releases; transport binaries (dnstt-server, caddy-naive, …) still come from upstream [anonvector/slipgate](https://github.com/anonvector/slipgate). Install with:
+>
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/msVPNco/slipgate/main/install.sh | sudo bash
+> ```
+
 [![oosmetrics](https://api.oosmetrics.com/api/v1/badge/achievement/12767996-2dd6-42ed-89a6-5f786c4662b4.svg)](https://oosmetrics.com/repo/anonvector/slipgate)
 
 ## Features
@@ -32,13 +38,13 @@ Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, S
 **One-liner install:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anonvector/slipgate/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/msVPNco/slipgate/main/install.sh | sudo bash
 ```
 
 **Or build from source:**
 
 ```bash
-git clone https://github.com/anonvector/slipgate.git
+git clone https://github.com/msVPNco/slipgate.git
 cd slipgate
 make build
 sudo ./slipgate install
@@ -51,7 +57,7 @@ Download the binaries you need from the [latest release](https://github.com/anon
 ```bash
 # On your local machine — download binaries
 mkdir slipgate-bundle && cd slipgate-bundle
-curl -LO https://github.com/anonvector/slipgate/releases/latest/download/slipgate-linux-amd64
+curl -LO https://github.com/msVPNco/slipgate/releases/latest/download/slipgate-linux-amd64
 curl -LO https://github.com/anonvector/slipgate/releases/latest/download/dnstt-server-linux-amd64
 curl -LO https://github.com/anonvector/slipgate/releases/latest/download/slipstream-server-linux-amd64
 curl -LO https://github.com/anonvector/slipgate/releases/latest/download/caddy-naive-linux-amd64

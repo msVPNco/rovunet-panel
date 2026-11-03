@@ -2,7 +2,8 @@
 # SlipGate installer — download binary and run `slipgate install`
 set -e
 
-REPO="anonvector/slipgate"
+# Releases carrying the slipgate binary (this fork). Override with SLIPGATE_REPO=owner/repo.
+REPO="${SLIPGATE_REPO:-msVPNco/slipgate}"
 INSTALL_DIR="/usr/local/bin"
 
 # Colors

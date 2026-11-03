@@ -1,0 +1,33 @@
+name: Release
+
+# Push a tag such as v1.6.8-vless.1 to publish slipgate-linux-amd64 and
+# slipgate-linux-arm64, which install.sh and `slipgate update` download.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test
+        run: go test ./...
+      - name: Build
+        run: |
+          make build-linux VERSION="${GITHUB_REF_NAME#v}" COMMIT="${GITHUB_SHA::7}"
+          sha256sum slipgate-linux-* > SHA256SUMS
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            slipgate-linux-amd64 slipgate-linux-arm64 SHA256SUMS \
+            --title "SlipGate $GITHUB_REF_NAME" \
+            --generate-notes
