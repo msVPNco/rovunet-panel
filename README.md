@@ -1,6 +1,6 @@
 # SlipGate
 
-Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar) and HTTPS proxies (NaiveProxy) with systemd services, multi-tunnel DNS routing, and user management. Designed for use with the [SlipNet](https://github.com/anonvector/SlipNet) Android VPN app.
+Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar), HTTPS proxies (NaiveProxy, StunTLS) and VLESS over WebSocket behind Cloudflare, with systemd services, multi-tunnel DNS routing, and user management. Designed for use with the [SlipNet](https://github.com/anonvector/SlipNet) Android VPN app.
 
 > **This fork** ([msVPNco/slipgate](https://github.com/msVPNco/slipgate)) adds a built-in **VLESS over WebSocket** transport for Cloudflare-fronted servers. It installs and self-updates from this fork's releases; transport binaries (dnstt-server, caddy-naive, …) still come from upstream [anonvector/slipgate](https://github.com/anonvector/slipgate). Install with:
 >
@@ -17,7 +17,7 @@ Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, S
 - **DNS routing**: Single-tunnel or multi-tunnel mode with domain-based dispatch
 - **External routing**: Forward DNS queries for a domain to a custom port for user-managed protocols
 - **WARP integration**: Optional Cloudflare WARP outbound routing (see [dnstun-ezpz](https://github.com/aleskxyz/dnstun-ezpz) for an alternative approach)
-- **User management**: Multi-user SSH + SOCKS credentials (all users authenticate simultaneously), with bulk creation of up to 500 users per call
+- **User management**: Multi-user SSH + SOCKS credentials (all users authenticate simultaneously), each also giving the user their own VLESS UUID, with bulk creation of up to 500 users per call
 - **Live dashboard**: Real-time TUI with CPU, RAM, traffic sparklines, per-protocol connection stats, and tunnel status
 - **Backup & restore**: Move a whole server (config, keys, certificates, users) as one file or as text to copy-paste
 - **Diagnostics**: Built-in health checks for services, ports, keys, DNS resolution, and boot persistence
@@ -25,12 +25,13 @@ Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, S
 - **Systemd integration**: Service creation, lifecycle, and logs
 - **Auto-TLS**: Let's Encrypt via Caddy for NaiveProxy tunnels
 - **Self-update**: Version checking and binary replacement from GitHub releases
-- **Client sharing**: Generates `slipnet://` URIs for one-tap app import
+- **Client sharing**: Generates `slipnet://` URIs for one-tap app import, plus standard `vless://` links for VLESS tunnels
 
 ## Requirements
 
 - **OS**: Linux (Ubuntu 20.04+, Debian 10+, or similar)
-- **Domain**: DNS A record pointed at your server (required for DNS tunnels and NaiveProxy)
+- **Domain**: DNS records pointed at your server (required for DNS tunnels, NaiveProxy and VLESS; see [Domain Layout](#domain-layout))
+- **Cloudflare** (VLESS only): the domain's DNS hosted at Cloudflare, so the VLESS hostname can be proxied (orange cloud)
 - **Ports**: 53/udp + 53/tcp (DNS tunnels), 443/tcp (NaiveProxy, StunTLS), a Cloudflare-proxied port such as 443, 2053 or 8443 (VLESS)
 
 ## Quick Start
@@ -52,7 +53,7 @@ sudo ./slipgate install
 
 **Offline install (SCP to server):**
 
-Download the binaries you need from the [latest release](https://github.com/anonvector/slipgate/releases):
+Download slipgate from this fork's [latest release](https://github.com/msVPNco/slipgate/releases) and the transport binaries you need from [upstream's](https://github.com/anonvector/slipgate/releases):
 
 ```bash
 # On your local machine — download binaries
@@ -60,6 +61,7 @@ mkdir slipgate-bundle && cd slipgate-bundle
 curl -LO https://github.com/msVPNco/slipgate/releases/latest/download/slipgate-linux-amd64
 curl -LO https://github.com/anonvector/slipgate/releases/latest/download/dnstt-server-linux-amd64
 curl -LO https://github.com/anonvector/slipgate/releases/latest/download/slipstream-server-linux-amd64
+curl -LO https://github.com/anonvector/slipgate/releases/latest/download/vaydns-server-linux-amd64
 curl -LO https://github.com/anonvector/slipgate/releases/latest/download/caddy-naive-linux-amd64
 
 # SCP to server
@@ -70,6 +72,16 @@ chmod +x /tmp/slipgate/*
 sudo cp /tmp/slipgate/slipgate-linux-amd64 /usr/local/bin/slipgate
 sudo slipgate install --bin-dir /tmp/slipgate
 ```
+
+**Switch a server running upstream SlipGate to this fork** (config, tunnels and users are kept; use `arm64` on ARM servers):
+
+```bash
+sudo curl -fsSL -o /usr/local/bin/slipgate https://github.com/msVPNco/slipgate/releases/latest/download/slipgate-linux-amd64
+sudo chmod +x /usr/local/bin/slipgate
+sudo slipgate post-update      # refreshes transport binaries and regenerates services
+```
+
+From then on `slipgate update` updates from this fork.
 
 Then launch the interactive menu:
 
@@ -87,26 +99,26 @@ slipgate update                 # Self-update and restart all services
 slipgate restart                # Restart all services (DNS router, tunnels, SOCKS)
 slipgate backup [file]          # Back up config, keys and users (file, or text to copy-paste)
 slipgate restore [file]         # Restore a backup on this server ("-" reads stdin)
-slipgate users                  # Manage SSH/SOCKS users and view configs
+slipgate users                  # Manage users (SSH, SOCKS and VLESS) and view configs
 slipgate users add              # Add a single user
 slipgate users bulk_add         # Add multiple users in one batch (random creds, up to 500)
 slipgate users remove           # Remove a user
 slipgate users list             # List users and their per-tunnel configs
-slipgate users configs          # Show every slipnet:// config (all tunnels and users, incl. no-login Soar)
+slipgate users configs          # Show every config (all tunnels and users, incl. no-login Soar and vless:// links)
 slipgate stats                  # Live dashboard (CPU, RAM, traffic, connections, tunnels)
 slipgate diag                   # Run diagnostics (services, ports, keys, DNS, boot status)
 slipgate mtu [value]            # Set MTU for all DNSTT/NoizDNS/VayDNS tunnels at once
 
 # Tunnel management
 slipgate tunnel add             # Add tunnel(s) — supports multi-select and "both" backend
-slipgate tunnel edit [tag]      # Edit tunnel settings (tag, MTU, keys)
+slipgate tunnel edit [tag]      # Edit tunnel settings (tag, MTU, keys, VLESS path / CDN IP)
 slipgate tunnel remove [tag]    # Remove a tunnel
 slipgate tunnel remove --all    # Remove all tunnels at once
 slipgate tunnel start [tag]     # Start a tunnel
 slipgate tunnel stop [tag]      # Stop a tunnel
 slipgate tunnel status          # Show all tunnel statuses
 slipgate tunnel status [tag]    # Show tunnel details (keys, MTU, port)
-slipgate tunnel share [tag]     # Generate slipnet:// URI for clients
+slipgate tunnel share [tag]     # Generate slipnet:// URI for clients (+ vless:// link per user for VLESS)
 slipgate tunnel logs [tag]      # View tunnel logs
 
 # DNS routing
@@ -241,6 +253,9 @@ sudo slipgate tunnel edit --tag mydnstt --new-tag my-tunnel
 # Change MTU on a DNSTT tunnel
 sudo slipgate tunnel edit --tag mydnstt --mtu 1232
 
+# Put a clean Cloudflare IP into future VLESS configs ("-" goes back to the domain)
+sudo slipgate tunnel edit --tag myvless --cdn-address 104.16.0.1
+
 # Set MTU for all DNSTT/NoizDNS/VayDNS tunnels at once (rewrites and restarts each service)
 sudo slipgate mtu 1200
 
@@ -259,8 +274,11 @@ sudo slipgate tunnel status --tag mydnstt
 # Share tunnel config as slipnet:// URI
 sudo slipgate tunnel share mydnstt
 
+# VLESS configs are per user: slipnet:// and vless:// for alice
+sudo slipgate tunnel share myvless --user alice
+
 # Move to a new server: same keys and passwords, so client configs keep working.
-# Afterwards point the DNS records (ns.<domain>, NaiveProxy domains) at the new IP.
+# Afterwards point the DNS records (ns.<domain>, NaiveProxy and VLESS domains) at the new IP.
 ssh root@old-server slipgate backup - | ssh root@new-server slipgate restore - --yes
 
 # Bulk-add SSH/SOCKS users (random passwords, up to 500 per call)
@@ -272,56 +290,62 @@ sudo slipgate users bulk_add --count=50 --prefix=user
 ## Architecture
 
 ```
-                       ┌──────────────────┐
-                       │  SlipNet Client  │
-                       │                  │
-                       └────────┬─────────┘
-                                │
-              DNS :53/udp+tcp ──┼────── HTTPS/TLS :443/tcp
-                    │           │           │
-┌───────────────────┼───────────┼───────────┼──────────────────┐
-│  SERVER           v           │           v                  │
-│                               │                              │
-│  ┌────────────────────────┐   │   ┌───────────────────────┐  │
-│  │      DNS Router        │   │   │     NaiveProxy        │  │
-│  │  domain-based dispatch │   │   │  Caddy + Auto-TLS     │  │
-│  │  single / multi mode   │   │   │  + decoy website      │  │
-│  │  + external routing    │   │   └───────────┬───────────┘  │
-│  └──┬────────┬────────┬───┘   │               │              │
-│     │        │        │       │   ┌───────────────────────┐  │
-│     v        v        v       │   │     StunTLS           │  │
-│  ┌──────┐┌────────┐┌──────┐   │   │  SSH over TLS + WS   │  │
-│  │DNSTT ││Slip-   ││VayDNS│   │   │  self-signed cert     │  │
-│  │NoizDN││stream  ││      │   │   └───────────┬───────────┘  │
-│  │──────││────────││──────│   │               │              │
-│  │DNS   ││QUIC    ││KCP   │   │               │              │
-│  │Curve ││TLS cert││Curve │   │               │              │
-│  │25519 ││        ││25519 │   │               │              │
-│  └──┬───┘└───┬────┘└──┬───┘   │               │              │
-│     └────────┼────────┘       │               │              │
-│              │                │               │              │
-│              v                v               v              │
-│  ┌──────────────────────────────────────────────────────┐    │
-│  │                    Backend Layer                     │    │
-│  │                                                      │    │
-│  │   ┌──────────────────┐    ┌──────────────────────┐   │    │
-│  │   │  SOCKS5 Proxy    │    │   SSH Forwarding     │   │    │
-│  │   │  built-in Go     │    │   port forwarding    │   │    │
-│  │   │  :1080           │    │   :22 (configurable) │   │    │
-│  │   └────────┬─────────┘    └──────────┬───────────┘   │    │
-│  │            └─────────┬───────────────┘               │    │
-│  └──────────────────────┼───────────────────────────────┘    │
-│                         v                                    │
-│              ┌──────────────────────┐                        │
-│              │   WARP (optional)    │                        │
-│              │  Cloudflare outbound │                        │
-│              └──────────┬───────────┘                        │
-│                         v                                    │
-│                    Internet                                  │
-└──────────────────────────────────────────────────────────────┘
+                                     ┌──────────────────┐
+                                     │  SlipNet Client  │
+                                     └────────┬─────────┘
+                 ┌────────────────────────────┼───────────────────┐
+                 │                            │            Cloudflare CDN
+          DNS :53/udp+tcp            HTTPS/TLS :443/tcp    (orange cloud)
+                 │                            │          WS/WSS 2053, 8443…
+┌────────────────┼────────────────────────────┼───────────────────┼──────────┐
+│ SERVER         v                            v                   v          │
+│ ┌──────────────────────────────┐  ┌───────────────────┐ ┌────────────────┐ │
+│ │          DNS Router          │  │     NaiveProxy    │ │     VLESS      │ │
+│ │    domain-based dispatch     │  │  Caddy + Auto-TLS │ │ over WebSocket │ │
+│ │     single / multi mode      │  │  + decoy website  │ │ per-user UUIDs │ │
+│ │      + external routing      │  ├───────────────────┤ │  nginx decoy   │ │
+│ └──┬───────┬───────┬───────┬───┘  │      StunTLS      │ │    built in    │ │
+│    v       v       v       v      │ SSH over TLS + WS │ └───────┬────────┘ │
+│ ┌──────┐┌──────┐┌──────┐┌──────┐  │  self-signed cert │         │          │
+│ │DNSTT ││Slip- ││VayDNS││ Soar │  └─────────┬─────────┘         │          │
+│ │+Noiz ││stream││      ││      │            │                   │          │
+│ ├──────┤├──────┤├──────┤├──────┤            │                   │          │
+│ │ DNS  ││ QUIC ││ KCP  ││multi │            │                   │          │
+│ │Curve ││ TLS  ││Curve ││ path │            │                   │          │
+│ │25519 ││ cert ││25519 ││X25519│            │                   │          │
+│ └──┬───┘└──┬───┘└──┬───┘└──┬───┘            │                   │          │
+│    └───────┴───────┼───────┘                │                   │          │
+│                    │                        │                   │          │
+│                    │                        │                   │          │
+│                    v                        v                   │          │
+│ ┌──────────────────┼────────────────────────┼─────────┐         │          │
+│ │                    Backend Layer                    │         │          │
+│ │                                                     │         │          │
+│ │   ┌───────────────────┐    ┌────────────────────┐   │         │          │
+│ │   │    SOCKS5 Proxy   │    │   SSH Forwarding   │   │         │          │
+│ │   │    built-in Go    │    │  port forwarding   │   │         │          │
+│ │   │       :1080       │    │ :22 (configurable) │   │         │          │
+│ │   └─────────┬─────────┘    └─────────┬──────────┘   │         │          │
+│ │             └────────────┬───────────┘              │         │          │
+│ │                          │                          │         │          │
+│ └──────────────────────────┼──────────────────────────┘         │          │
+│                            v                                    │          │
+│                  ┌───────────────────┐                          │          │
+│                  │  WARP (optional)  │                          │          │
+│                  │Cloudflare outbound│                          │          │
+│                  └─────────┬─────────┘                          │          │
+│                            │                                    │          │
+│                            │                                    │          │
+│                            └─────────────────┬──────────────────┘          │
+│                                              v                             │
+│                                          Internet                          │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
 
   systemd: slipgate-dnsrouter, slipgate-socks5, slipgate-{tag}
 ```
+
+Soar with the direct backend and VLESS dial each stream's destination themselves, so their traffic skips the backend layer and WARP.
 
 ### Transport Types
 
@@ -333,12 +357,12 @@ sudo slipgate users bulk_add --count=50 --prefix=user
 | **Soar** | DNS | 53/udp | [Soar](https://github.com/getlantern/soar) multipath DNS tunnel (X25519 + Ed25519-signed handshake), served by slipgate itself. Soar has no per-user login, so it has two backends. **Direct**: like soar-server, it dials the destination each stream names, limited to public addresses and the allowed ports (default `80,443`, or `any`); anyone who finds the zone can use it, and it works with stock soar clients (zone + base64 public key from `tunnel status`). **SSH**: it reaches only the SSH server, so access goes through SSH users, added and removed one by one. Both export `slipnet://` configs for a SlipNet version with Soar support |
 | **NaiveProxy** | HTTPS | 443/tcp | Caddy with forwardproxy plugin. Auto-TLS via Let's Encrypt. Probe-resistant with decoy site |
 | **StunTLS** | TLS/WSS | 443/tcp | SSH over TLS + WebSocket proxy. Auto-detects WebSocket, HTTP CONNECT, raw TLS, and payload (DPI bypass) modes. Self-signed TLS cert, no domain required |
-| **VLESS** | WS/WSS | 443, 2053, 2083, 2087, 2096 or 8443/tcp | VLESS over WebSocket, served by slipgate itself, for a domain proxied by Cloudflare (orange cloud) so clients reach a Cloudflare IP and the server's own IP stays hidden and unblockable. Works with SlipNet's VLESS profiles and any VLESS client (v2rayNG, Hiddify, NekoBox…). Each user's UUID is derived from their credentials and a per-tunnel secret: removing a user or changing the password revokes it within seconds, and a shared config never carries the password. Streams reach public addresses only, port 25 blocked by default; TCP and plain UDP (no mux/XUDP). Other paths answer like a stock nginx. Origin TLS uses a self-signed certificate, so set Cloudflare's SSL/TLS mode to **Full** |
+| **VLESS** | WS/WSS | 443, 2053, 2083, 2087, 2096 or 8443/tcp | VLESS over WebSocket, served by slipgate itself, for a domain proxied by Cloudflare (orange cloud) so clients reach a Cloudflare IP and the server's own IP stays hidden and unblockable. Works with SlipNet's VLESS profiles and any VLESS client (v2rayNG, Hiddify, NekoBox…). Each user's UUID is derived from their credentials and a per-tunnel secret: removing a user or changing the password revokes it within seconds, and a shared config never carries the password. Streams reach public addresses only, port 25 blocked by default; TCP and plain UDP (no mux/XUDP). Other paths answer like a stock nginx. Origin TLS uses a self-signed certificate, so set Cloudflare's SSL/TLS mode to **Full**. Outbound traffic doesn't go through WARP |
 | **External** | DNS | 53/udp | Routes DNS queries for a domain to a user-specified UDP port. No managed service — use for custom/private protocol testing |
 
 ### Domain Layout
 
-Each DNS tunnel instance requires its own subdomain. When using both SOCKS and SSH backends, the install auto-generates subdomains by appending `s` to the SSH variant:
+Each DNS tunnel instance requires its own subdomain. When using both SOCKS and SSH backends, the install auto-generates subdomains by appending `s` to the SSH variant. NaiveProxy and VLESS are HTTPS services, so they use ordinary hostnames:
 
 | Tunnel | Domain | Backend |
 |--------|--------|---------|
@@ -352,21 +376,27 @@ Each DNS tunnel instance requires its own subdomain. When using both SOCKS and S
 | soar-ssh | `rs.example.com` | SSH |
 | naive-socks | `example.com` | SOCKS5 (shared domain) |
 | naive-ssh | `example.com` | SSH (shared domain) |
+| vless | `cdn.example.com` | Direct (per-user UUIDs) |
 
-NaiveProxy tunnels share a domain since they use HTTPS (port 443), not DNS. DNSTT and NoizDNS also share a domain — the same server handles both client types.
+NaiveProxy tunnels share a domain since they use HTTPS (port 443), not DNS. DNSTT and NoizDNS also share a domain — the same server handles both client types. A VLESS tunnel needs a hostname of its own: it is the only record proxied by Cloudflare, while NaiveProxy clients must reach Caddy directly, so its record stays unproxied.
 
 **Required DNS records** (for the example above):
 
 ```
-A   ns.example.com       → <server IP>
+A   ns.example.com       → <server IP>      DNS only (grey cloud)
 NS  t.example.com        → ns.example.com
 NS  ts.example.com       → ns.example.com
 NS  s.example.com        → ns.example.com
 NS  ss.example.com       → ns.example.com
 NS  v.example.com        → ns.example.com
 NS  vs.example.com       → ns.example.com
-A   example.com           → <server IP>
+NS  r.example.com        → ns.example.com
+NS  rs.example.com       → ns.example.com
+A   example.com          → <server IP>      DNS only (grey cloud)
+A   cdn.example.com      → <server IP>      Proxied (orange cloud)
 ```
+
+At Cloudflare, every record stays **DNS only** except the VLESS hostname, which must be **Proxied**. For VLESS also set **SSL/TLS → Overview** to **Full** and leave **Network → WebSockets** on.
 
 ### Routing Modes
 
@@ -402,19 +432,19 @@ sudo slipgate config address 203.0.113.7   # an IP or hostname, without a port
 sudo slipgate config address auto          # detect it again
 ```
 
-Configs for DNS tunnels, Soar and NaiveProxy connect by domain and don't depend on it.
+Configs for DNS tunnels, Soar, NaiveProxy and VLESS connect by domain and don't depend on it. VLESS configs never carry the server's IP, since it hides behind Cloudflare.
 
 ### User Model
 
-Users are **global**, not scoped to specific tunnels or transports. `slipgate users add` only asks for a username and password — the protocol is a property of the tunnel, chosen at `tunnel add` time. Every user can authenticate against every tunnel using the same credentials, and `slipgate users list` prints one config block per (user × tunnel) pair. `slipgate users configs` prints them all at once, together with the configs that need no login (Soar with the direct backend), which belong to no user. The client picks which tunnel to use by importing the matching `slipnet://` URI.
+Users are **global**, not scoped to specific tunnels or transports. `slipgate users add` only asks for a username and password — the protocol is a property of the tunnel, chosen at `tunnel add` time. Every user can authenticate against every tunnel using the same credentials, and `slipgate users list` prints one config block per (user × tunnel) pair. `slipgate users configs` prints them all at once, together with the configs that need no login (Soar with the direct backend), which belong to no user. The client picks which tunnel to use by importing the matching `slipnet://` URI. On VLESS tunnels each user's UUID is derived from their username and password (with a per-tunnel secret), so removing a user or changing their password also revokes their VLESS access, within seconds and without a restart.
 
 ## File Locations
 
 | Path | Description |
 |------|-------------|
 | `/etc/slipgate/config.json` | Main configuration |
-| `/etc/slipgate/tunnels/` | Per-tunnel keys, certs, and configs |
-| `/usr/local/bin/slipgate` | SlipGate binary (includes built-in SOCKS5 proxy) |
+| `/etc/slipgate/tunnels/` | Per-tunnel keys, certs, and configs (VLESS: `vless.secret`, which turns users' credentials into their UUIDs) |
+| `/usr/local/bin/slipgate` | SlipGate binary (includes the built-in SOCKS5, Soar, StunTLS and VLESS servers) |
 | `/usr/local/bin/dnstt-server` | DNSTT transport binary |
 | `/usr/local/bin/slipstream-server` | Slipstream transport binary |
 | `/usr/local/bin/vaydns-server` | VayDNS transport binary |
@@ -429,6 +459,8 @@ make test               # Run tests
 make release            # Build release binaries
 ```
 
+**Releases**: set `VERSION` in the Makefile and merge to `main`; the Release workflow then publishes `v<VERSION>` with `slipgate-linux-amd64`, `slipgate-linux-arm64` and `SHA256SUMS` (it skips versions already released). Pushing a `v*` tag works too.
+
 ## Credits
 
 SlipGate builds on these projects:
@@ -438,6 +470,7 @@ SlipGate builds on these projects:
 - [VayDNS](https://github.com/net2share/vaydns) by [net2share](https://github.com/net2share) - the KCP-based DNS tunnel behind the VayDNS transport (CC0)
 - [Soar](https://github.com/getlantern/soar) by [Lantern](https://github.com/getlantern) - the multi-resolver DNS tunnel behind the Soar transport, built into slipgate (Apache-2.0)
 - [dnstm](https://github.com/net2share/dnstm) by [net2share](https://github.com/net2share) - the DNS tunnel manager SlipGate was originally built on
+- [VLESS](https://github.com/XTLS/Xray-core) by [Project X](https://github.com/XTLS) - the protocol the VLESS transport speaks, implemented independently in slipgate
 - WARP integration inspired by [dnstun-ezpz](https://github.com/aleskxyz/dnstun-ezpz) by [aleskxyz](https://github.com/aleskxyz)
 
 ## License
