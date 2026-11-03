@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/anonvector/slipgate/internal/config"
 	"github.com/anonvector/slipgate/internal/service"
@@ -25,9 +26,15 @@ func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 	tunnelDir := config.TunnelDir(tunnel.Tag)
 	caddyfilePath := filepath.Join(tunnelDir, "Caddyfile")
 
-	// Build Caddyfile
-	caddyfile := buildCaddyfile(tunnel)
-	if err := os.WriteFile(caddyfilePath, []byte(caddyfile), 0644); err != nil {
+	// Build Caddyfile. Keep an earlier random decoy so a rewrite (e.g. a
+	// user change) doesn't flip the decoy site on every restart.
+	if tunnel.Naive.DecoyURL == "" {
+		if old, err := os.ReadFile(caddyfilePath); err == nil {
+			tunnel.Naive.DecoyURL = existingDecoy(string(old))
+		}
+	}
+	caddyfile := buildCaddyfile(tunnel, cfg.Users)
+	if err := os.WriteFile(caddyfilePath, []byte(caddyfile), 0600); err != nil {
 		return fmt.Errorf("write Caddyfile: %w", err)
 	}
 
@@ -73,7 +80,7 @@ func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 	return service.Start(unit.Name)
 }
 
-func buildCaddyfile(tunnel *config.TunnelConfig) string {
+func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig) string {
 	naiveCfg := tunnel.Naive
 
 	user := naiveCfg.User
@@ -107,8 +114,7 @@ func buildCaddyfile(tunnel *config.TunnelConfig) string {
   tls %s
   route {
     forward_proxy {
-      basic_auth %s %s
-      hide_ip
+%s      hide_ip
       hide_via
       probe_resistance
     }
@@ -117,5 +123,80 @@ func buildCaddyfile(tunnel *config.TunnelConfig) string {
     }
   }
 }
-`, port, tunnel.Domain, naiveCfg.Email, user, pass, decoy)
+`, port, tunnel.Domain, naiveCfg.Email, naiveAuthLines(user, pass, users), decoy)
+}
+
+// naiveAuthLines lists the tunnel's own credential plus one basic_auth line
+// per SlipGate user, so every user's client config (which carries that
+// user's name and password) authenticates against the proxy.
+func naiveAuthLines(user, pass string, users []config.UserConfig) string {
+	var b strings.Builder
+	seen := map[string]bool{}
+	add := func(u, p string) {
+		if u == "" || p == "" || seen[u] {
+			return
+		}
+		seen[u] = true
+		fmt.Fprintf(&b, "      basic_auth %s %s\n", caddyQuote(u), caddyQuote(p))
+	}
+	add(user, pass)
+	for _, u := range users {
+		add(u.Username, u.Password)
+	}
+	return b.String()
+}
+
+// caddyQuote returns a Caddyfile token that survives spaces, quotes and
+// backslashes in passwords.
+func caddyQuote(s string) string {
+	if s != "" && !strings.ContainsAny(s, " \t\"\\{}#`\n") {
+		return s
+	}
+	r := strings.NewReplacer(`\`, `\\`, `"`, `\"`)
+	return `"` + r.Replace(s) + `"`
+}
+
+// existingDecoy pulls the reverse_proxy target out of a Caddyfile we wrote.
+func existingDecoy(caddyfile string) string {
+	for _, line := range strings.Split(caddyfile, "\n") {
+		f := strings.Fields(line)
+		if len(f) >= 2 && f[0] == "reverse_proxy" && strings.HasPrefix(f[1], "http") {
+			return f[1]
+		}
+	}
+	return ""
+}
+
+// SyncNaiveUsers rewrites every NaiveProxy Caddyfile with the current user
+// list and restarts the service when it changed.
+func SyncNaiveUsers(cfg *config.Config) error {
+	var firstErr error
+	for i := range cfg.Tunnels {
+		t := &cfg.Tunnels[i]
+		if t.Transport != config.TransportNaive || t.Naive == nil {
+			continue
+		}
+		path := filepath.Join(config.TunnelDir(t.Tag), "Caddyfile")
+		old, err := os.ReadFile(path)
+		if err != nil {
+			continue // not installed on this host
+		}
+		if t.Naive.DecoyURL == "" {
+			t.Naive.DecoyURL = existingDecoy(string(old))
+		}
+		next := buildCaddyfile(t, cfg.Users)
+		if next == string(old) {
+			continue
+		}
+		if err := os.WriteFile(path, []byte(next), 0600); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		if err := service.Restart(service.TunnelServiceName(t.Tag)); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }

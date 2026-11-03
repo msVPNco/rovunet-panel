@@ -155,6 +155,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 		if err := setupSOCKS(cfg); err != nil {
 			out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
 		}
+		syncNaive(cfg, out)
 
 		// One WARP live rule sync for the whole batch.
 		if cfg.Warp.Enabled {
@@ -236,6 +237,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 		if err := setupSOCKS(cfg); err != nil {
 			out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
 		}
+		syncNaive(cfg, out)
 
 		out.Success(fmt.Sprintf("Password updated for %q", username))
 
@@ -270,6 +272,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 			proxy.RunAsUser = warp.SocksUser
 		}
 		_ = setupSOCKS(cfg)
+		syncNaive(cfg, out)
 
 		if err := cfg.Save(); err != nil {
 			return actions.NewError(actions.SystemUsers, "failed to save config", err)
@@ -340,6 +343,7 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 	if err := setupSOCKS(cfg); err != nil {
 		out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
 	}
+	syncNaive(cfg, out)
 
 	if cfg.Warp.Enabled {
 		if err := warp.RefreshRouting(cfg); err != nil {

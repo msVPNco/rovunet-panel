@@ -434,6 +434,13 @@ func needsSOCKS(cfg *config.Config) bool {
 
 // setupSOCKS (re)creates the SOCKS5 proxy with cfg's users, on all
 // interfaces when a direct-socks5 tunnel exposes it.
+// syncNaive pushes the current user list into NaiveProxy's basic_auth.
+func syncNaive(cfg *config.Config, out interface{ Warning(string) }) {
+	if err := transport.SyncNaiveUsers(cfg); err != nil && out != nil {
+		out.Warning("Failed to update NaiveProxy users: " + err.Error())
+	}
+}
+
 func setupSOCKS(cfg *config.Config) error {
 	for _, t := range cfg.Tunnels {
 		if t.Transport == config.TransportSOCKS {
