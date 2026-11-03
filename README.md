@@ -139,7 +139,7 @@ slipgate mtu [value]            # Set MTU for all DNSTT/NoizDNS/VayDNS tunnels a
 
 # Tunnel management
 slipgate tunnel add             # Add tunnel(s) — supports multi-select and "both" backend
-slipgate tunnel edit [tag]      # Edit tunnel settings (tag, MTU, keys, VLESS path / CDN IP)
+slipgate tunnel edit [tag]      # Edit tunnel settings (tag, MTU, keys, VLESS path / CDN IP, --front)
 slipgate tunnel remove [tag]    # Remove a tunnel
 slipgate tunnel remove --all    # Remove all tunnels at once
 slipgate tunnel start [tag]     # Start a tunnel
@@ -247,18 +247,28 @@ sudo slipgate tunnel add \
   --email admin@example.com \
   --decoy-url https://www.wikipedia.org
 
-# StunTLS tunnel (SSH over TLS + WebSocket)
+# StunTLS tunnel (SSH over TLS + WebSocket), then carry it on NaiveProxy's 443
 sudo slipgate tunnel add \
   --transport stuntls \
   --tag mytls
+sudo slipgate tunnel edit --tag mytls --front myproxy
 
-# VLESS over WebSocket. Each user gets their
+# VLESS over WebSocket on NaiveProxy's 443 (recommended). Each user gets their
 # own UUID; share per user with 'slipgate tunnel share myvless --user alice'.
-# Optional: --tls no (plain HTTP origin), --cdn-address <clean Cloudflare IP>,
-# --block-ports "25,465" (default 25, "none" for no limit)
+# Optional: --block-ports "25,465" (default 25, "none" for no limit)
 sudo slipgate tunnel add \
   --transport vless \
   --tag myvless \
+  --domain example.com \
+  --cdn no \
+  --listen-port 2053
+sudo slipgate tunnel edit --tag myvless --front myproxy
+
+# Optional: VLESS behind Cloudflare instead (orange-cloud hostname, SSL mode Full),
+# for when the server's IP is blocked. Also: --tls no, --cdn-address <clean IP>
+sudo slipgate tunnel add \
+  --transport vless \
+  --tag myvless-cf \
   --domain cdn.example.com \
   --cdn yes \
   --listen-port 2053
@@ -325,66 +335,49 @@ sudo slipgate users bulk_add --count=50 --prefix=user
 ## Architecture
 
 ```
-                                     ┌──────────────────┐
-                                     │  SlipNet Client  │
-                                     └────────┬─────────┘
-                 ┌────────────────────────────┼───────────────────┐
-                 │                            │      optional Cloudflare CDN
-          DNS :53/udp+tcp            HTTPS/TLS :443/tcp    (orange cloud)
-                 │                            │          WS/WSS 2053, 8443…
-┌────────────────┼────────────────────────────┼───────────────────┼──────────┐
-│ SERVER         v                            v                   v          │
-│ ┌──────────────────────────────┐  ┌───────────────────┐ ┌────────────────┐ │
-│ │          DNS Router          │  │     NaiveProxy    │ │     VLESS      │ │
-│ │    domain-based dispatch     │  │  Caddy + Auto-TLS │ │ over WebSocket │ │
-│ │     single / multi mode      │  │  + decoy website  │ │ per-user UUIDs │ │
-│ │      + external routing      │  ├───────────────────┤ │  nginx decoy   │ │
-│ └──┬───────┬───────┬───────┬───┘  │      StunTLS      │ │    built in    │ │
-│    v       v       v       v      │ SSH over TLS + WS │ └───────┬────────┘ │
-│ ┌──────┐┌──────┐┌──────┐┌──────┐  │  self-signed cert │         │          │
-│ │DNSTT ││Slip- ││VayDNS││ Soar │  └─────────┬─────────┘         │          │
-│ │+Noiz ││stream││      ││      │            │                   │          │
-│ ├──────┤├──────┤├──────┤├──────┤            │                   │          │
-│ │ DNS  ││ QUIC ││ KCP  ││multi │            │                   │          │
-│ │Curve ││ TLS  ││Curve ││ path │            │                   │          │
-│ │25519 ││ cert ││25519 ││X25519│            │                   │          │
-│ └──┬───┘└──┬───┘└──┬───┘└──┬───┘            │                   │          │
-│    └───────┴───────┼───────┘                │                   │          │
-│                    │                        │                   │          │
-│                    │                        │                   │          │
-│                    v                        v                   │          │
-│ ┌──────────────────┼────────────────────────┼─────────┐         │          │
-│ │                    Backend Layer                    │         │          │
-│ │                                                     │         │          │
-│ │   ┌───────────────────┐    ┌────────────────────┐   │         │          │
-│ │   │    SOCKS5 Proxy   │    │   SSH Forwarding   │   │         │          │
-│ │   │    built-in Go    │    │  port forwarding   │   │         │          │
-│ │   │       :1080       │    │ :22 (configurable) │   │         │          │
-│ │   └─────────┬─────────┘    └─────────┬──────────┘   │         │          │
-│ │             └────────────┬───────────┘              │         │          │
-│ │                          │                          │         │          │
-│ └──────────────────────────┼──────────────────────────┘         │          │
-│                            v                                    │          │
-│                  ┌───────────────────┐                          │          │
-│                  │  WARP (optional)  │                          │          │
-│                  │Cloudflare outbound│                          │          │
-│                  └─────────┬─────────┘                          │          │
-│                            │                                    │          │
-│                            │                                    │          │
-│                            └─────────────────┬──────────────────┘          │
-│                                              v                             │
-│                                          Internet                          │
-│                                                                            │
-└────────────────────────────────────────────────────────────────────────────┘
+                                  ┌──────────────────┐
+                                  │  SlipNet Client  │
+                                  └────────┬─────────┘
+          ┌────────────────────────────────┼──────────────────────────────┐
+          │                                │                              │
+   DNS :53/udp+tcp                   HTTPS :443/tcp             optional: Cloudflare
+          │                     one domain, real certificate     (orange cloud) :2053
+          │                                │                              │
+┌─────────┼────────────────────────────────┼──────────────────────────────┼─────┐
+│ SERVER  v                                v                              │     │
+│ ┌────────────────────────┐ ┌──────────────────────────────────────┐     │     │
+│ │       DNS Router       │ │      Caddy (NaiveProxy) on :443      │     │     │
+│ │ domain-based dispatch  │ │  Let's Encrypt cert + decoy website  │     │     │
+│ │ single / multi mode    │ │  routes by secret WebSocket path     │     │     │
+│ └──┬─────┬─────┬─────┬───┘ └────┬─────────────┬────────────────┬──┘     │     │
+│    v     v     v     v          v             v                v        v     │
+│ ┌─────┐┌─────┐┌─────┐┌─────┐ ┌─────────┐ ┌──────────┐ ┌────────────────────┐  │
+│ │DNSTT││Slip-││VayD-││Soar │ │ forward │ │ StunTLS  │ │       VLESS        │  │
+│ │+Noiz││strea││ NS  ││     │ │  proxy  │ │ SSH over │ │   per-user UUIDs   │  │
+│ │     ││  m  ││     ││     │ │ (Naive) │ │WebSocket │ │  nginx-like decoy  │  │
+│ └──┬──┘└──┬──┘└──┬──┘└──┬──┘ └────┬────┘ └────┬─────┘ └─────────┬──────────┘  │
+│    └──────┴──┬───┴──────┘         │           │                 │             │
+│              v                    v           v                 │             │
+│ ┌────────────────────────────────────────────────────────┐      │             │
+│ │                     Backend Layer                      │      │             │
+│ │   SOCKS5 proxy :1080          SSH forwarding :22       │      │             │
+│ └───────────────────────────┬────────────────────────────┘      │             │
+│                             v                                   │             │
+│                   ┌───────────────────┐                         │             │
+│                   │  WARP (optional)  │                         │             │
+│                   └─────────┬─────────┘                         │             │
+│                             └───────────────────┬───────────────┘             │
+│                                                 v                             │
+│                                             Internet                          │
+└───────────────────────────────────────────────────────────────────────────────┘
 
   systemd: slipgate-dnsrouter, slipgate-socks5, slipgate-{tag}
+  Also: direct SSH (:22), direct SOCKS5 (:1080), StunTLS on its own port (:8443)
 ```
-
-The right-hand path through Cloudflare is optional (only for when the server's IP is blocked); by default VLESS and StunTLS arrive on 443 through NaiveProxy, as described below.
 
 Soar with the direct backend and VLESS dial each stream's destination themselves, so their traffic skips the backend layer and WARP.
 
-With `--front`, VLESS and StunTLS take a second route into the server: Caddy (NaiveProxy) on 443 matches their secret WebSocket path ahead of `forward_proxy` and hands the connection to the VLESS server on localhost, or to StunTLS over TLS. Everything else on 443 is still NaiveProxy or the decoy site.
+Everything HTTPS arrives on one domain and port 443. Caddy (NaiveProxy) holds the Let's Encrypt certificate and looks at each request: a VLESS or StunTLS secret WebSocket path goes to that server (VLESS on localhost, StunTLS over TLS), an authenticated proxy request goes to NaiveProxy's `forward_proxy`, and anything else gets the decoy website. Install sets this up whenever NaiveProxy is selected; `slipgate tunnel edit --tag <tunnel> --front <naive-tag|->` switches an existing tunnel. The Cloudflare path on the right is optional, for when the server's IP is blocked.
 
 ### Transport Types
 
