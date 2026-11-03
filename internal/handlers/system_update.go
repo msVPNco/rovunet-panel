@@ -10,7 +10,6 @@ import (
 	"github.com/anonvector/slipgate/internal/actions"
 	"github.com/anonvector/slipgate/internal/binary"
 	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/network"
 	"github.com/anonvector/slipgate/internal/proxy"
 	"github.com/anonvector/slipgate/internal/service"
 	"github.com/anonvector/slipgate/internal/system"
@@ -161,19 +160,11 @@ func runPostUpdate(ctx *actions.Context) error {
 	out.Info("Regenerating services...")
 	cfg := ctx.Config.(*config.Config)
 
-	// Ensure port 53 is available (OS updates can re-enable systemd-resolved stub)
-	// and open 53/tcp, which the DNS router serves since TCP forwarding was added.
-	for _, t := range cfg.Tunnels {
-		if t.IsDNSTunnel() {
-			if err := network.DisableResolvedStub(); err != nil {
-				out.Warning("Failed to disable systemd-resolved stub: " + err.Error())
-			}
-			if err := network.AllowPort(53, "tcp"); err != nil {
-				out.Warning("Failed to open port 53/tcp: " + err.Error())
-			}
-			break
-		}
-	}
+	// Re-open every tunnel's ports: this also frees port 53 from the
+	// systemd-resolved stub (OS updates can re-enable it), opens 53/tcp, which
+	// the DNS router serves since TCP forwarding was added, and moves rules an
+	// older version appended behind a REJECT rule to where they take effect.
+	openTunnelPorts(cfg, out)
 
 	// Bring the SSH tunnel users' sshd settings up to date (e.g. password
 	// logins on images that turn them off globally)
