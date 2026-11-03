@@ -20,16 +20,20 @@ import (
 
 var httpClient = &http.Client{Timeout: 120 * time.Second}
 
-const releaseBaseURL = "https://github.com/anonvector/slipgate/releases"
+// The slipgate binary comes from version.Repo's releases; the transport
+// binaries from upstream SlipGate's, which builds them. A fork therefore only
+// has to publish slipgate itself.
+var (
+	releaseBaseURL     = "https://github.com/" + version.Repo + "/releases"
+	stableDownloadBase = releaseBaseURL + "/latest/download"
+	repoAPI            = "https://api.github.com/repos/" + version.Repo + "/releases"
+)
+
+const transportDownloadBase = "https://github.com/" + version.UpstreamRepo + "/releases/latest/download"
 
 // OfflineDir, when set, makes EnsureInstalled copy binaries from this
 // directory instead of downloading. Used for SCP/offline installs.
 var OfflineDir string
-
-const (
-	stableDownloadBase = releaseBaseURL + "/latest/download"
-	repoAPI            = "https://api.github.com/repos/anonvector/slipgate/releases"
-)
 
 // DownloadBase returns the base URL for slipgate binary downloads.
 // Dev builds prefer the latest dev release; if none exists, fall back
@@ -79,14 +83,14 @@ func latestDevTag() string {
 var errNotFound = errors.New("HTTP 404")
 
 // binaryURLTemplates returns download URL templates for transport binaries
-// in the latest stable release, which carries them all. Dev builds try the
-// latest dev release first (see EnsureInstalled).
+// in upstream's latest stable release, which carries them all. Dev builds try
+// the latest dev release first (see EnsureInstalled).
 func binaryURLTemplates() map[string]string {
 	return map[string]string{
-		"dnstt-server":      stableDownloadBase + "/dnstt-server-%s-%s",
-		"slipstream-server": stableDownloadBase + "/slipstream-server-%s-%s",
-		"vaydns-server":     stableDownloadBase + "/vaydns-server-%s-%s",
-		"caddy-naive":       stableDownloadBase + "/caddy-naive-%s-%s",
+		"dnstt-server":      transportDownloadBase + "/dnstt-server-%s-%s",
+		"slipstream-server": transportDownloadBase + "/slipstream-server-%s-%s",
+		"vaydns-server":     transportDownloadBase + "/vaydns-server-%s-%s",
+		"caddy-naive":       transportDownloadBase + "/caddy-naive-%s-%s",
 	}
 }
 

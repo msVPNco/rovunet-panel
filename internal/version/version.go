@@ -6,7 +6,16 @@ var (
 	Version    = "1.6.3"
 	Commit     = "unknown"
 	ReleaseTag = "" // set via ldflags for dev builds (e.g. "dev-abc1234")
+
+	// Repo is the GitHub repository whose releases carry the slipgate
+	// binary: install.sh and `slipgate update` download from it, so a fork's
+	// builds keep updating from the fork. Override with -ldflags -X.
+	Repo = "msVPNco/slipgate"
 )
+
+// UpstreamRepo builds the transport binaries (dnstt-server, caddy-naive, ...),
+// which every SlipGate downloads from its releases.
+const UpstreamRepo = "anonvector/slipgate"
 
 func String() string {
 	tag := ""
