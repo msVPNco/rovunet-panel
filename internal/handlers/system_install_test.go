@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/anonvector/slipgate/internal/config"
+	"github.com/anonvector/slipgate/internal/keys"
 )
 
 // printOutput records what's printed.
@@ -68,5 +70,35 @@ func TestPrintClientConfigsNoUsers(t *testing.T) {
 	}
 	if out.count("[soar] (no login)") != 1 || out.count("(no auth)") != 3 {
 		t.Errorf("got:\n%s", strings.Join(out.lines, "\n"))
+	}
+}
+
+// TestPrintClientConfigsVLESS: VLESS has no backend config, yet every user
+// gets a slipnet:// and a vless:// config; without users there is none.
+func TestPrintClientConfigsVLESS(t *testing.T) {
+	secret := filepath.Join(t.TempDir(), "vless.secret")
+	if err := keys.GenerateVLESSSecret(secret); err != nil {
+		t.Fatal(err)
+	}
+	tunnels := []config.TunnelConfig{{
+		Tag: "vless", Transport: config.TransportVLESS, Backend: config.BackendDirect, Domain: "cdn.example.com",
+		VLESS: &config.VLESSConfig{Port: 2053, Path: "/p", TLS: true, Cert: "c", Key: "k", SecretFile: secret, CDN: true},
+	}}
+	cfg := &config.Config{
+		Backends: config.DefaultBackends(),
+		Users:    []config.UserConfig{{Username: "alice", Password: "a"}, {Username: "bob", Password: "b"}},
+	}
+	out := &printOutput{}
+	if n := printClientConfigs(cfg, out, tunnels); n != 2 {
+		t.Errorf("printed %d configs, want 2", n)
+	}
+	if out.count("slipnet://") != 2 || out.count("vless://") != 2 || out.count("[vless] alice") != 1 || out.count("[vless] bob") != 1 {
+		t.Errorf("got:\n%s", strings.Join(out.lines, "\n"))
+	}
+
+	cfg.Users = nil
+	out = &printOutput{}
+	if n := printClientConfigs(cfg, out, tunnels); n != 0 {
+		t.Errorf("printed %d configs without users, want 0", n)
 	}
 }

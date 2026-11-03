@@ -23,6 +23,11 @@ func setupVLESS(ctx *actions.Context, cfg *config.Config, tunnelDir, domain stri
 	out := ctx.Output
 	v := &config.VLESSConfig{}
 
+	// The domain goes into every client config as Host and SNI
+	if net.ParseIP(domain) != nil || config.ValidatePublicAddress(domain) != nil {
+		return nil, fmt.Errorf("invalid domain %q: give the hostname clients connect to, e.g. cdn.example.com", domain)
+	}
+
 	var err error
 	if v.CDN, err = argOrConfirm(ctx, "cdn", "Is the domain proxied by Cloudflare (orange cloud)?"); err != nil {
 		return nil, err

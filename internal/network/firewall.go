@@ -135,20 +135,60 @@ func firewalldAllow(port int, proto string) error {
 	return run("firewall-cmd", "--reload")
 }
 
+// iptablesAllow puts an ACCEPT rule for the port at the top of INPUT.
+// Appending isn't enough: many images (Oracle Cloud's Ubuntu among them) end
+// INPUT with a catch-all REJECT, and a rule after it never matches. An
+// existing rule for the port is moved to the top, so re-running also fixes
+// rules an older slipgate appended.
 func iptablesAllow(port int, proto string) error {
-	// -C returns exit 0 if an identical rule already exists; skip the append
-	// in that case so re-runs don't stack duplicate ACCEPT rules.
-	check := exec.Command("iptables", "-C", "INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT")
-	if check.Run() == nil {
+	rule := []string{"INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT"}
+	if iptablesRuleFirst(rule) {
 		return nil
 	}
-	if err := run("iptables", "-A", "INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT"); err != nil {
+	for exec.Command("iptables", append([]string{"-D"}, rule...)...).Run() == nil {
+	}
+	if err := run("iptables", append([]string{"-I"}, rule...)...); err != nil {
 		return err
 	}
 	// Best-effort: persist so the rule survives reboot. The runtime rule is
 	// already in effect either way, so we don't surface persistence failures.
 	_ = iptablesPersist()
 	return nil
+}
+
+// iptablesRuleFirst reports whether rule is already ahead of every DROP or
+// REJECT rule in its chain, so it takes effect as is.
+func iptablesRuleFirst(rule []string) bool {
+	if exec.Command("iptables", append([]string{"-C"}, rule...)...).Run() != nil {
+		return false
+	}
+	out, err := exec.Command("iptables", "-S", rule[0]).Output()
+	if err != nil {
+		return false
+	}
+	// iptables -S prints e.g. "-A INPUT -p tcp -m tcp --dport 443 -j ACCEPT"
+	var proto, port string
+	for i := 1; i+1 < len(rule); i++ {
+		switch rule[i] {
+		case "-p":
+			proto = rule[i+1]
+		case "--dport":
+			port = rule[i+1]
+		}
+	}
+	for _, line := range splitLines(string(out)) {
+		f := splitFields(line)
+		if len(f) < 2 || f[0] != "-A" {
+			continue
+		}
+		if strings.Contains(line, "-j DROP") || strings.Contains(line, "-j REJECT") {
+			return false
+		}
+		if strings.Contains(line, " -p "+proto+" ") && strings.Contains(line, "--dport "+port+" ") && strings.HasSuffix(line, "-j ACCEPT") {
+			return true
+		}
+	}
+	return false
 }
 
 // iptablesPersist saves the current iptables ruleset and ensures a oneshot
