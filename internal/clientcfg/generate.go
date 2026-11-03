@@ -203,6 +203,10 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 		fields[FCdnIP] = v.ClientAddress(tunnel.Domain)
 		fields[FCdnPort] = fmt.Sprintf("%d", v.Port)
 		fields[FVlessSNI] = ""
+		// SNI fragmentation slows the TLS handshake to the CDN down enough to
+		// time out on some networks, and a CDN's own certificate needs no
+		// hiding; users can still turn it on in the app.
+		fields[FSniFragmentEnabled] = "0"
 		// Behind a CDN the config must not reveal the origin's address
 		fields[FSSHHost] = ""
 
