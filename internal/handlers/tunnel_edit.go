@@ -81,6 +81,10 @@ func handleTunnelEdit(ctx *actions.Context) error {
 		if tunnel.Soar != nil {
 			tunnel.Soar.PrivateKey = filepath.Join(newDir, "server.key")
 		}
+		if tunnel.StunTLS != nil {
+			tunnel.StunTLS.Cert = filepath.Join(newDir, "cert.pem")
+			tunnel.StunTLS.Key = filepath.Join(newDir, "key.pem")
+		}
 
 		// Stop old systemd service
 		oldSvcName := service.TunnelServiceName(tag)
