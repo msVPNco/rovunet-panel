@@ -20,7 +20,8 @@ Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, S
 | **StunTLS** | WebSocket pings are answered to the client (they used to corrupt the SSH stream) |
 | **SOCKS5** | The direct SOCKS5 tunnel listens publicly again after user changes |
 | **Soar** | Direct (no-login) Soar configs appear in `users configs` |
-| **Install** | One command sets up every selected protocol and prints all configs at the end; `/run/sshd` is created on systems with socket-activated SSH; firewall rules are inserted ahead of REJECT rules |
+| **Install** | One command sets up every selected protocol and prints all configs at the end. Running it again on a configured server keeps existing tunnels (no clashing copies) and still prints every config. `/run/sshd` is created on systems with socket-activated SSH; firewall rules are inserted ahead of REJECT rules |
+| **VLESS links** | SNI fragmentation stays off when SlipNet imports either the `slipnet://` config or the `vless://` link (it slowed connections to time-outs behind Cloudflare); it can be turned on in the app |
 
 ### Which protocol where
 
