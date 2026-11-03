@@ -45,6 +45,10 @@ func GenerateVLESSLink(tunnel *config.TunnelConfig, cfg *config.Config, username
 	q.Set("type", "ws")
 	q.Set("host", ep.Host)
 	q.Set("path", v.Path)
+	// SlipNet turns SNI fragmentation on for imported vless:// links unless
+	// the link carries an empty fragment= parameter; keep it off, as in the
+	// slipnet:// configs (it can still be turned on in the app).
+	q.Set("fragment", "")
 	if ep.TLS {
 		q.Set("security", "tls")
 		q.Set("sni", ep.Host)

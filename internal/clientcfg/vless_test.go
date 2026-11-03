@@ -141,6 +141,9 @@ func TestVLESSFrontedByNaive(t *testing.T) {
 	if strings.Contains(link, "allowInsecure") {
 		t.Fatalf("fronted link must not skip verification: %s", link)
 	}
+	if !strings.Contains(link, "fragment=&") && !strings.HasSuffix(strings.SplitN(link, "#", 2)[0], "fragment=") {
+		t.Fatalf("link must turn SlipNet's SNI fragmentation off: %s", link)
+	}
 	uri, err := GenerateURI(tun, nil, cfg, URIOptions{Username: "alice", Password: "pw"})
 	if err != nil {
 		t.Fatal(err)
