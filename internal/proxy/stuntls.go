@@ -245,14 +245,17 @@ func (s *StunTLSServer) handleWebSocket(br *bufio.Reader, conn net.Conn) {
 	}
 	defer remote.Close()
 
-	// Relay: WS frames from client → raw TCP to SSH, and vice versa
+	// Relay: WS frames from client → raw TCP to SSH, and vice versa.
+	// Both directions may write frames to the client (data and pongs), so
+	// client writes are serialized through a locked writer.
+	client := &lockedWriter{w: conn}
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	// Client → SSH: read WS frames, write raw TCP
 	go func() {
 		defer wg.Done()
-		wsToTCP(br, remote)
+		wsToTCP(br, remote, client)
 		if tc, ok := remote.(*net.TCPConn); ok {
 			tc.CloseWrite()
 		}
@@ -261,14 +264,29 @@ func (s *StunTLSServer) handleWebSocket(br *bufio.Reader, conn net.Conn) {
 	// SSH → Client: read raw TCP, write WS frames
 	go func() {
 		defer wg.Done()
-		tcpToWS(remote, conn)
+		tcpToWS(remote, client)
+		// SSH side finished: make sure the client reader unblocks too.
+		conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	}()
 
 	wg.Wait()
 }
 
-// wsToTCP reads WebSocket frames and writes raw payloads to dst.
-func wsToTCP(src *bufio.Reader, dst net.Conn) {
+// lockedWriter serializes whole-frame writes from several goroutines.
+type lockedWriter struct {
+	mu sync.Mutex
+	w  io.Writer
+}
+
+func (l *lockedWriter) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.w.Write(p)
+}
+
+// wsToTCP reads WebSocket frames from the client and writes raw payloads to
+// dst. Control replies (pong) go back to the client, never to dst.
+func wsToTCP(src *bufio.Reader, dst io.Writer, client io.Writer) {
 	for {
 		opcode, payload, err := readWSFrame(src)
 		if err != nil {
@@ -280,16 +298,19 @@ func wsToTCP(src *bufio.Reader, dst net.Conn) {
 				return
 			}
 		case 0x8: // close
+			writeWSFrame(client, 0x8, payload)
 			return
-		case 0x9: // ping → pong
-			writeWSFrame(dst, 0xA, payload)
+		case 0x9: // ping → pong (to the client)
+			if err := writeWSFrame(client, 0xA, payload); err != nil {
+				return
+			}
 		case 0xA: // pong — ignore
 		}
 	}
 }
 
 // tcpToWS reads raw TCP and writes WebSocket binary frames to dst.
-func tcpToWS(src net.Conn, dst net.Conn) {
+func tcpToWS(src io.Reader, dst io.Writer) {
 	buf := make([]byte, 32768)
 	for {
 		n, err := src.Read(buf)
@@ -338,6 +359,10 @@ func readWSFrame(br *bufio.Reader) (opcode byte, payload []byte, err error) {
 		}
 	}
 
+	if length > 1<<20 {
+		err = fmt.Errorf("ws frame too large: %d", length)
+		return
+	}
 	payload = make([]byte, length)
 	if _, err = io.ReadFull(br, payload); err != nil {
 		return
@@ -351,8 +376,10 @@ func readWSFrame(br *bufio.Reader) (opcode byte, payload []byte, err error) {
 	return
 }
 
-// writeWSFrame writes an unmasked WebSocket frame (server → client).
-func writeWSFrame(w net.Conn, opcode byte, payload []byte) error {
+// writeWSFrame writes an unmasked WebSocket frame (server → client) with a
+// single Write call, so concurrent writers through lockedWriter never
+// interleave a header with another frame's payload.
+func writeWSFrame(w io.Writer, opcode byte, payload []byte) error {
 	length := len(payload)
 	var hdr []byte
 
@@ -370,18 +397,14 @@ func writeWSFrame(w net.Conn, opcode byte, payload []byte) error {
 		binary.BigEndian.PutUint64(hdr[2:], uint64(length))
 	}
 
-	if _, err := w.Write(hdr); err != nil {
-		return err
-	}
-	if length > 0 {
-		if _, err := w.Write(payload); err != nil {
-			return err
-		}
-	}
-	return nil
+	frame := make([]byte, 0, len(hdr)+length)
+	frame = append(frame, hdr...)
+	frame = append(frame, payload...)
+	_, err := w.Write(frame)
+	return err
 }
 
-func writeWSClose(w net.Conn) {
+func writeWSClose(w io.Writer) {
 	writeWSFrame(w, 0x8, []byte{0x03, 0xE8}) // 1000 normal closure
 }
 
