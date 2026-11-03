@@ -209,6 +209,13 @@ func ensureSSHMatchGroup() error {
 	if err := os.WriteFile(tmp, []byte(content), 0644); err != nil {
 		return err
 	}
+	// sshd -t refuses to run without its privilege separation directory.
+	// systemd creates it only while ssh.service runs, and on Ubuntu 22.10+
+	// sshd is started on demand by ssh.socket, so it is often missing.
+	if err := ensureSSHDRunDir(); err != nil {
+		os.Remove(tmp)
+		return err
+	}
 	if err := run("sshd", "-t", "-f", tmp); err != nil {
 		os.Remove(tmp)
 		return fmt.Errorf("sshd config validation failed: %w", err)
@@ -228,6 +235,21 @@ func ensureSSHMatchGroup() error {
 		}
 	}
 	return nil
+}
+
+// sshdRunDir is OpenSSH's privilege separation directory on Debian/Ubuntu.
+var sshdRunDir = "/run/sshd"
+
+// ensureSSHDRunDir creates the privilege separation directory the way the
+// ssh.service unit would (RuntimeDirectory=sshd, mode 0755).
+func ensureSSHDRunDir() error {
+	if _, err := os.Stat(sshdRunDir); err == nil {
+		return nil
+	}
+	if err := os.MkdirAll(sshdRunDir, 0755); err != nil {
+		return fmt.Errorf("create %s: %w", sshdRunDir, err)
+	}
+	return os.Chmod(sshdRunDir, 0755)
 }
 
 // UserExists reports whether a system account with this name exists.

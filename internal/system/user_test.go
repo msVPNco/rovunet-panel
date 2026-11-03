@@ -1,6 +1,8 @@
 package system
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -64,5 +66,24 @@ func TestSlipgateSSHConfigGlobalsBeforeOtherMatch(t *testing.T) {
 	got := withSlipgateSSHConfig(in)
 	if g, m := strings.Index(got, "# SlipGate global SSH settings"), strings.Index(got, "Match User backup"); g < 0 || g > m {
 		t.Errorf("global settings after an existing Match block:\n%s", got)
+	}
+}
+
+// TestEnsureSSHDRunDir: the privilege separation directory sshd -t needs is
+// created with sshd's mode when missing, and an existing one is left alone.
+func TestEnsureSSHDRunDir(t *testing.T) {
+	old := sshdRunDir
+	defer func() { sshdRunDir = old }()
+	sshdRunDir = filepath.Join(t.TempDir(), "sshd")
+
+	if err := ensureSSHDRunDir(); err != nil {
+		t.Fatal(err)
+	}
+	st, err := os.Stat(sshdRunDir)
+	if err != nil || !st.IsDir() || st.Mode().Perm() != 0755 {
+		t.Fatalf("got %v %v", st, err)
+	}
+	if err := ensureSSHDRunDir(); err != nil {
+		t.Fatalf("second call: %v", err)
 	}
 }
