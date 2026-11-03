@@ -6,7 +6,7 @@ Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, S
 
 ## Features
 
-- **Multi-transport**: DNSTT/NoizDNS (DNS tunnels with Curve25519 encryption), Slipstream (QUIC-based DNS), VayDNS (KCP-based DNS with Curve25519), Soar (multipath DNS, built in), NaiveProxy (HTTPS with Caddy), StunTLS (SSH over TLS + WebSocket)
+- **Multi-transport**: DNSTT/NoizDNS (DNS tunnels with Curve25519 encryption), Slipstream (QUIC-based DNS), VayDNS (KCP-based DNS with Curve25519), Soar (multipath DNS, built in), NaiveProxy (HTTPS with Caddy), StunTLS (SSH over TLS + WebSocket), VLESS (over WebSocket, Cloudflare CDN ready, built in)
 - **Dual backend**: Built-in SOCKS5 proxy or SSH forwarding (custom SSH port supported)
 - **DNS routing**: Single-tunnel or multi-tunnel mode with domain-based dispatch
 - **External routing**: Forward DNS queries for a domain to a custom port for user-managed protocols
@@ -25,7 +25,7 @@ Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, S
 
 - **OS**: Linux (Ubuntu 20.04+, Debian 10+, or similar)
 - **Domain**: DNS A record pointed at your server (required for DNS tunnels and NaiveProxy)
-- **Ports**: 53/udp + 53/tcp (DNS tunnels), 443/tcp (NaiveProxy, StunTLS)
+- **Ports**: 53/udp + 53/tcp (DNS tunnels), 443/tcp (NaiveProxy, StunTLS), a Cloudflare-proxied port such as 443, 2053 or 8443 (VLESS)
 
 ## Quick Start
 
@@ -117,6 +117,7 @@ slipgate config address [ip]    # Public IP or hostname for StunTLS/SSH/SOCKS5 c
 slipgate dnsrouter serve        # Start DNS router
 slipgate socks serve            # Start built-in SOCKS5 proxy
 slipgate stuntls serve          # Start StunTLS proxy
+slipgate vless serve            # Start VLESS over WebSocket server
 ```
 
 ### Non-Interactive Examples
@@ -204,6 +205,17 @@ sudo slipgate tunnel add \
 sudo slipgate tunnel add \
   --transport stuntls \
   --tag mytls
+
+# VLESS over WebSocket behind Cloudflare (orange cloud). Each user gets their
+# own UUID; share per user with 'slipgate tunnel share myvless --user alice'.
+# Optional: --tls no (plain HTTP origin), --cdn-address <clean Cloudflare IP>,
+# --block-ports "25,465" (default 25, "none" for no limit)
+sudo slipgate tunnel add \
+  --transport vless \
+  --tag myvless \
+  --domain cdn.example.com \
+  --cdn yes \
+  --listen-port 2053
 
 # External DNS routing (forward queries to a custom port)
 sudo slipgate tunnel add \
@@ -315,6 +327,7 @@ sudo slipgate users bulk_add --count=50 --prefix=user
 | **Soar** | DNS | 53/udp | [Soar](https://github.com/getlantern/soar) multipath DNS tunnel (X25519 + Ed25519-signed handshake), served by slipgate itself. Soar has no per-user login, so it has two backends. **Direct**: like soar-server, it dials the destination each stream names, limited to public addresses and the allowed ports (default `80,443`, or `any`); anyone who finds the zone can use it, and it works with stock soar clients (zone + base64 public key from `tunnel status`). **SSH**: it reaches only the SSH server, so access goes through SSH users, added and removed one by one. Both export `slipnet://` configs for a SlipNet version with Soar support |
 | **NaiveProxy** | HTTPS | 443/tcp | Caddy with forwardproxy plugin. Auto-TLS via Let's Encrypt. Probe-resistant with decoy site |
 | **StunTLS** | TLS/WSS | 443/tcp | SSH over TLS + WebSocket proxy. Auto-detects WebSocket, HTTP CONNECT, raw TLS, and payload (DPI bypass) modes. Self-signed TLS cert, no domain required |
+| **VLESS** | WS/WSS | 443, 2053, 2083, 2087, 2096 or 8443/tcp | VLESS over WebSocket, served by slipgate itself, for a domain proxied by Cloudflare (orange cloud) so clients reach a Cloudflare IP and the server's own IP stays hidden and unblockable. Works with SlipNet's VLESS profiles and any VLESS client (v2rayNG, Hiddify, NekoBox…). Each user's UUID is derived from their credentials and a per-tunnel secret: removing a user or changing the password revokes it within seconds, and a shared config never carries the password. Streams reach public addresses only, port 25 blocked by default; TCP and plain UDP (no mux/XUDP). Other paths answer like a stock nginx. Origin TLS uses a self-signed certificate, so set Cloudflare's SSL/TLS mode to **Full** |
 | **External** | DNS | 53/udp | Routes DNS queries for a domain to a user-specified UDP port. No managed service — use for custom/private protocol testing |
 
 ### Domain Layout
@@ -365,6 +378,8 @@ sudo slipgate tunnel share mytunnel
 ```
 
 This outputs a `slipnet://` URI that can be scanned or imported into the SlipNet Android app. For DNSTT tunnels, you'll be asked to choose between a DNSTT or NoizDNS client profile — both connect to the same server, but NoizDNS profiles enable DPI evasion on the client side.
+
+For VLESS tunnels it asks which user's config to show (or pass `--user <name>`) and prints both a `slipnet://` URI and a standard `vless://` link for other clients. In SlipNet you can replace the CDN address with a clean Cloudflare IP at any time.
 
 To print every config at once, for all tunnels and users (also in the menu under **Users → Show all configs**):
 

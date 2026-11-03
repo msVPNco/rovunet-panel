@@ -19,6 +19,9 @@ var (
 	domainRegex   = regexp.MustCompile(`(?i)^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+\.?$`)
 	hexKeyRegex   = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	portListRegex = regexp.MustCompile(`^[0-9]{1,5}(,[0-9]{1,5})*$`)
+	// wsPathRegex keeps a WebSocket path to characters that are safe both in
+	// a URL and unquoted on a systemd ExecStart line.
+	wsPathRegex = regexp.MustCompile(`^/[A-Za-z0-9._~/-]{0,127}$`)
 )
 
 // Validate checks the entire config for errors.
@@ -255,6 +258,10 @@ func (t *TunnelConfig) validateImported() error {
 		if t.StunTLS == nil {
 			return missing()
 		}
+	case TransportVLESS:
+		if t.VLESS == nil {
+			return missing()
+		}
 	}
 
 	if d := t.DNSTT; d != nil && d.PublicKey != "" && !hexKeyRegex.MatchString(d.PublicKey) {
@@ -317,6 +324,37 @@ func (t *TunnelConfig) validateImported() error {
 		if err := validatePort(s.Port); err != nil {
 			return err
 		}
+	}
+	if v := t.VLESS; v != nil {
+		if err := ValidateVLESS(v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ValidateVLESS checks the settings of a VLESS tunnel. Every value here ends
+// up on the service's ExecStart line or in client configs.
+func ValidateVLESS(v *VLESSConfig) error {
+	if v.Port < 1 || v.Port > 65535 {
+		return fmt.Errorf("invalid vless port %d", v.Port)
+	}
+	if !wsPathRegex.MatchString(v.Path) {
+		return fmt.Errorf("invalid vless path %q: start with '/' and use letters, digits, '.', '_', '~', '-' and '/'", v.Path)
+	}
+	if v.CDNAddress != "" {
+		if err := ValidatePublicAddress(v.CDNAddress); err != nil {
+			return fmt.Errorf("vless cdn address: %w", err)
+		}
+	}
+	if p := v.ResolvedBlockPorts(); p != "none" && !portListRegex.MatchString(p) {
+		return fmt.Errorf("invalid vless block-ports %q", v.BlockPorts)
+	}
+	if v.TLS && (v.Cert == "" || v.Key == "") {
+		return fmt.Errorf("vless with TLS needs a certificate and key")
+	}
+	if v.SecretFile == "" {
+		return fmt.Errorf("vless secret file is required")
 	}
 	return nil
 }
@@ -406,7 +444,7 @@ func validateTag(tag string) error {
 
 func validateTransport(transport string) error {
 	switch transport {
-	case TransportDNSTT, TransportSlipstream, TransportVayDNS, TransportSoar, TransportNaive, TransportStunTLS, TransportSSH, TransportSOCKS, TransportExternal:
+	case TransportDNSTT, TransportSlipstream, TransportVayDNS, TransportSoar, TransportNaive, TransportStunTLS, TransportVLESS, TransportSSH, TransportSOCKS, TransportExternal:
 		return nil
 	}
 	return fmt.Errorf("unknown transport: %s", transport)
@@ -425,6 +463,11 @@ func validateTransportBackend(transport, backend string) error {
 	// backend; it never relays through the SOCKS proxy.
 	if transport == TransportSoar && backend != BackendDirect && backend != BackendSSH {
 		return fmt.Errorf("soar backend must be %q or %q, not %q", BackendDirect, BackendSSH, backend)
+	}
+	// VLESS dials each stream's destination itself after checking the
+	// user's UUID; it has no SOCKS/SSH backend.
+	if transport == TransportVLESS && backend != BackendDirect {
+		return fmt.Errorf("vless backend must be %q, not %q", BackendDirect, backend)
 	}
 	return nil
 }

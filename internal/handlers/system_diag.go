@@ -149,6 +149,17 @@ func handleSystemDiag(ctx *actions.Context) error {
 				checkFileExists(check, tag, "certificate", t.Slipstream.Cert)
 				checkFileExists(check, tag, "key", t.Slipstream.Key)
 			}
+		case config.TransportVLESS:
+			if v := t.VLESS; v != nil {
+				checkFileExists(check, tag, "uuid secret", v.SecretFile)
+				if v.TLS {
+					checkFileExists(check, tag, "certificate", v.Cert)
+					checkFileExists(check, tag, "key", v.Key)
+				}
+				portOK := isPortListening(v.Port, "tcp")
+				check(fmt.Sprintf("[%s] port %d/tcp", tag, v.Port), portOK,
+					boolStr(portOK, "listening", "not listening"))
+			}
 		}
 
 		// Port check for DNS tunnels

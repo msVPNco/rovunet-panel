@@ -99,6 +99,13 @@ func (c *Config) SaveTo(path string) error {
 	return os.WriteFile(path, append(data, '\n'), 0644)
 }
 
+// Path returns the file the config was loaded from (or will be saved to).
+func (c *Config) Path() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.path
+}
+
 // Default returns a new config with sensible defaults.
 func Default() *Config {
 	return &Config{

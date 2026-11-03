@@ -356,6 +356,8 @@ func openTunnelPorts(cfg *config.Config, out actions.OutputWriter) {
 			ports = append(ports, port{80, "tcp"}, port{https, "tcp"})
 		case t.Transport == config.TransportStunTLS && t.StunTLS.Port > 0:
 			ports = append(ports, port{t.StunTLS.Port, "tcp"})
+		case t.Transport == config.TransportVLESS && t.VLESS != nil:
+			ports = append(ports, port{t.VLESS.Port, "tcp"})
 		case t.Transport == config.TransportSSH:
 			ports = append(ports, port{sshPort(cfg), "tcp"})
 		case t.Transport == config.TransportSOCKS:
