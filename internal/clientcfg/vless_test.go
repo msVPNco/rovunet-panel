@@ -48,7 +48,7 @@ func TestGenerateURIVLESS(t *testing.T) {
 	checks := map[int]string{
 		FDomain: "cdn.example.com", FVlessUUID: wantID, FVlessSecurity: "tls", FVlessTransport: "ws",
 		FVlessWsPath: "/k9x2", FCdnIP: "104.16.1.1", FCdnPort: "8443", FVlessSNI: "",
-		FSOCKSUser: "", FSOCKSPass: "", FSSHEnabled: "0", FSSHHost: "",
+		FSOCKSUser: "", FSOCKSPass: "", FSSHEnabled: "0", FSSHHost: "", FSniFragmentEnabled: "0",
 	}
 	for i, want := range checks {
 		if f[i] != want {
