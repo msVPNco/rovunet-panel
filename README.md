@@ -329,7 +329,7 @@ sudo slipgate users bulk_add --count=50 --prefix=user
                                      │  SlipNet Client  │
                                      └────────┬─────────┘
                  ┌────────────────────────────┼───────────────────┐
-                 │                            │            Cloudflare CDN
+                 │                            │      optional Cloudflare CDN
           DNS :53/udp+tcp            HTTPS/TLS :443/tcp    (orange cloud)
                  │                            │          WS/WSS 2053, 8443…
 ┌────────────────┼────────────────────────────┼───────────────────┼──────────┐
@@ -380,6 +380,8 @@ sudo slipgate users bulk_add --count=50 --prefix=user
   systemd: slipgate-dnsrouter, slipgate-socks5, slipgate-{tag}
 ```
 
+The right-hand path through Cloudflare is optional (only for when the server's IP is blocked); by default VLESS and StunTLS arrive on 443 through NaiveProxy, as described below.
+
 Soar with the direct backend and VLESS dial each stream's destination themselves, so their traffic skips the backend layer and WARP.
 
 With `--front`, VLESS and StunTLS take a second route into the server: Caddy (NaiveProxy) on 443 matches their secret WebSocket path ahead of `forward_proxy` and hands the connection to the VLESS server on localhost, or to StunTLS over TLS. Everything else on 443 is still NaiveProxy or the decoy site.
@@ -399,7 +401,7 @@ With `--front`, VLESS and StunTLS take a second route into the server: Caddy (Na
 
 ### Domain Layout
 
-Each DNS tunnel instance requires its own subdomain. When using both SOCKS and SSH backends, the install auto-generates subdomains by appending `s` to the SSH variant. NaiveProxy and VLESS are HTTPS services, so they use ordinary hostnames:
+Each DNS tunnel instance requires its own subdomain. When using both SOCKS and SSH backends, the install auto-generates subdomains by appending `s` to the SSH variant. NaiveProxy is an HTTPS service on an ordinary hostname, and VLESS and StunTLS ride on it (port 443, same certificate):
 
 | Tunnel | Domain | Backend |
 |--------|--------|---------|
@@ -413,10 +415,10 @@ Each DNS tunnel instance requires its own subdomain. When using both SOCKS and S
 | soar-ssh | `rs.example.com` | SSH |
 | naive-socks | `example.com` | SOCKS5 (shared domain) |
 | naive-ssh | `example.com` | SSH (shared domain) |
-| vless | `example.com` (fronted) or `cdn.example.com` (Cloudflare) | Direct (per-user UUIDs) |
-| stuntls | `example.com` (fronted) or the server IP | SSH |
+| vless | `example.com` (through NaiveProxy) | Direct (per-user UUIDs) |
+| stuntls | `example.com` (through NaiveProxy) | SSH |
 
-NaiveProxy tunnels share a domain since they use HTTPS (port 443), not DNS. DNSTT and NoizDNS also share a domain — the same server handles both client types. Fronted VLESS and StunTLS use the NaiveProxy domain too. Only VLESS behind Cloudflare needs a hostname of its own: it is the only record proxied by Cloudflare, while NaiveProxy clients must reach Caddy directly, so its record stays unproxied.
+NaiveProxy tunnels share a domain since they use HTTPS (port 443), not DNS. DNSTT and NoizDNS also share a domain — the same server handles both client types. VLESS and StunTLS use the NaiveProxy domain as well, so they need no record of their own.
 
 **Required DNS records** (for the example above):
 
@@ -431,10 +433,17 @@ NS  vs.example.com       → ns.example.com
 NS  r.example.com        → ns.example.com
 NS  rs.example.com       → ns.example.com
 A   example.com          → <server IP>      DNS only (grey cloud)
-A   cdn.example.com      → <server IP>      Proxied (orange cloud)   only for VLESS behind Cloudflare
 ```
 
-At Cloudflare, every record stays **DNS only** except a Cloudflare-fronted VLESS hostname, which must be **Proxied**; for it also set **SSL/TLS → Overview** to **Full** and leave **Network → WebSockets** on.
+Every record stays **DNS only** (grey cloud): Caddy has to be reached directly to get its Let's Encrypt certificate.
+
+**Optional — VLESS behind Cloudflare.** Only if the server's IP gets blocked: a VLESS tunnel created with `--cdn yes` on its own port (e.g. 2053) needs its own hostname, the one record proxied by Cloudflare, with **SSL/TLS → Overview** set to **Full** and **Network → WebSockets** on:
+
+```
+A   cdn.example.com      → <server IP>      Proxied (orange cloud)
+```
+
+Without NaiveProxy, StunTLS is reached at the server's IP on its own port (8443) and VLESS at its own domain and port.
 
 ### Routing Modes
 
