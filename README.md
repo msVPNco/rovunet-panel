@@ -1,18 +1,45 @@
 # SlipGate
 
-Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar), HTTPS proxies (NaiveProxy, StunTLS) and VLESS over WebSocket behind Cloudflare, with systemd services, multi-tunnel DNS routing, and user management. Designed for use with the [SlipNet](https://github.com/anonvector/SlipNet) Android VPN app.
+Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar), HTTPS proxies (NaiveProxy, StunTLS) and VLESS over WebSocket, with systemd services, multi-tunnel DNS routing, and user management. Designed for use with the [SlipNet](https://github.com/anonvector/SlipNet) Android VPN app.
 
-> **This fork** ([msVPNco/slipgate](https://github.com/msVPNco/slipgate)) adds a built-in **VLESS over WebSocket** transport for Cloudflare-fronted servers. It installs and self-updates from this fork's releases; transport binaries (dnstt-server, caddy-naive, …) still come from upstream [anonvector/slipgate](https://github.com/anonvector/slipgate). Install with:
+> **This fork** ([msVPNco/slipgate](https://github.com/msVPNco/slipgate)) adds a built-in **VLESS over WebSocket** transport and lets VLESS and StunTLS ride on **NaiveProxy's Caddy on port 443** with its real Let's Encrypt certificate, so they look like an ordinary HTTPS website, with no Cloudflare hop and no self-signed certificate. It also fixes multi-user NaiveProxy, StunTLS keepalives, direct SOCKS5 and Soar configs (see [What this fork changes](#what-this-fork-changes)). It installs and self-updates from this fork's releases; transport binaries (dnstt-server, caddy-naive, …) still come from upstream [anonvector/slipgate](https://github.com/anonvector/slipgate). Install with:
 >
 > ```bash
 > curl -fsSL https://raw.githubusercontent.com/msVPNco/slipgate/main/install.sh | sudo bash
 > ```
+>
+> A Persian guide is in [docs/VLESS_FA.md](docs/VLESS_FA.md).
+
+## What this fork changes
+
+| Area | Change |
+|------|--------|
+| **VLESS** | New built-in VLESS over WebSocket server: per-user UUIDs derived from SlipGate users (revoked within seconds when a user is removed), nginx-like decoy, public destinations only. Three ways to reach it: **through NaiveProxy's Caddy on 443** (recommended), behind Cloudflare, or straight to its own port |
+| **Fronting on 443** | `tunnel edit --front <naive-tag>` puts VLESS and/or StunTLS behind Caddy: real certificate and SNI, standard port, every other path shows the decoy site. Install does it automatically when NaiveProxy is selected. Caddyfile changes are validated with `caddy-naive validate` before they are applied |
+| **NaiveProxy** | Every SlipGate user can log in (only the first user could before); users add/remove/passwd update Caddy live |
+| **StunTLS** | WebSocket pings are answered to the client (they used to corrupt the SSH stream) |
+| **SOCKS5** | The direct SOCKS5 tunnel listens publicly again after user changes |
+| **Soar** | Direct (no-login) Soar configs appear in `users configs` |
+| **Install** | One command sets up every selected protocol and prints all configs at the end; `/run/sshd` is created on systems with socket-activated SSH; firewall rules are inserted ahead of REJECT rules |
+
+### Which protocol where
+
+Field results from Iran (one server, late 2026), as a starting point:
+
+- **VLESS fronted by NaiveProxy (443)**: fast and stable; looks like a normal HTTPS site. First choice.
+- **Direct SSH (22)**: fast where port 22 is open.
+- **VayDNS / DNSTT**: slow but work when only DNS gets through.
+- **VLESS behind Cloudflare**: works, but much slower than direct; keep it for when the server's IP is blocked.
+- **StunTLS**: its own port (8443) on a bare IP was dropped; front it with NaiveProxy.
+- **Direct SOCKS5**: plaintext, so filtered networks cut it. A fallback for open networks only.
+- **NaiveProxy**: the server side works (tested with curl through it), but SlipNet's Naive client dropped its streams in our tests; try another Naive client (e.g. NekoBox) if SlipNet shows no traffic.
 
 [![oosmetrics](https://api.oosmetrics.com/api/v1/badge/achievement/12767996-2dd6-42ed-89a6-5f786c4662b4.svg)](https://oosmetrics.com/repo/anonvector/slipgate)
 
 ## Features
 
-- **Multi-transport**: DNSTT/NoizDNS (DNS tunnels with Curve25519 encryption), Slipstream (QUIC-based DNS), VayDNS (KCP-based DNS with Curve25519), Soar (multipath DNS, built in), NaiveProxy (HTTPS with Caddy), StunTLS (SSH over TLS + WebSocket), VLESS (over WebSocket, Cloudflare CDN ready, built in)
+- **Multi-transport**: DNSTT/NoizDNS (DNS tunnels with Curve25519 encryption), Slipstream (QUIC-based DNS), VayDNS (KCP-based DNS with Curve25519), Soar (multipath DNS, built in), NaiveProxy (HTTPS with Caddy), StunTLS (SSH over TLS + WebSocket), VLESS (over WebSocket, built in)
+- **Fronting on 443**: VLESS and StunTLS can share NaiveProxy's Caddy, port 443 and Let's Encrypt certificate, behind its decoy site
 - **Dual backend**: Built-in SOCKS5 proxy or SSH forwarding (custom SSH port supported)
 - **DNS routing**: Single-tunnel or multi-tunnel mode with domain-based dispatch
 - **External routing**: Forward DNS queries for a domain to a custom port for user-managed protocols
@@ -31,8 +58,8 @@ Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, S
 
 - **OS**: Linux (Ubuntu 20.04+, Debian 10+, or similar)
 - **Domain**: DNS records pointed at your server (required for DNS tunnels, NaiveProxy and VLESS; see [Domain Layout](#domain-layout))
-- **Cloudflare** (VLESS only): the domain's DNS hosted at Cloudflare, so the VLESS hostname can be proxied (orange cloud)
-- **Ports**: 53/udp + 53/tcp (DNS tunnels), 443/tcp (NaiveProxy, StunTLS), a Cloudflare-proxied port such as 443, 2053 or 8443 (VLESS)
+- **Cloudflare** (only for VLESS behind Cloudflare): the domain's DNS hosted at Cloudflare, so the VLESS hostname can be proxied (orange cloud). Not needed when VLESS is fronted by NaiveProxy
+- **Ports**: 53/udp + 53/tcp (DNS tunnels), 80/tcp + 443/tcp (NaiveProxy and everything it fronts), 8443/tcp (StunTLS on its own port), a Cloudflare-proxied port such as 2053 (VLESS behind Cloudflare)
 
 ## Quick Start
 
@@ -224,7 +251,7 @@ sudo slipgate tunnel add \
   --transport stuntls \
   --tag mytls
 
-# VLESS over WebSocket behind Cloudflare (orange cloud). Each user gets their
+# VLESS over WebSocket. Each user gets their
 # own UUID; share per user with 'slipgate tunnel share myvless --user alice'.
 # Optional: --tls no (plain HTTP origin), --cdn-address <clean Cloudflare IP>,
 # --block-ports "25,465" (default 25, "none" for no limit)
@@ -354,6 +381,8 @@ sudo slipgate users bulk_add --count=50 --prefix=user
 
 Soar with the direct backend and VLESS dial each stream's destination themselves, so their traffic skips the backend layer and WARP.
 
+With `--front`, VLESS and StunTLS take a second route into the server: Caddy (NaiveProxy) on 443 matches their secret WebSocket path ahead of `forward_proxy` and hands the connection to the VLESS server on localhost, or to StunTLS over TLS. Everything else on 443 is still NaiveProxy or the decoy site.
+
 ### Transport Types
 
 | Transport | Protocol | Port | Description |
@@ -363,8 +392,8 @@ Soar with the direct backend and VLESS dial each stream's destination themselves
 | **VayDNS** | KCP DNS | 53/udp | KCP-based DNS tunnel with Curve25519 encryption. Supports configurable idle timeout, keepalive, queue size, and multiple DNS record types |
 | **Soar** | DNS | 53/udp | [Soar](https://github.com/getlantern/soar) multipath DNS tunnel (X25519 + Ed25519-signed handshake), served by slipgate itself. Soar has no per-user login, so it has two backends. **Direct**: like soar-server, it dials the destination each stream names, limited to public addresses and the allowed ports (default `80,443`, or `any`); anyone who finds the zone can use it, and it works with stock soar clients (zone + base64 public key from `tunnel status`). **SSH**: it reaches only the SSH server, so access goes through SSH users, added and removed one by one. Both export `slipnet://` configs for a SlipNet version with Soar support |
 | **NaiveProxy** | HTTPS | 443/tcp | Caddy with forwardproxy plugin. Auto-TLS via Let's Encrypt. Probe-resistant with decoy site |
-| **StunTLS** | TLS/WSS | 443/tcp | SSH over TLS + WebSocket proxy. Auto-detects WebSocket, HTTP CONNECT, raw TLS, and payload (DPI bypass) modes. Self-signed TLS cert, no domain required |
-| **VLESS** | WS/WSS | 443, 2053, 2083, 2087, 2096 or 8443/tcp | VLESS over WebSocket, served by slipgate itself, for a domain proxied by Cloudflare (orange cloud) so clients reach a Cloudflare IP and the server's own IP stays hidden and unblockable. Works with SlipNet's VLESS profiles and any VLESS client (v2rayNG, Hiddify, NekoBox…). Each user's UUID is derived from their credentials and a per-tunnel secret: removing a user or changing the password revokes it within seconds, and a shared config never carries the password. Streams reach public addresses only, port 25 blocked by default; TCP and plain UDP (no mux/XUDP). Other paths answer like a stock nginx. Origin TLS uses a self-signed certificate, so set Cloudflare's SSL/TLS mode to **Full**. Outbound traffic doesn't go through WARP |
+| **StunTLS** | TLS/WSS | 8443/tcp, or 443 fronted | SSH over TLS + WebSocket proxy. Auto-detects WebSocket, HTTP CONNECT, raw TLS, and payload (DPI bypass) modes. Self-signed TLS cert, no domain required. Fronted by NaiveProxy (`--front`), clients reach it as SSH over WebSocket on the Naive domain, port 443, real certificate |
+| **VLESS** | WS/WSS | 443 fronted; or 2053, 2083, 2087, 2096, 8443/tcp | VLESS over WebSocket, served by slipgate itself, with SlipNet's VLESS profiles and any VLESS client (v2rayNG, Hiddify, NekoBox…). **Fronted by NaiveProxy** (recommended): Caddy carries it on 443 with its Let's Encrypt certificate, so links need no `allowInsecure` (which Xray clients drop from 2026-08). **Behind Cloudflare**: clients reach a Cloudflare IP and the server's IP stays hidden; set SSL/TLS mode to **Full**. **Direct**: its own port with a self-signed certificate. Each user's UUID is derived from their credentials and a server-wide secret: removing a user or changing the password revokes it within seconds, and a shared config never carries the password. Streams reach public addresses only, port 25 blocked by default; TCP and plain UDP (no mux/XUDP). Other paths answer like a stock nginx. Outbound traffic doesn't go through WARP |
 | **External** | DNS | 53/udp | Routes DNS queries for a domain to a user-specified UDP port. No managed service — use for custom/private protocol testing |
 
 ### Domain Layout
@@ -383,9 +412,10 @@ Each DNS tunnel instance requires its own subdomain. When using both SOCKS and S
 | soar-ssh | `rs.example.com` | SSH |
 | naive-socks | `example.com` | SOCKS5 (shared domain) |
 | naive-ssh | `example.com` | SSH (shared domain) |
-| vless | `cdn.example.com` | Direct (per-user UUIDs) |
+| vless | `example.com` (fronted) or `cdn.example.com` (Cloudflare) | Direct (per-user UUIDs) |
+| stuntls | `example.com` (fronted) or the server IP | SSH |
 
-NaiveProxy tunnels share a domain since they use HTTPS (port 443), not DNS. DNSTT and NoizDNS also share a domain — the same server handles both client types. A VLESS tunnel needs a hostname of its own: it is the only record proxied by Cloudflare, while NaiveProxy clients must reach Caddy directly, so its record stays unproxied.
+NaiveProxy tunnels share a domain since they use HTTPS (port 443), not DNS. DNSTT and NoizDNS also share a domain — the same server handles both client types. Fronted VLESS and StunTLS use the NaiveProxy domain too. Only VLESS behind Cloudflare needs a hostname of its own: it is the only record proxied by Cloudflare, while NaiveProxy clients must reach Caddy directly, so its record stays unproxied.
 
 **Required DNS records** (for the example above):
 
@@ -400,10 +430,10 @@ NS  vs.example.com       → ns.example.com
 NS  r.example.com        → ns.example.com
 NS  rs.example.com       → ns.example.com
 A   example.com          → <server IP>      DNS only (grey cloud)
-A   cdn.example.com      → <server IP>      Proxied (orange cloud)
+A   cdn.example.com      → <server IP>      Proxied (orange cloud)   only for VLESS behind Cloudflare
 ```
 
-At Cloudflare, every record stays **DNS only** except the VLESS hostname, which must be **Proxied**. For VLESS also set **SSL/TLS → Overview** to **Full** and leave **Network → WebSockets** on.
+At Cloudflare, every record stays **DNS only** except a Cloudflare-fronted VLESS hostname, which must be **Proxied**; for it also set **SSL/TLS → Overview** to **Full** and leave **Network → WebSockets** on.
 
 ### Routing Modes
 
@@ -422,9 +452,17 @@ sudo slipgate tunnel share mytunnel
 
 This outputs a `slipnet://` URI that can be scanned or imported into the SlipNet Android app. For DNSTT tunnels, you'll be asked to choose between a DNSTT or NoizDNS client profile — both connect to the same server, but NoizDNS profiles enable DPI evasion on the client side.
 
-`slipgate install` offers VLESS too and then asks only for its domain: it picks a Cloudflare port, derives the WebSocket path from a server-wide secret (`/etc/slipgate/vless.secret`, kept when a tunnel is removed, so removing and re-adding a tunnel gives the same links) and prints every user's links at the end.
+`slipgate install` offers VLESS too and then asks only for its domain: it picks a free port, derives the WebSocket path from a server-wide secret (`/etc/slipgate/vless.secret`, kept when a tunnel is removed, so removing and re-adding a tunnel gives the same links) and prints every user's links at the end. When NaiveProxy is selected as well, VLESS and StunTLS are fronted by it from the start.
 
-For VLESS tunnels it asks which user's config to show (or pass `--user <name>`) and prints both a `slipnet://` URI and a standard `vless://` link for other clients. In SlipNet you can replace the CDN address with a clean Cloudflare IP at any time. A step-by-step guide in Persian, including the Cloudflare settings, is in [docs/VLESS_FA.md](docs/VLESS_FA.md).
+For VLESS tunnels it asks which user's config to show (or pass `--user <name>`) and prints both a `slipnet://` URI and a standard `vless://` link for other clients. Behind Cloudflare you can replace the CDN address with a clean Cloudflare IP in SlipNet at any time. A step-by-step guide in Persian is in [docs/VLESS_FA.md](docs/VLESS_FA.md).
+
+To move an existing VLESS or StunTLS tunnel onto NaiveProxy's 443 (or back with `-`), then hand out the new configs:
+
+```bash
+sudo slipgate tunnel edit --tag vless --front naive
+sudo slipgate tunnel edit --tag stuntls --front naive
+sudo slipgate users configs
+```
 
 To print every config at once, for all tunnels and users (also in the menu under **Users → Show all configs**):
 
@@ -441,7 +479,7 @@ sudo slipgate config address 203.0.113.7   # an IP or hostname, without a port
 sudo slipgate config address auto          # detect it again
 ```
 
-Configs for DNS tunnels, Soar, NaiveProxy and VLESS connect by domain and don't depend on it. VLESS configs never carry the server's IP, since it hides behind Cloudflare.
+Configs for DNS tunnels, Soar, NaiveProxy, VLESS and fronted StunTLS connect by domain and don't depend on it. VLESS configs never carry the server's IP.
 
 ### User Model
 
