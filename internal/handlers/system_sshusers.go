@@ -412,7 +412,10 @@ func showUserConfigs(cfg *config.Config, username, password string, out actions.
 			continue
 		}
 		backend := cfg.GetBackend(t.Backend)
-		if backend == nil {
+		// Soar's direct backend is built into the Soar server: there is no
+		// backend entry, and its config needs none (it has no login).
+		soarDirect := t.Transport == config.TransportSoar && t.Backend == config.BackendDirect
+		if backend == nil && !soarDirect {
 			continue
 		}
 
@@ -443,6 +446,9 @@ func showUserConfigs(cfg *config.Config, username, password string, out actions.
 			label := t.Tag
 			if mode == clientcfg.ClientModeNoizDNS {
 				label = strings.ReplaceAll(label, "dnstt", "noizdns")
+			}
+			if soarDirect {
+				label += " (no login, same for every user)"
 			}
 			out.Print(fmt.Sprintf("  [%s]", label))
 			out.Print(fmt.Sprintf("  %s", uri))
