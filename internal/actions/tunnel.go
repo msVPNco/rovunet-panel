@@ -9,7 +9,7 @@ func init() {
 			{Key: "transport", Label: "Transport", Required: true, Options: TransportOptions},
 			{Key: "backend", Label: "Backend", Required: true, Options: BackendOptions, DependsOn: "transport", DependsOnValues: []string{"dnstt", "slipstream", "vaydns", "naive"}},
 			{Key: "tag", Label: "Tag (unique name)", Required: true},
-			{Key: "domain", Label: "Domain", Required: true, DependsOn: "transport", DependsOnValues: []string{"dnstt", "slipstream", "vaydns", "soar", "naive"}},
+			{Key: "domain", Label: "Domain", Required: true, DependsOn: "transport", DependsOnValues: []string{"dnstt", "slipstream", "vaydns", "soar", "naive", "vless"}},
 			{Key: "private-key", Label: "Private key (hex; base64 for Soar)", DependsOn: "transport", DependsOnValues: []string{"dnstt", "vaydns", "soar"}},
 			{Key: "public-key", Label: "Public key (hex)", DependsOn: "transport", DependsOnValues: []string{"dnstt", "vaydns"}},
 			{Key: "record-type", Label: "DNS record type", DependsOn: "transport", DependsOnValues: []string{"vaydns"}},
@@ -21,6 +21,12 @@ func init() {
 			{Key: "port", Label: "Target UDP port", DependsOn: "transport", DependsOnValues: []string{"external"}},
 			{Key: "email", Label: "Email (for Let's Encrypt)", DependsOn: "transport", DependsOnValues: []string{"naive"}},
 			{Key: "decoy-url", Label: "Decoy URL", DependsOn: "transport", DependsOnValues: []string{"naive"}},
+			{Key: "cdn", Label: "Domain proxied by Cloudflare: yes/no (VLESS)", CLIOnly: true},
+			{Key: "tls", Label: "TLS to the origin: yes/no (VLESS)", CLIOnly: true},
+			{Key: "listen-port", Label: "Listen port (VLESS)", CLIOnly: true},
+			{Key: "path", Label: "WebSocket path (VLESS)", CLIOnly: true},
+			{Key: "cdn-address", Label: "Clean CDN IP for client configs (VLESS)", CLIOnly: true},
+			{Key: "block-ports", Label: `Destination ports to refuse, or "none" (VLESS, default 25)`, CLIOnly: true},
 		},
 	})
 
@@ -57,6 +63,7 @@ func init() {
 		Category: "tunnel",
 		Inputs: []InputField{
 			{Key: "tag", Label: "Tunnel tag", Required: true},
+			{Key: "user", Label: "User whose config to show (VLESS)", CLIOnly: true},
 		},
 	})
 
@@ -98,6 +105,9 @@ func init() {
 			{Key: "allow-ports", Label: "Allowed destination ports (Soar)", CLIOnly: true},
 			{Key: "email", Label: "Email (Let's Encrypt)", CLIOnly: true},
 			{Key: "decoy-url", Label: "Decoy URL", CLIOnly: true},
+			{Key: "path", Label: "WebSocket path (VLESS)", CLIOnly: true},
+			{Key: "cdn-address", Label: "Clean CDN IP for client configs (VLESS)", CLIOnly: true},
+			{Key: "block-ports", Label: `Destination ports to refuse, or "none" (VLESS)`, CLIOnly: true},
 		},
 	})
 

@@ -36,6 +36,11 @@ func handleTunnelShare(ctx *actions.Context) error {
 		return nil
 	}
 
+	// VLESS: one UUID per user, plus a standard vless:// link
+	if tunnel.Transport == config.TransportVLESS {
+		return handleVLESSShare(ctx, cfg, tunnel)
+	}
+
 	backend := cfg.GetBackend(tunnel.Backend)
 	if backend == nil {
 		return actions.NewError(actions.TunnelShare, "backend not found", nil)

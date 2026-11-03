@@ -10,6 +10,7 @@ const (
 	TransportSoar       = "soar"
 	TransportNaive      = "naive"
 	TransportStunTLS    = "stuntls"
+	TransportVLESS      = "vless"
 	TransportSSH        = "direct-ssh"
 	TransportSOCKS      = "direct-socks5"
 	TransportExternal   = "external"
@@ -31,6 +32,7 @@ type TunnelConfig struct {
 	Soar       *SoarConfig       `json:"soar,omitempty"`
 	Naive      *NaiveConfig      `json:"naive,omitempty"`
 	StunTLS    *StunTLSConfig    `json:"stuntls,omitempty"`
+	VLESS      *VLESSConfig      `json:"vless,omitempty"`
 }
 
 // DNSTTConfig holds config for DNSTT transport (serves both DNSTT and NoizDNS clients).
@@ -148,6 +150,71 @@ type StunTLSConfig struct {
 	Cert string `json:"cert"` // path to TLS certificate
 	Key  string `json:"key"`  // path to TLS private key
 	Port int    `json:"port"` // listen port (typically 443)
+}
+
+// VLESSConfig holds config for the built-in VLESS over WebSocket server.
+//
+// Clients reach it at Domain, normally through a CDN such as Cloudflare
+// (orange cloud), so the server's own IP stays hidden and can't be blocked
+// by address. Each SlipGate user gets their own VLESS UUID, derived from
+// their credentials and the tunnel secret.
+type VLESSConfig struct {
+	Port       int    `json:"port"`                  // listen port
+	Path       string `json:"path"`                  // WebSocket path
+	TLS        bool   `json:"tls"`                   // serve TLS (self-signed) instead of plain HTTP
+	Cert       string `json:"cert,omitempty"`        // path to TLS certificate (when TLS)
+	Key        string `json:"key,omitempty"`         // path to TLS private key (when TLS)
+	SecretFile string `json:"secret_file"`           // path to the UUID-derivation secret
+	CDN        bool   `json:"cdn"`                   // Domain is proxied by a CDN (Cloudflare orange cloud)
+	CDNAddress string `json:"cdn_address,omitempty"` // address clients dial (clean CDN IP); empty = Domain
+	BlockPorts string `json:"block_ports,omitempty"` // destination ports refused; empty = DefaultVLESSBlockPorts, "none" = no limit
+}
+
+// DefaultVLESSBlockPorts keeps users from sending mail straight from the
+// server's IP, the usual way a proxy gets the IP blacklisted.
+const DefaultVLESSBlockPorts = "25"
+
+// Cloudflare proxies only these ports. A CDN-fronted VLESS tunnel must listen
+// on one of them, since Cloudflare reaches the origin on the port the client
+// used.
+var (
+	CloudflareHTTPSPorts = []int{443, 2053, 2083, 2087, 2096, 8443}
+	CloudflareHTTPPorts  = []int{80, 8080, 8880, 2052, 2082, 2086, 2095}
+)
+
+// ResolvedBlockPorts returns the block-ports value, applying defaults.
+func (v *VLESSConfig) ResolvedBlockPorts() string {
+	if v == nil || v.BlockPorts == "" {
+		return DefaultVLESSBlockPorts
+	}
+	// No spaces: the value is passed unquoted on the systemd ExecStart line.
+	return strings.ReplaceAll(v.BlockPorts, " ", "")
+}
+
+// ClientAddress returns the address clients connect to.
+func (v *VLESSConfig) ClientAddress(domain string) string {
+	if v != nil && v.CDNAddress != "" {
+		return v.CDNAddress
+	}
+	return domain
+}
+
+// CloudflarePortOK reports whether Cloudflare can proxy the tunnel's port
+// for its TLS mode.
+func (v *VLESSConfig) CloudflarePortOK() bool {
+	if v == nil {
+		return false
+	}
+	ports := CloudflareHTTPPorts
+	if v.TLS {
+		ports = CloudflareHTTPSPorts
+	}
+	for _, p := range ports {
+		if p == v.Port {
+			return true
+		}
+	}
+	return false
 }
 
 // IsDNSTunnel returns true if the transport uses DNS port 53.

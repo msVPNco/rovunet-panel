@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/anonvector/slipgate/internal/actions"
 	"github.com/anonvector/slipgate/internal/config"
@@ -80,6 +81,17 @@ func handleTunnelEdit(ctx *actions.Context) error {
 		}
 		if tunnel.Soar != nil {
 			tunnel.Soar.PrivateKey = filepath.Join(newDir, "server.key")
+		}
+		if tunnel.StunTLS != nil {
+			tunnel.StunTLS.Cert = filepath.Join(newDir, "cert.pem")
+			tunnel.StunTLS.Key = filepath.Join(newDir, "key.pem")
+		}
+		if v := tunnel.VLESS; v != nil {
+			v.SecretFile = filepath.Join(newDir, "vless.secret")
+			if v.TLS {
+				v.Cert = filepath.Join(newDir, "cert.pem")
+				v.Key = filepath.Join(newDir, "key.pem")
+			}
 		}
 
 		// Stop old systemd service
@@ -345,6 +357,59 @@ func handleTunnelEdit(ctx *actions.Context) error {
 				tunnel.Soar.AllowPorts = allowPorts
 				changed = true
 				out.Success(fmt.Sprintf("Allowed ports set to %s", allowPorts))
+			}
+		}
+
+	case config.TransportVLESS:
+		if v := tunnel.VLESS; v != nil {
+			edited := *v
+
+			path := ctx.GetArg("path")
+			if path == "" {
+				var err error
+				if path, err = prompt.String("WebSocket path", v.Path); err != nil {
+					return err
+				}
+			}
+			if !strings.HasPrefix(path, "/") {
+				path = "/" + path
+			}
+			edited.Path = path
+
+			cdnAddr := ctx.GetArg("cdn-address")
+			if cdnAddr == "" {
+				var err error
+				if cdnAddr, err = prompt.String(`Clean CDN IP for client configs ("-" = use the domain)`, v.CDNAddress); err != nil {
+					return err
+				}
+			}
+			if cdnAddr == "-" {
+				cdnAddr = ""
+			}
+			edited.CDNAddress = strings.TrimSpace(cdnAddr)
+
+			blockPorts := ctx.GetArg("block-ports")
+			if blockPorts == "" {
+				var err error
+				if blockPorts, err = prompt.String(`Destination ports to refuse (comma-separated, or "none")`, v.ResolvedBlockPorts()); err != nil {
+					return err
+				}
+			}
+			if blockPorts == config.DefaultVLESSBlockPorts {
+				blockPorts = ""
+			}
+			edited.BlockPorts = blockPorts
+
+			if err := config.ValidateVLESS(&edited); err != nil {
+				return actions.NewError(actions.TunnelEdit, "invalid vless settings", err)
+			}
+			if edited != *v {
+				if edited.Path != v.Path {
+					out.Warning("The WebSocket path changed: share the tunnel's configs again")
+				}
+				*v = edited
+				changed = true
+				out.Success("VLESS settings updated")
 			}
 		}
 

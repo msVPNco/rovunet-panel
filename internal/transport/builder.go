@@ -22,6 +22,8 @@ func CreateService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 		return createNaiveService(tunnel, cfg)
 	case config.TransportStunTLS:
 		return createStunTLSService(tunnel, cfg)
+	case config.TransportVLESS:
+		return createVLESSService(tunnel, cfg)
 	case config.TransportSSH, config.TransportSOCKS:
 		// Direct transports use existing system services (sshd, microsocks)
 		return nil

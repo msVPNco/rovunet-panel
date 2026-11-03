@@ -48,6 +48,10 @@ func handleTunnelAdd(ctx *actions.Context) error {
 	if transport_ == config.TransportExternal {
 		backend = "external"
 	}
+	// VLESS checks each user's UUID and dials destinations itself
+	if transport_ == config.TransportVLESS {
+		backend = config.BackendDirect
+	}
 	// Soar dials destinations itself (direct) or reaches only the SSH backend
 	if transport_ == config.TransportSoar && backend == "" {
 		var err error
@@ -71,6 +75,9 @@ func handleTunnelAdd(ctx *actions.Context) error {
 		}
 	}
 	if !isDirect && domain == "" {
+		if transport_ == config.TransportVLESS {
+			out.Info("VLESS needs a hostname whose A record points at this server, normally proxied by Cloudflare")
+		}
 		var err error
 		domain, err = prompt.String("Domain", "")
 		if err != nil {
@@ -166,7 +173,8 @@ func tunnelsNeedUser(cfg *config.Config, tags []string) bool {
 		if t == nil {
 			continue
 		}
-		if t.Backend == config.BackendSSH || t.Backend == config.BackendSOCKS {
+		// VLESS UUIDs are derived from the users' credentials
+		if t.Backend == config.BackendSSH || t.Backend == config.BackendSOCKS || t.Transport == config.TransportVLESS {
 			return true
 		}
 	}
@@ -478,6 +486,14 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 			Port: tlsPort,
 		}
 
+	case config.TransportVLESS:
+		v, err := setupVLESS(ctx, cfg, tunnelDir, domain)
+		if err != nil {
+			_ = os.RemoveAll(tunnelDir)
+			return actions.NewError(actions.TunnelAdd, "vless setup failed", err)
+		}
+		tunnel.VLESS = v
+
 	case config.TransportExternal:
 		// Suggest a port that doesn't conflict with existing tunnels
 		defaultPort := 5301
@@ -585,6 +601,12 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 		out.Warning("Failed to register with router: " + err.Error())
 	}
 
+	if tunnel.VLESS != nil {
+		if err := network.AllowPort(tunnel.VLESS.Port, "tcp"); err != nil {
+			out.Warning(fmt.Sprintf("Failed to open port %d/tcp: %v", tunnel.VLESS.Port, err))
+		}
+	}
+
 	if transport_ == config.TransportExternal {
 		out.Success(fmt.Sprintf("Tunnel %q created — DNS queries for %s will route to 127.0.0.1:%d", tag, domain, tunnel.Port))
 	} else {
@@ -595,6 +617,9 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 			out.Print("")
 			printSoarLinks(cfg, out, []config.TunnelConfig{tunnel})
 		} else {
+			if tunnel.VLESS != nil {
+				printVLESSSetup(out, &tunnel)
+			}
 			out.Info(fmt.Sprintf("Share with: slipgate tunnel share %s", tag))
 		}
 	}

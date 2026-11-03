@@ -191,6 +191,9 @@ func keyPaths(t *config.TunnelConfig) []*string {
 	if t.StunTLS != nil {
 		paths = append(paths, &t.StunTLS.Cert, &t.StunTLS.Key)
 	}
+	if t.VLESS != nil {
+		paths = append(paths, &t.VLESS.SecretFile, &t.VLESS.Cert, &t.VLESS.Key)
+	}
 	return paths
 }
 

@@ -179,6 +179,33 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 			}
 		}
 
+	case config.TransportVLESS:
+		v := tunnel.VLESS
+		if v == nil {
+			return "", fmt.Errorf("vless config is nil")
+		}
+		// VLESS fields arrived in v25-v28; v28 holds the explicit SNI slot
+		fields[FVersion] = "28"
+		id, err := VLESSUserUUID(tunnel, opts.Username, opts.Password)
+		if err != nil {
+			return "", err
+		}
+		// Domain is the WebSocket Host and the TLS SNI; the app dials the
+		// CDN address, which can be swapped for a clean CDN IP in the app.
+		fields[FDomain] = tunnel.Domain
+		fields[FVlessUUID] = id
+		fields[FVlessSecurity] = "none"
+		if v.TLS {
+			fields[FVlessSecurity] = "tls"
+		}
+		fields[FVlessTransport] = "ws"
+		fields[FVlessWsPath] = v.Path
+		fields[FCdnIP] = v.ClientAddress(tunnel.Domain)
+		fields[FCdnPort] = fmt.Sprintf("%d", v.Port)
+		fields[FVlessSNI] = ""
+		// Behind a CDN the config must not reveal the origin's address
+		fields[FSSHHost] = ""
+
 	case config.TransportStunTLS:
 		if tunnel.StunTLS != nil {
 			// StunTLS server accepts raw TLS, WebSocket, HTTP CONNECT, and payload.
@@ -229,8 +256,17 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 		fields[FNaivePass] = b64(password)
 	}
 
-	if fields[FVersion] == "29" {
+	// A VLESS config carries the user's UUID, never their SSH/SOCKS password
+	if tunnel.Transport == config.TransportVLESS {
+		fields[FSOCKSUser] = ""
+		fields[FSOCKSPass] = ""
+	}
+
+	switch fields[FVersion] {
+	case "29":
 		return Encode(fields[:]), nil
+	case "28":
+		return Encode(fields[:V28Fields]), nil
 	}
 	return Encode(fields[:V22Fields]), nil
 }

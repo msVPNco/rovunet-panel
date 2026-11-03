@@ -142,6 +142,19 @@ func showTunnelDetail(out actions.OutputWriter, tunnel *config.TunnelConfig) {
 			out.Print(fmt.Sprintf("  TLS Port  : %d", tunnel.StunTLS.Port))
 			out.Print(fmt.Sprintf("  Cert      : %s", tunnel.StunTLS.Cert))
 		}
+	case config.TransportVLESS:
+		if v := tunnel.VLESS; v != nil {
+			security := "none (plain HTTP)"
+			if v.TLS {
+				security = "tls (self-signed origin cert)"
+			}
+			out.Print(fmt.Sprintf("  Port      : %d", v.Port))
+			out.Print(fmt.Sprintf("  WS Path   : %s", v.Path))
+			out.Print(fmt.Sprintf("  Security  : %s", security))
+			out.Print(fmt.Sprintf("  Behind CDN: %v", v.CDN))
+			out.Print(fmt.Sprintf("  Client to : %s:%d", v.ClientAddress(tunnel.Domain), v.Port))
+			out.Print(fmt.Sprintf("  Blocked   : ports %s", v.ResolvedBlockPorts()))
+		}
 	}
 }
 

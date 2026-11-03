@@ -10,6 +10,7 @@ var TransportOptions = []SelectOption{
 	{Value: "soar", Label: "Soar — multipath DNS tunnel (soar-client compatible)"},
 	{Value: "naive", Label: "NaiveProxy — HTTPS proxy with Caddy"},
 	{Value: "stuntls", Label: "StunTLS — SSH over TLS + WebSocket proxy"},
+	{Value: "vless", Label: "VLESS — VLESS over WebSocket, Cloudflare CDN ready"},
 	{Value: "external", Label: "External — Route DNS to a custom port"},
 	{Value: "direct-ssh", Label: "SSH — Direct SSH tunnel"},
 	{Value: "direct-socks5", Label: "SOCKS5 — Direct SOCKS5 proxy"},

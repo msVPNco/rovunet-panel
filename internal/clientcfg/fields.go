@@ -72,7 +72,7 @@ const (
 	// v23-v24: multi-resolver mode
 	FResolverMode             = 60
 	FRRSpreadCount            = 61
-	// v25-v28: VLESS + SNI fragmentation (defaults only; SlipGate has no VLESS)
+	// v25-v28: VLESS + SNI fragmentation
 	FVlessUUID                = 62
 	FVlessSecurity            = 63
 	FVlessTransport           = 64
@@ -99,6 +99,10 @@ const (
 	// V22Fields is the length of a v22 URI. Transports the v22 app already
 	// understands are still exported as v22, so their URIs don't change.
 	V22Fields = 60
+
+	// V28Fields is the length of a v28 URI, the first with the dedicated
+	// VLESS SNI slot. VLESS configs use it so apps without Soar import them.
+	V28Fields = FVlessSNI + 1
 )
 
 // Client modes for DNSTT transport (server is the same, client behavior differs).
@@ -146,6 +150,11 @@ var TunnelTypeMap = map[string]map[string]map[string]string{
 	config.TransportStunTLS: {
 		"": {
 			config.BackendSSH: "ssh",
+		},
+	},
+	config.TransportVLESS: {
+		"": {
+			config.BackendDirect: "vless",
 		},
 	},
 	config.TransportSSH: {
