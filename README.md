@@ -260,6 +260,9 @@ sudo slipgate tunnel edit --tag myvless --cdn-address 104.16.0.1
 # certificate, the decoy site for probes, no Cloudflare ("-" undoes it)
 sudo slipgate tunnel edit --tag myvless --front naive
 
+# Carry StunTLS (SSH over WebSocket) the same way, for networks that drop its own port
+sudo slipgate tunnel edit --tag stuntls --front naive
+
 # Set MTU for all DNSTT/NoizDNS/VayDNS tunnels at once (rewrites and restarts each service)
 sudo slipgate mtu 1200
 

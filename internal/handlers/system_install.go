@@ -1054,6 +1054,16 @@ func frontVLESSWithNaive(cfg *config.Config, tunnels []config.TunnelConfig, out 
 		return
 	}
 	for i := range tunnels {
+		if s := tunnels[i].StunTLS; tunnels[i].Transport == config.TransportStunTLS && s != nil && s.Front == "" {
+			s.Front = naive
+			if s.Path == "" {
+				s.Path = randomWSPath()
+			}
+			if ct := cfg.GetTunnel(tunnels[i].Tag); ct != nil && ct.StunTLS != nil {
+				ct.StunTLS.Front, ct.StunTLS.Path = s.Front, s.Path
+			}
+			out.Info(fmt.Sprintf("StunTLS %q will be carried by NaiveProxy %q on port 443", tunnels[i].Tag, naive))
+		}
 		v := tunnels[i].VLESS
 		if tunnels[i].Transport != config.TransportVLESS || v == nil || v.Front != "" {
 			continue

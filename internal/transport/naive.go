@@ -81,10 +81,12 @@ func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 	return service.Start(unit.Name)
 }
 
-// vlessRoute is a VLESS WebSocket path Caddy hands to a local VLESS server.
+// vlessRoute is a WebSocket path Caddy hands to a local server: a VLESS
+// server (plain HTTP) or the StunTLS proxy (TLS, self-signed).
 type vlessRoute struct {
 	Path string
 	Port int
+	TLS  bool
 }
 
 // vlessRoutes lists the VLESS tunnels fronted by the NaiveProxy tunnel tag.
@@ -94,6 +96,13 @@ func vlessRoutes(cfg *config.Config, naiveTag string) []vlessRoute {
 		t := &cfg.Tunnels[i]
 		if t.Transport == config.TransportVLESS && t.VLESS != nil && t.VLESS.Front == naiveTag {
 			r = append(r, vlessRoute{Path: t.VLESS.Path, Port: t.VLESS.Port})
+		}
+		if s := t.StunTLS; t.Transport == config.TransportStunTLS && s != nil && s.Front == naiveTag && s.Path != "" {
+			port := s.Port
+			if port == 0 {
+				port = 443
+			}
+			r = append(r, vlessRoute{Path: s.Path, Port: port, TLS: true})
 		}
 	}
 	return r
@@ -152,6 +161,11 @@ func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vles
 func vlessRouteLines(routes []vlessRoute) string {
 	var b strings.Builder
 	for _, r := range routes {
+		if r.TLS {
+			// StunTLS speaks TLS with its own self-signed certificate
+			fmt.Fprintf(&b, "    reverse_proxy %s https://127.0.0.1:%d {\n      flush_interval -1\n      transport http {\n        tls_insecure_skip_verify\n      }\n    }\n", r.Path, r.Port)
+			continue
+		}
 		fmt.Fprintf(&b, "    reverse_proxy %s 127.0.0.1:%d {\n      flush_interval -1\n    }\n", r.Path, r.Port)
 	}
 	return b.String()

@@ -221,6 +221,19 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 			fields[FSSHWsEnabled] = "1"
 			fields[FSSHWsUseTls] = "1"
 			fields[FSSHWsPath] = "/"
+			// Fronted: SSH over WebSocket through NaiveProxy's Caddy, on
+			// its domain and port with its real certificate (and SNI)
+			if f := cfg.StunTLSFront(tunnel); f != nil && tunnel.StunTLS.Path != "" {
+				port := f.Naive.Port
+				if port == 0 {
+					port = 443
+				}
+				fields[FDomain] = f.Domain
+				fields[FSSHHost] = f.Domain
+				fields[FSSHPort] = fmt.Sprintf("%d", port)
+				fields[FSSHWsPath] = tunnel.StunTLS.Path
+				fields[FSSHWsCustomHost] = f.Domain
+			}
 		}
 	}
 

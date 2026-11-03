@@ -137,6 +137,18 @@ func (c *Config) VLESSFront(t *TunnelConfig) *TunnelConfig {
 	return f
 }
 
+// StunTLSFront returns the NaiveProxy tunnel that fronts a StunTLS tunnel.
+func (c *Config) StunTLSFront(t *TunnelConfig) *TunnelConfig {
+	if t == nil || t.StunTLS == nil || t.StunTLS.Front == "" {
+		return nil
+	}
+	f := c.GetTunnel(t.StunTLS.Front)
+	if f == nil || f.Transport != TransportNaive || f.Naive == nil {
+		return nil
+	}
+	return f
+}
+
 func (c *Config) GetTunnel(tag string) *TunnelConfig {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

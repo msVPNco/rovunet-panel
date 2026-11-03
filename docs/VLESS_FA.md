@@ -112,6 +112,12 @@ sudo slipgate tunnel edit --tag vless --front naive
 sudo slipgate users configs
 ```
 
+StunTLS (SSH روی WebSocket) را هم می‌توان همین‌طور پشت Caddy برد؛ برای شبکه‌هایی که پورت خودش (۸۴۴۳) را می‌بندند:
+
+```bash
+sudo slipgate tunnel edit --tag stuntls --front naive
+```
+
 بعد از این کار، دامنه‌ی VLESS در کلودفلر لازم نیست و دامنه‌ی NaiveProxy باید خاکستری (DNS only) بماند. برای برگشت به حالت قبل، به‌جای `naive` مقدار `-` را بدهید. در نصب تازه، اگر NaiveProxy و VLESS را با هم انتخاب کنید، این حالت خودکار فعال می‌شود.
 
 ## ۶. لایه‌ی امنیتی اضافه با SSH (اختیاری)

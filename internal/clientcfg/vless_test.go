@@ -150,3 +150,19 @@ func TestVLESSFrontedByNaive(t *testing.T) {
 		t.Fatalf("slipnet fields: domain=%q cdn=%q port=%q sec=%q", f[FDomain], f[FCdnIP], f[FCdnPort], f[FVlessSecurity])
 	}
 }
+
+func TestStunTLSFrontedByNaive(t *testing.T) {
+	cfg := &config.Config{PublicAddress: "203.0.113.7", Tunnels: []config.TunnelConfig{
+		{Tag: "naive", Transport: config.TransportNaive, Domain: "example.com", Naive: &config.NaiveConfig{Port: 443}},
+		{Tag: "stuntls", Transport: config.TransportStunTLS, Backend: "ssh", StunTLS: &config.StunTLSConfig{Port: 8443, Front: "naive", Path: "/ws/abc"}},
+	}, Backends: []config.BackendConfig{{Tag: "ssh", Type: config.BackendSSH, Address: "127.0.0.1:22"}}}
+	tun := &cfg.Tunnels[1]
+	uri, err := GenerateURI(tun, cfg.GetBackend("ssh"), cfg, URIOptions{Username: "alice", Password: "pw"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := decodeFields(t, uri)
+	if f[FSSHHost] != "example.com" || f[FSSHPort] != "443" || f[FSSHWsPath] != "/ws/abc" || f[FSSHWsCustomHost] != "example.com" || f[FSSHWsUseTls] != "1" {
+		t.Fatalf("host=%q port=%q path=%q customHost=%q tls=%q", f[FSSHHost], f[FSSHPort], f[FSSHWsPath], f[FSSHWsCustomHost], f[FSSHWsUseTls])
+	}
+}

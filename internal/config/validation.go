@@ -324,6 +324,12 @@ func (t *TunnelConfig) validateImported() error {
 		if err := validatePort(s.Port); err != nil {
 			return err
 		}
+		if s.Front != "" && !tagRegex.MatchString(s.Front) {
+			return fmt.Errorf("invalid stuntls front tunnel %q", s.Front)
+		}
+		if s.Path != "" && !wsPathRegex.MatchString(s.Path) {
+			return fmt.Errorf("invalid stuntls path %q", s.Path)
+		}
 	}
 	if v := t.VLESS; v != nil {
 		if err := ValidateVLESS(v); err != nil {

@@ -33,3 +33,19 @@ func TestCaddyfileFrontsVLESSBeforeProxy(t *testing.T) {
 		t.Fatalf("vless route must come before forward_proxy:\n%s", c)
 	}
 }
+
+func TestCaddyfileFrontsStunTLSOverTLS(t *testing.T) {
+	cfg := &config.Config{Tunnels: []config.TunnelConfig{
+		{Tag: "naive", Transport: config.TransportNaive, Domain: "n.example.com", Naive: &config.NaiveConfig{Email: "a@b.c", Port: 443, DecoyURL: "https://www.example.org"}},
+		{Tag: "stuntls", Transport: config.TransportStunTLS, StunTLS: &config.StunTLSConfig{Port: 8443, Front: "naive", Path: "/ws/abc"}},
+	}}
+	c := buildCaddyfile(&cfg.Tunnels[0], nil, vlessRoutes(cfg, "naive"))
+	for _, want := range []string{"reverse_proxy /ws/abc https://127.0.0.1:8443 {", "tls_insecure_skip_verify"} {
+		if !strings.Contains(c, want) {
+			t.Fatalf("missing %q:\n%s", want, c)
+		}
+	}
+	if strings.Index(c, "/ws/abc") > strings.Index(c, "forward_proxy") {
+		t.Fatal("stuntls route must precede forward_proxy")
+	}
+}

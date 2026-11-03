@@ -111,7 +111,7 @@ func removeSingleTunnel(ctx *actions.Context, cfg *config.Config, tag string) {
 
 	// Note VLESS/NaiveProxy fronting before the tunnel leaves the config
 	removed := cfg.GetTunnel(tag)
-	frontedVLESS := removed != nil && removed.VLESS.Fronted()
+	frontedVLESS := removed != nil && (removed.VLESS.Fronted() || removed.StunTLS.Fronted())
 	wasNaive := removed != nil && removed.Transport == config.TransportNaive
 
 	// Remove from config
@@ -125,6 +125,10 @@ func removeSingleTunnel(ctx *actions.Context, cfg *config.Config, tag string) {
 		// VLESS tunnels it fronted go back to serving on their own port
 		for i := range cfg.Tunnels {
 			t := &cfg.Tunnels[i]
+			if t.StunTLS != nil && t.StunTLS.Front == tag {
+				t.StunTLS.Front = ""
+				ctx.Output.Warning(fmt.Sprintf("%q is reached on its own port again: share its configs again", t.Tag))
+			}
 			if t.VLESS != nil && t.VLESS.Front == tag {
 				t.VLESS.Front = ""
 				if err := transport.CreateService(t, cfg); err != nil {

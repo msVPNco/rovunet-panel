@@ -150,7 +150,14 @@ type StunTLSConfig struct {
 	Cert string `json:"cert"` // path to TLS certificate
 	Key  string `json:"key"`  // path to TLS private key
 	Port int    `json:"port"` // listen port (typically 443)
+	// Front is the tag of a NaiveProxy tunnel whose Caddy carries SSH over
+	// WebSocket on Path, on its own port (443) with its real certificate.
+	Front string `json:"front,omitempty"`
+	Path  string `json:"path,omitempty"`
 }
+
+// Fronted reports whether the tunnel is served through a NaiveProxy Caddy.
+func (s *StunTLSConfig) Fronted() bool { return s != nil && s.Front != "" }
 
 // VLESSConfig holds config for the built-in VLESS over WebSocket server.
 //
