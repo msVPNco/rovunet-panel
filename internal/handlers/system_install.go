@@ -857,6 +857,26 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 	}
 	for _, u := range users {
 		for _, t := range tunnels {
+			// VLESS has one UUID per user and no shared backend
+			if t.Transport == config.TransportVLESS {
+				if u.Username == "" {
+					continue
+				}
+				uri, err := clientcfg.GenerateURI(&t, nil, cfg, clientcfg.URIOptions{Username: u.Username, Password: u.Password})
+				if err != nil {
+					continue
+				}
+				link, err := clientcfg.GenerateVLESSLink(&t, u.Username, u.Password)
+				if err != nil {
+					continue
+				}
+				out.Print(fmt.Sprintf("    [%s] %s", t.Tag, u.Username))
+				out.Print(fmt.Sprintf("    %s", uri))
+				out.Print(fmt.Sprintf("    %s", link))
+				out.Print("")
+				printed++
+				continue
+			}
 			for _, v := range naiveAwareVariants(&t) {
 				backendCfg := cfg.GetBackend(v.backend)
 				if backendCfg == nil {
