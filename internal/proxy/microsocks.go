@@ -88,8 +88,12 @@ func setupSOCKSMulti(listenAddr string, users []config.UserConfig) error {
 	if existing := service.ReadUnitFile(socksServiceName); existing != "" &&
 		strings.Contains(existing, "ExecStart="+args+"\n") &&
 		strings.Contains(existing, "User="+svcUser+"\n") {
-		if err := service.Reload(socksServiceName); err == nil {
-			return nil
+		// Reload only a running service; otherwise systemctl prints
+		// "is not active, cannot reload" and we restart below anyway.
+		if st, _ := service.Status(socksServiceName); st == "active" {
+			if err := service.Reload(socksServiceName); err == nil {
+				return nil
+			}
 		}
 		// Fall through to recreate+restart if reload fails (e.g. service not running yet).
 	}

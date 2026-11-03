@@ -208,6 +208,18 @@ func handleSystemInstall(ctx *actions.Context) error {
 		out.Print("")
 		out.Print(fmt.Sprintf("  ── %s ──", displayName))
 
+		// Running install again on a configured server keeps what is there:
+		// a second tunnel of the same kind would clash on its domain or port.
+		if existing := tunnelTagsOf(cfg, selectedTransport); len(existing) > 0 {
+			out.Info(fmt.Sprintf("Already installed (%s), kept as is; add another with 'slipgate tunnel add'", strings.Join(existing, ", ")))
+			if knownParent == "" {
+				if t := cfg.GetTunnel(existing[0]); t != nil && t.Domain != "" {
+					knownParent = baseDomain(t.Domain)
+				}
+			}
+			continue
+		}
+
 		// Direct transports (SSH, SOCKS5, StunTLS) have no domain and an implicit backend
 		if selectedTransport == config.TransportSSH || selectedTransport == config.TransportSOCKS || selectedTransport == config.TransportStunTLS {
 			implicitBackend := config.BackendSSH
@@ -589,13 +601,15 @@ func handleSystemInstall(ctx *actions.Context) error {
 		}
 	}
 
-	if len(allTunnels) == 0 {
+	if len(cfg.Tunnels) == 0 {
 		out.Warning("No tunnels created.")
 		return nil
 	}
 
-	cfg.Route.Active = allTunnels[0].Tag
-	cfg.Route.Default = allTunnels[0].Tag
+	if len(allTunnels) > 0 && cfg.Route.Active == "" {
+		cfg.Route.Active = allTunnels[0].Tag
+		cfg.Route.Default = allTunnels[0].Tag
+	}
 	if err := cfg.Save(); err != nil {
 		return actions.NewError(actions.SystemInstall, "failed to save config", err)
 	}
@@ -818,8 +832,15 @@ func handleSystemInstall(ctx *actions.Context) error {
 	out.Print("")
 	out.Print(fmt.Sprintf("    Transports: %d installed", len(transports)))
 
-	for _, t := range allTunnels {
-		out.Print(fmt.Sprintf("    Tunnel    : %s (backend: %s)", t.Tag, t.Backend))
+	// The summary covers every tunnel on the server, including ones kept
+	// from an earlier install, so the configs printed below are complete.
+	summary := append([]config.TunnelConfig(nil), cfg.Tunnels...)
+	for _, t := range summary {
+		state := ""
+		if !containsTag(allTunnels, t.Tag) {
+			state = ", kept"
+		}
+		out.Print(fmt.Sprintf("    Tunnel    : %s (backend: %s%s)", t.Tag, t.Backend, state))
 	}
 
 	if len(allTunnels) > 0 && allTunnels[0].DNSTT != nil {
@@ -833,7 +854,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 	out.Print("")
 	out.Print("    DNS Records Required:")
 	shownRecords := make(map[string]bool)
-	for _, t := range allTunnels {
+	for _, t := range summary {
 		// Skip direct transports (SSH/SOCKS5) and any tunnel without a
 		// domain (e.g. stuntls) — those don't need DNS records at all.
 		if t.IsDirectTransport() || t.Domain == "" {
@@ -872,11 +893,11 @@ func handleSystemInstall(ctx *actions.Context) error {
 	// Show slipnet:// configs
 	out.Print("    Client Configs:")
 	out.Print("")
-	printClientConfigs(cfg, out, allTunnels)
+	printClientConfigs(cfg, out, summary)
 
-	for i := range allTunnels {
-		if allTunnels[i].VLESS != nil {
-			printVLESSSetup(out, cfg, &allTunnels[i])
+	for i := range summary {
+		if summary[i].VLESS != nil {
+			printVLESSSetup(out, cfg, &summary[i])
 		}
 	}
 
@@ -1077,4 +1098,24 @@ func frontVLESSWithNaive(cfg *config.Config, tunnels []config.TunnelConfig, out 
 	if err := cfg.Save(); err != nil {
 		out.Warning("Failed to save config: " + err.Error())
 	}
+}
+
+// tunnelTagsOf lists the tags of existing tunnels using a transport.
+func tunnelTagsOf(cfg *config.Config, transport string) []string {
+	var tags []string
+	for _, t := range cfg.Tunnels {
+		if t.Transport == transport {
+			tags = append(tags, t.Tag)
+		}
+	}
+	return tags
+}
+
+func containsTag(tunnels []config.TunnelConfig, tag string) bool {
+	for _, t := range tunnels {
+		if t.Tag == tag {
+			return true
+		}
+	}
+	return false
 }

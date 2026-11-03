@@ -2,6 +2,13 @@
 
 Changes in this fork. Each release's notes come from its section here.
 
+## v1.6.8-vless.9
+
+### Fixes
+
+- **Running `slipgate install` again** on a configured server keeps the tunnels that are there instead of adding clashing copies (e.g. a second StunTLS on the same port), and the summary prints the configs of **every** tunnel, not only the new ones.
+- No more "slipgate-socks5.service is not active, cannot reload" during install: a stopped SOCKS5 service is restarted instead of reloaded.
+
 ## v1.6.8-vless.8
 
 ### Highlights
