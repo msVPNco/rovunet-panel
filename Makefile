@@ -10,7 +10,10 @@ LDFLAGS  = -X github.com/anonvector/slipgate/internal/version.Version=$(VERSION)
 # so dev builds silently dropped the ReleaseTag ldflag and the resulting
 # binary reported itself as stable.
 
-.PHONY: build clean test install release build-dev
+.PHONY: build clean test install release build-dev print-version
+
+print-version:
+	@echo $(VERSION)
 
 build:
 	go build -trimpath -ldflags "$(LDFLAGS)" -o slipgate .
