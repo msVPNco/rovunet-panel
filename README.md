@@ -379,7 +379,7 @@ sudo slipgate tunnel share mytunnel
 
 This outputs a `slipnet://` URI that can be scanned or imported into the SlipNet Android app. For DNSTT tunnels, you'll be asked to choose between a DNSTT or NoizDNS client profile — both connect to the same server, but NoizDNS profiles enable DPI evasion on the client side.
 
-For VLESS tunnels it asks which user's config to show (or pass `--user <name>`) and prints both a `slipnet://` URI and a standard `vless://` link for other clients. In SlipNet you can replace the CDN address with a clean Cloudflare IP at any time.
+For VLESS tunnels it asks which user's config to show (or pass `--user <name>`) and prints both a `slipnet://` URI and a standard `vless://` link for other clients. In SlipNet you can replace the CDN address with a clean Cloudflare IP at any time. A step-by-step guide in Persian, including the Cloudflare settings, is in [docs/VLESS_FA.md](docs/VLESS_FA.md).
 
 To print every config at once, for all tunnels and users (also in the menu under **Users → Show all configs**):
 
