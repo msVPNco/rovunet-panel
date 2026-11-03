@@ -430,8 +430,14 @@ func (s *VLESSServer) handleSession(ws *wsConn, early []byte, remote string) {
 		r = io.MultiReader(bytes.NewReader(early), ws)
 	}
 
+	// The whole header must arrive in time, however it is split into
+	// frames, so a slow client can't hold the connection open.
 	ws.readTimeout = vlessHandshakeTimeout
+	handshakeTimer := time.AfterFunc(vlessHandshakeTimeout, func() { _ = ws.conn.Close() })
 	req, err := s.readVLESSRequest(r)
+	if !handshakeTimer.Stop() && err == nil {
+		err = errors.New("vless: handshake timed out")
+	}
 	if err != nil {
 		if errors.Is(err, errVLESSAuth) {
 			s.logf("vless: %s: rejected unknown user id", remote)

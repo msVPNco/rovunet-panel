@@ -507,6 +507,34 @@ func TestVLESSFrameTooLarge(t *testing.T) {
 	}
 }
 
+// TestVLESSHandshakeDeadline: dripping the header in tiny frames doesn't
+// keep a connection past the handshake timeout.
+func TestVLESSHandshakeDeadline(t *testing.T) {
+	if testing.Short() {
+		t.Skip("waits for the handshake timeout")
+	}
+	e := startVLESS(t, false, true, nil)
+	c, _ := dialWS(t, e, testWSPath, "")
+	c.conn.SetDeadline(time.Now().Add(vlessHandshakeTimeout + 10*time.Second))
+	start := time.Now()
+	go func() {
+		for i := 0; i < 17; i++ { // never completes the 18-byte header
+			if c.writeFrame(0x2, []byte{0}) != nil {
+				return
+			}
+			time.Sleep(time.Second)
+		}
+	}()
+	for {
+		if _, _, err := c.readFrame(); err != nil {
+			break
+		}
+	}
+	if d := time.Since(start); d > vlessHandshakeTimeout+5*time.Second {
+		t.Fatalf("connection held for %v", d)
+	}
+}
+
 func TestParsePortList(t *testing.T) {
 	if p, err := ParsePortList("25, 465"); err != nil || len(p) != 2 || p[1] != 465 {
 		t.Fatalf("got %v %v", p, err)
