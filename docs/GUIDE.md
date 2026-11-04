@@ -98,9 +98,12 @@ sudo slipgate install --bin-dir /tmp/slipgate
 **Switch a server running SlipGate to Rovunet Panel** (config, tunnels and users are kept; use `arm64` on ARM servers):
 
 ```bash
-sudo curl -fsSL -o /usr/local/bin/slipgate https://github.com/msVPNco/rovunet-panel/releases/latest/download/slipgate-linux-amd64
-sudo chmod +x /usr/local/bin/slipgate
+# Download beside the running binary, then swap it in (writing over a running
+# binary fails with "Text file busy" / curl error 23)
+curl -fsSL -o /tmp/slipgate https://github.com/msVPNco/rovunet-panel/releases/latest/download/slipgate-linux-amd64
+sudo install -m 755 /tmp/slipgate /usr/local/bin/slipgate
 sudo slipgate post-update      # refreshes transport binaries and regenerates services
+slipgate --version
 ```
 
 From then on `slipgate update` updates from Rovunet Panel.

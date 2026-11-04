@@ -43,9 +43,10 @@ curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.
 </div>
 
 ```bash
-sudo curl -fsSL -o /usr/local/bin/slipgate https://github.com/msVPNco/rovunet-panel/releases/latest/download/slipgate-linux-amd64
-sudo chmod +x /usr/local/bin/slipgate
+curl -fsSL -o /tmp/slipgate https://github.com/msVPNco/rovunet-panel/releases/latest/download/slipgate-linux-amd64
+sudo install -m 755 /tmp/slipgate /usr/local/bin/slipgate
 sudo slipgate post-update
+slipgate --version
 ```
 
 <div dir="rtl">
