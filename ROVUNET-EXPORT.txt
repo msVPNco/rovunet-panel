@@ -1,0 +1,13 @@
+Rovunet export update
+
+export-clients --user USER --format rovunet
+
+Default native exports now use rovunet:// v32 with an explicit server/user
+collection ID and readable collection name. Standard VLESS links remain standard
+in auto/standard mode. Explicit --format veyra remains a legacy compatibility
+alias, and --format legacy keeps slipnet://.
+
+No servers were deployed or reconfigured by this change. Import one user's
+output together in the Android app. Give the collection a clear location label.
+If importing multiple native account groups at once, their group separation is
+preserved. Importing a batch again does not silently merge existing groups.

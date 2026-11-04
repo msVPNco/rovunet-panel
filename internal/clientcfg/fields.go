@@ -47,10 +47,10 @@ const (
 	FDNSPayloadSize     = 39 // integer (v18)
 	FSOCKS5ServerPort   = 40 // integer, default 1080 (v18)
 	// v19: VayDNS fields (41-44)
-	FVayDNSDnsttCompat  = 41
-	FVayDNSRecordType   = 42
-	FVayDNSMaxQnameLen  = 43
-	FVayDNSRps          = 44
+	FVayDNSDnsttCompat = 41
+	FVayDNSRecordType  = 42
+	FVayDNSMaxQnameLen = 43
+	FVayDNSRps         = 44
 	// v20: VayDNS advanced (45-49)
 	FVayDNSIdleTimeout  = 45
 	FVayDNSKeepalive    = 46
@@ -58,43 +58,43 @@ const (
 	FVayDNSMaxNumLabels = 48
 	FVayDNSClientIdSize = 49
 	// v21: SSH over TLS + HTTP proxy + WebSocket (50-58)
-	FSSHTlsEnabled            = 50
-	FSSHTlsSni                = 51
-	FSSHHttpProxyHost         = 52
-	FSSHHttpProxyPort         = 53
-	FSSHHttpProxyCustomHost   = 54
-	FSSHWsEnabled             = 55
-	FSSHWsPath                = 56
-	FSSHWsUseTls              = 57
-	FSSHWsCustomHost          = 58
+	FSSHTlsEnabled          = 50
+	FSSHTlsSni              = 51
+	FSSHHttpProxyHost       = 52
+	FSSHHttpProxyPort       = 53
+	FSSHHttpProxyCustomHost = 54
+	FSSHWsEnabled           = 55
+	FSSHWsPath              = 56
+	FSSHWsUseTls            = 57
+	FSSHWsCustomHost        = 58
 	// v22: SSH payload (raw prefix for DPI bypass)
-	FSSHPayload               = 59
+	FSSHPayload = 59
 	// v23-v24: multi-resolver mode
-	FResolverMode             = 60
-	FRRSpreadCount            = 61
+	FResolverMode  = 60
+	FRRSpreadCount = 61
 	// v25-v28: VLESS + SNI fragmentation
-	FVlessUUID                = 62
-	FVlessSecurity            = 63
-	FVlessTransport           = 64
-	FVlessWsPath              = 65
-	FCdnIP                    = 66
-	FCdnPort                  = 67
-	FSniFragmentEnabled       = 68
-	FSniFragmentStrategy      = 69
-	FSniFragmentDelayMs       = 70
-	FLegacySni                = 71
-	FCHPadding                = 72
-	FWSHeaderObfuscation      = 73
-	FWSPadding                = 74
-	FSniSpoofTTL              = 75
-	FFakeDecoyHost            = 76
-	FTCPMaxSeg                = 77
-	FVlessSNI                 = 78
+	FVlessUUID           = 62
+	FVlessSecurity       = 63
+	FVlessTransport      = 64
+	FVlessWsPath         = 65
+	FCdnIP               = 66
+	FCdnPort             = 67
+	FSniFragmentEnabled  = 68
+	FSniFragmentStrategy = 69
+	FSniFragmentDelayMs  = 70
+	FLegacySni           = 71
+	FCHPadding           = 72
+	FWSHeaderObfuscation = 73
+	FWSPadding           = 74
+	FSniSpoofTTL         = 75
+	FFakeDecoyHost       = 76
+	FTCPMaxSeg           = 77
+	FVlessSNI            = 78
 	// v29: Soar
-	FSoarDiscovery            = 79
-	FSoarCountry              = 80
-	FSoarTCPMode              = 81
-	TotalFields               = 82
+	FSoarDiscovery = 79
+	FSoarCountry   = 80
+	FSoarTCPMode   = 81
+	TotalFields    = 82
 
 	// V22Fields is the length of a v22 URI. Transports the v22 app already
 	// understands are still exported as v22, so their URIs don't change.
@@ -185,3 +185,13 @@ func GetTunnelType(transport, backend, clientMode string) string {
 	}
 	return "unknown"
 }
+
+// Native v30-v32 extensions. TotalFields remains the legacy v29 wire length.
+const (
+	FSoarDiscoveryList   = 82
+	FSoarDiscoveryCustom = 83
+	FCoreLink            = 84
+	FCollectionID        = 85
+	FCollectionName      = 86
+	TotalFieldsV32       = 87
+)

@@ -439,7 +439,7 @@ func showUserConfigs(cfg *config.Config, username, password string, out actions.
 				Username:   username,
 				Password:   password,
 			}
-			uri, err := clientcfg.GenerateURI(&t, backend, cfg, opts)
+			uri, err := clientcfg.GeneratePortableURI(&t, backend, cfg, opts, "rovunet")
 			if err != nil {
 				continue
 			}
@@ -448,9 +448,9 @@ func showUserConfigs(cfg *config.Config, username, password string, out actions.
 				label = strings.ReplaceAll(label, "dnstt", "noizdns")
 			}
 			if soarDirect {
-				label += " (no login, same for every user)"
+				out.Print("  # Soar: no login, same for every user")
 			}
-			out.Print(fmt.Sprintf("  [%s]", label))
+			out.Print(fmt.Sprintf("  [%s] user=%s", label, username))
 			out.Print(fmt.Sprintf("  %s", uri))
 			out.Print("")
 		}

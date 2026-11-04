@@ -50,8 +50,8 @@ func TestPrintClientConfigs(t *testing.T) {
 	if n := printClientConfigs(cfg, out, configsTestTunnels()); n != 7 {
 		t.Errorf("printed %d configs, want 7", n)
 	}
-	if n := out.count("slipnet://"); n != 7 {
-		t.Errorf("%d slipnet:// lines, want 7:\n%s", n, strings.Join(out.lines, "\n"))
+	if n := out.count("rovunet://"); n != 7 {
+		t.Errorf("%d rovunet:// lines, want 7:\n%s", n, strings.Join(out.lines, "\n"))
 	}
 	for _, label := range []string{"[soar] (no login)", "[soar-ssh] alice", "[soar-ssh] bob", "[dnstt] bob", "[noizdns] alice"} {
 		if out.count(label) != 1 {
@@ -74,7 +74,7 @@ func TestPrintClientConfigsNoUsers(t *testing.T) {
 }
 
 // TestPrintClientConfigsVLESS: VLESS has no backend config, yet every user
-// gets a slipnet:// and a vless:// config; without users there is none.
+// gets a rovunet:// and a vless:// config; without users there is none.
 func TestPrintClientConfigsVLESS(t *testing.T) {
 	secret := filepath.Join(t.TempDir(), "vless.secret")
 	if err := keys.GenerateVLESSSecret(secret); err != nil {
@@ -92,7 +92,7 @@ func TestPrintClientConfigsVLESS(t *testing.T) {
 	if n := printClientConfigs(cfg, out, tunnels); n != 2 {
 		t.Errorf("printed %d configs, want 2", n)
 	}
-	if out.count("slipnet://") != 2 || out.count("vless://") != 2 || out.count("[vless] alice") != 1 || out.count("[vless] bob") != 1 {
+	if out.count("rovunet://") != 2 || out.count("vless://") != 2 || out.count("[vless] alice") != 1 || out.count("[vless] bob") != 1 {
 		t.Errorf("got:\n%s", strings.Join(out.lines, "\n"))
 	}
 

@@ -433,7 +433,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 			}
 		}
 
-			for bIdx, b := range tunnelBackends {
+		for bIdx, b := range tunnelBackends {
 			// NaiveProxy is a single Caddy forward-proxy — one instance on :443
 			// serves both SOCKS and SSH clients (client picks via CONNECT target).
 			// Creating a second tunnel would EADDRINUSE-loop both services.
@@ -905,7 +905,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 	out.Print("")
 	out.Print("  Next steps:")
 	out.Print("    - Set up DNS records above with your domain registrar")
-	out.Print("    - Import the slipnet:// config into the SlipNet app")
+	out.Print("    - Import the rovunet:// or standard vless:// config into Rovunet")
 	out.Print("    - Add more tunnels: sudo slipgate tunnel add")
 	out.Print("    - Add more users:   sudo slipgate users")
 	out.Print("")
@@ -956,7 +956,7 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 				if u.Username == "" {
 					continue
 				}
-				uri, err := clientcfg.GenerateURI(&t, nil, cfg, clientcfg.URIOptions{Username: u.Username, Password: u.Password})
+				uri, err := clientcfg.GeneratePortableURI(&t, nil, cfg, clientcfg.URIOptions{Username: u.Username, Password: u.Password}, "rovunet")
 				if err != nil {
 					continue
 				}
@@ -991,7 +991,7 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 						Username:   u.Username,
 						Password:   u.Password,
 					}
-					uri, err := clientcfg.GenerateURI(&variantTunnel, backendCfg, cfg, opts)
+					uri, err := clientcfg.GeneratePortableURI(&variantTunnel, backendCfg, cfg, opts, "rovunet")
 					if err != nil {
 						continue
 					}
@@ -1027,7 +1027,7 @@ func printSoarLinks(cfg *config.Config, out actions.OutputWriter, tunnels []conf
 			continue
 		}
 		out.Print(fmt.Sprintf("    [%s] (no login)", t.Tag))
-		if uri, err := clientcfg.GenerateURI(t, nil, cfg, clientcfg.URIOptions{}); err == nil {
+		if uri, err := clientcfg.GeneratePortableURI(t, nil, cfg, clientcfg.URIOptions{}, "rovunet"); err == nil {
 			out.Print(fmt.Sprintf("    %s", uri))
 			printed++
 		}

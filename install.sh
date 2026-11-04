@@ -3,7 +3,7 @@
 set -e
 
 # Releases carrying the slipgate binary (this fork). Override with SLIPGATE_REPO=owner/repo.
-REPO="${SLIPGATE_REPO:-msVPNco/slipgate}"
+REPO="${SLIPGATE_REPO:-msVPNco/rovunet-panel}"
 INSTALL_DIR="/usr/local/bin"
 
 # Colors

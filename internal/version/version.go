@@ -10,7 +10,7 @@ var (
 	// Repo is the GitHub repository whose releases carry the slipgate
 	// binary: install.sh and `slipgate update` download from it, so a fork's
 	// builds keep updating from the fork. Override with -ldflags -X.
-	Repo = "msVPNco/slipgate"
+	Repo = "msVPNco/rovunet-panel"
 )
 
 // UpstreamRepo builds the transport binaries (dnstt-server, caddy-naive, ...),

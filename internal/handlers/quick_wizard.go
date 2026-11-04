@@ -673,7 +673,7 @@ func handleQuickWizard(ctx *actions.Context) error {
 					Username:   username,
 					Password:   password,
 				}
-				uri, uriErr := clientcfg.GenerateURI(&variantTunnel, backendCfg, cfg, opts)
+				uri, uriErr := clientcfg.GeneratePortableURI(&variantTunnel, backendCfg, cfg, opts, "rovunet")
 				if uriErr != nil {
 					continue
 				}

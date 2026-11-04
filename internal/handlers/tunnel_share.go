@@ -25,7 +25,7 @@ func handleTunnelShare(ctx *actions.Context) error {
 
 	// Direct-backend Soar has no login: one config serves everyone
 	if tunnel.Transport == config.TransportSoar && tunnel.Backend == config.BackendDirect {
-		uri, err := clientcfg.GenerateURI(tunnel, nil, cfg, clientcfg.URIOptions{})
+		uri, err := clientcfg.GeneratePortableURI(tunnel, nil, cfg, clientcfg.URIOptions{}, "rovunet")
 		if err != nil {
 			return actions.NewError(actions.TunnelShare, "failed to generate URI", err)
 		}
@@ -78,7 +78,7 @@ func handleTunnelShare(ctx *actions.Context) error {
 		}
 	}
 
-	uri, err := clientcfg.GenerateURI(tunnel, backend, cfg, opts)
+	uri, err := clientcfg.GeneratePortableURI(tunnel, backend, cfg, opts, "rovunet")
 	if err != nil {
 		return actions.NewError(actions.TunnelShare, "failed to generate URI", err)
 	}

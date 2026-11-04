@@ -1,6 +1,6 @@
 <div dir="rtl">
 
-# راهنمای فارسی SlipGate (نسخه‌ی msVPNco)
+# راهنمای فارسی SlipGate (Rovunet Panel)
 
 این نسخه از SlipGate همه‌ی پروتکل‌های نسخه‌ی اصلی را دارد و چند چیز به آن اضافه یا در آن اصلاح شده است:
 
@@ -29,7 +29,7 @@
 </div>
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/slipgate/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.sh | sudo bash
 ```
 
 <div dir="rtl">
@@ -43,7 +43,7 @@ curl -fsSL https://raw.githubusercontent.com/msVPNco/slipgate/main/install.sh | 
 </div>
 
 ```bash
-sudo curl -fsSL -o /usr/local/bin/slipgate https://github.com/msVPNco/slipgate/releases/latest/download/slipgate-linux-amd64
+sudo curl -fsSL -o /usr/local/bin/slipgate https://github.com/msVPNco/rovunet-panel/releases/latest/download/slipgate-linux-amd64
 sudo chmod +x /usr/local/bin/slipgate
 sudo slipgate post-update
 ```

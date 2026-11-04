@@ -249,7 +249,7 @@ func handleVLESSShare(ctx *actions.Context, cfg *config.Config, tunnel *config.T
 }
 
 func printVLESSLinks(out actions.OutputWriter, cfg *config.Config, tunnel *config.TunnelConfig, username, password string) {
-	uri, err := clientcfg.GenerateURI(tunnel, nil, cfg, clientcfg.URIOptions{Username: username, Password: password})
+	uri, err := clientcfg.GeneratePortableURI(tunnel, nil, cfg, clientcfg.URIOptions{Username: username, Password: password}, "rovunet")
 	if err != nil {
 		out.Warning(fmt.Sprintf("[%s] %v", tunnel.Tag, err))
 		return
@@ -259,10 +259,10 @@ func printVLESSLinks(out actions.OutputWriter, cfg *config.Config, tunnel *confi
 		out.Warning(fmt.Sprintf("[%s] %v", tunnel.Tag, err))
 		return
 	}
-	out.Print(fmt.Sprintf("  [%s] SlipNet", tunnel.Tag))
+	out.Print(fmt.Sprintf("  [%s] user=%s", tunnel.Tag, username))
 	out.Print("  " + uri)
 	out.Print("")
-	out.Print(fmt.Sprintf("  [%s] vless:// (v2rayNG, Hiddify, NekoBox, Streisand…)", tunnel.Tag))
+	out.Print(fmt.Sprintf("  [%s] user=%s", tunnel.Tag, username))
 	out.Print("  " + link)
 	out.Print("")
 }

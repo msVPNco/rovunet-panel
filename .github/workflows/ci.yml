@@ -16,6 +16,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Build pinned validation core
+        run: |
+          git clone https://github.com/XTLS/Xray-core.git "$RUNNER_TEMP/xray-src"
+          git -C "$RUNNER_TEMP/xray-src" checkout 63ca2e0c1d31b89f67700c33842431f541fedd25
+          cd "$RUNNER_TEMP/xray-src"
+          go build -ldflags='-checklinkname=0' -o "$RUNNER_TEMP/xray" ./main
+          echo "XRAY=$RUNNER_TEMP/xray" >> "$GITHUB_ENV"
       - name: Vet
         run: go vet ./...
       - name: Test
