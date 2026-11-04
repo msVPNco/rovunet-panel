@@ -23,7 +23,7 @@ func handleSystemDiag(ctx *actions.Context) error {
 	out := ctx.Output
 
 	out.Print("")
-	out.Print("  SlipGate Diagnostics")
+	out.Print("  Rovunet Panel Diagnostics")
 	out.Print("  " + version.String())
 	out.Print("  ────────────────────────────────────────")
 

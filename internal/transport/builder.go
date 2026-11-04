@@ -43,7 +43,7 @@ func createDNSTTService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 
 	unit := &service.Unit{
 		Name:        service.TunnelServiceName(tunnel.Tag),
-		Description: fmt.Sprintf("SlipGate tunnel: %s (%s/%s)", tunnel.Tag, tunnel.Transport, tunnel.Backend),
+		Description: fmt.Sprintf("Rovunet Panel tunnel: %s (%s/%s)", tunnel.Tag, tunnel.Transport, tunnel.Backend),
 		ExecStart:   execStart,
 		User:        "root",
 		Group:       config.SystemGroup,
@@ -65,7 +65,7 @@ func createSlipstreamService(tunnel *config.TunnelConfig, cfg *config.Config) er
 
 	unit := &service.Unit{
 		Name:        service.TunnelServiceName(tunnel.Tag),
-		Description: fmt.Sprintf("SlipGate tunnel: %s (%s/%s)", tunnel.Tag, tunnel.Transport, tunnel.Backend),
+		Description: fmt.Sprintf("Rovunet Panel tunnel: %s (%s/%s)", tunnel.Tag, tunnel.Transport, tunnel.Backend),
 		ExecStart:   execStart,
 		User:        "root",
 		Group:       config.SystemGroup,

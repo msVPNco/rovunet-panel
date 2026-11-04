@@ -44,7 +44,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 	case "configs":
 		out.Print("")
 		if printClientConfigs(cfg, out, cfg.Tunnels) == 0 {
-			out.Info("No tunnels with SlipNet configs. Run 'slipgate tunnel add' to create one.")
+			out.Info("No tunnels with app configs. Run 'slipgate tunnel add' to create one.")
 		}
 
 	case "list":

@@ -206,7 +206,7 @@ func drawDashboard(cpuH, ramH, rxH, txH []float64,
 	// Header
 	now := time.Now().Format("2006-01-02 15:04:05")
 	b.WriteString("\r\n")
-	b.WriteString(fmt.Sprintf("  %s%sSlipGate%s  %s%s%s    %s%s%s\r\n",
+	b.WriteString(fmt.Sprintf("  %s%sRovunet Panel%s  %s%s%s    %s%s%s\r\n",
 		cHeader, cBold, cReset, cDim, version.String(), cReset, cDim, now, cReset))
 	b.WriteString(fmt.Sprintf("  %s────────────────────────────────────────────────────────────%s\r\n\r\n",
 		cDivider, cReset))

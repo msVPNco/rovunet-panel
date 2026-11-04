@@ -18,7 +18,7 @@ func createVLESSService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 
 	unit := &service.Unit{
 		Name:        service.TunnelServiceName(tunnel.Tag),
-		Description: fmt.Sprintf("SlipGate VLESS: %s", tunnel.Tag),
+		Description: fmt.Sprintf("Rovunet Panel VLESS: %s", tunnel.Tag),
 		ExecStart:   execStart,
 		// SIGHUP reloads the users without dropping open streams
 		ExecReload: "/bin/kill -HUP $MAINPID",

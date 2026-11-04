@@ -220,7 +220,7 @@ func printVLESSSetup(out actions.OutputWriter, cfg *config.Config, t *config.Tun
 	} else {
 		out.Info("Point " + t.Domain + " at this server (A record; at Cloudflare: DNS only, grey cloud)")
 	}
-	out.Print("    In SlipNet you can replace the CDN address with a clean Cloudflare IP at any time")
+	out.Print("    In the Rovunet app you can replace the CDN address with a clean Cloudflare IP at any time")
 }
 
 // handleVLESSShare prints a user's SlipNet and standard vless:// links.

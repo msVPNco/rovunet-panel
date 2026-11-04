@@ -34,7 +34,7 @@ func createStunTLSService(tunnel *config.TunnelConfig, cfg *config.Config) error
 
 	unit := &service.Unit{
 		Name:        service.TunnelServiceName(tunnel.Tag),
-		Description: fmt.Sprintf("SlipGate StunTLS: %s", tunnel.Tag),
+		Description: fmt.Sprintf("Rovunet Panel StunTLS: %s", tunnel.Tag),
 		ExecStart: fmt.Sprintf("%s stuntls serve --addr 0.0.0.0 --port %d --ssh %s --cert %s --key %s",
 			execPath, port, sshAddr, tunnel.StunTLS.Cert, tunnel.StunTLS.Key),
 		User:    "root",

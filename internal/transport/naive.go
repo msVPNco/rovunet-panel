@@ -60,7 +60,7 @@ func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 
 	unit := &service.Unit{
 		Name:        service.TunnelServiceName(tunnel.Tag),
-		Description: fmt.Sprintf("SlipGate NaiveProxy: %s", tunnel.Tag),
+		Description: fmt.Sprintf("Rovunet Panel NaiveProxy: %s", tunnel.Tag),
 		ExecStart:   fmt.Sprintf("%s run --config %s --adapter caddyfile", binPath, caddyfilePath),
 		User:        svcUser,
 		Group:       svcGroup,

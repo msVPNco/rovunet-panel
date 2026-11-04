@@ -1,18 +1,18 @@
-# SlipGate — Complete Operator Guide
+# Rovunet Panel — Complete Operator Guide
 
-> The official server for the [SlipNet](https://github.com/anonvector/SlipNet) Android app.
+> Server panel for the [Rovunet](https://github.com/msVPNco/rovunet-android) Android app.
 > Source: https://github.com/anonvector/slipgate
-> SlipNet channel: [@SlipNet_app](https://t.me/SlipNet_app)
+> Telegram group: [@RovunetVPN](https://t.me/RovunetVPN)
 
 ---
 
 ## Table of Contents
 
-1. What SlipGate is
+1. What Rovunet Panel is
 2. What you need before starting
 3. Picking a VPS
 4. Setting up your domain & DNS records
-5. Installing SlipGate
+5. Installing Rovunet Panel
 6. The interactive menu vs. CLI
 7. Adding your first tunnel
 8. Tunnel transports — when to use which
@@ -21,7 +21,7 @@
 11. Running multiple tunnels at once
 12. WARP outbound (optional)
 13. Daily operations: stats, logs, diagnostics
-14. Updating SlipGate
+14. Updating Rovunet Panel
 15. Backup & migration
 16. A note on VLESS
 17. Troubleshooting
@@ -30,13 +30,13 @@
 
 ---
 
-## 1. What SlipGate is
+## 1. What Rovunet Panel is
 
-SlipGate is a one-binary tunnel manager for Linux servers. You run it on your VPS, and it sets up the server side of every protocol SlipNet supports — DNSTT, NoizDNS, VayDNS, Slipstream, NaiveProxy, and StunTLS — with `systemd` services, a DNS router, user management, a live dashboard, and `slipnet://` URI generation for one-tap import in the SlipNet app.
+Rovunet Panel is a one-binary tunnel manager for Linux servers. You run it on your VPS, and it sets up the server side of every protocol Rovunet supports — DNSTT, NoizDNS, VayDNS, Slipstream, NaiveProxy, and StunTLS — with `systemd` services, a DNS router, user management, a live dashboard, and `slipnet://` URI generation for one-tap import in the Rovunet app.
 
 In practice: **one command** turns a fresh Ubuntu/Debian VPS into a full anti-censorship endpoint that your phone (and your friends' phones) can connect to.
 
-What SlipGate does for you:
+What Rovunet Panel does for you:
 - Installs the right transport binaries (`dnstt-server`, `slipstream-server`, `vaydns-server`, `caddy-naive`).
 - Generates Curve25519 keys per tunnel.
 - Configures `systemd` units that auto-start on boot.
@@ -83,7 +83,7 @@ The "right" VPS depends on where your users are.
 
 ## 4. Setting up your domain & DNS records
 
-You need one domain (e.g., `example.com`) that you control. Add these records before installing SlipGate:
+You need one domain (e.g., `example.com`) that you control. Add these records before installing Rovunet Panel:
 
 ```
 A    ns.example.com   →  <server IP>
@@ -114,7 +114,7 @@ dig +short A ns.example.com
 
 ---
 
-## 5. Installing SlipGate
+## 5. Installing Rovunet Panel
 
 SSH into your server as root, then run the installer:
 
@@ -125,7 +125,7 @@ curl -fsSL https://raw.githubusercontent.com/anonvector/slipgate/main/install.sh
 The script:
 - Detects your distro.
 - Installs system packages it needs.
-- Downloads the SlipGate binary plus `dnstt-server`, `slipstream-server`, `vaydns-server`, and `caddy-naive`.
+- Downloads the Rovunet Panel binary plus `dnstt-server`, `slipstream-server`, `vaydns-server`, and `caddy-naive`.
 - Installs systemd services (`slipgate-dnsrouter`, `slipgate-socks5`).
 - Sets up the firewall rules where applicable.
 
@@ -145,7 +145,7 @@ sudo slipgate
 
 ## 6. The interactive menu vs. CLI
 
-SlipGate has two interfaces:
+Rovunet Panel has two interfaces:
 
 **Interactive TUI** — `sudo slipgate` with no arguments. A friendly menu that walks you through tunnels, users, stats, diagnostics, etc. Best for first-time setup and exploration.
 
@@ -220,7 +220,7 @@ sudo slipgate diag
 
 ## 8. Tunnel transports — when to use which
 
-SlipGate manages six transports. Pick based on the network your users have to escape from.
+Rovunet Panel manages six transports. Pick based on the network your users have to escape from.
 
 | Transport | Port | What it is | Use when |
 |-----------|------|------------|----------|
@@ -274,9 +274,9 @@ sudo slipgate tunnel add --transport external --tag my-proto \
 
 ## 9. Adding & managing users
 
-Users in SlipGate are **global**. The same `username:password` authenticates against every tunnel, regardless of transport. The protocol is a property of the **tunnel**, not the user.
+Users in Rovunet Panel are **global**. The same `username:password` authenticates against every tunnel, regardless of transport. The protocol is a property of the **tunnel**, not the user.
 
-> ⚠️ **Never hand out the server's `root` (or any sudoer / shell login) account as a VPN credential.** SlipGate users are isolated SOCKS/SSH-forwarding accounts with no shell access — losing one only loses tunnel access. A leaked `root` account loses the whole server: your keys, your other users' credentials, and any other service running on the box. Always create dedicated SlipGate users with `slipgate users add` (or `bulk_add`) for everyone you give a config to, including yourself.
+> ⚠️ **Never hand out the server's `root` (or any sudoer / shell login) account as a VPN credential.** Rovunet Panel users are isolated SOCKS/SSH-forwarding accounts with no shell access — losing one only loses tunnel access. A leaked `root` account loses the whole server: your keys, your other users' credentials, and any other service running on the box. Always create dedicated Rovunet Panel users with `slipgate users add` (or `bulk_add`) for everyone you give a config to, including yourself.
 
 **Add one user (interactive):**
 
@@ -313,7 +313,7 @@ sudo slipgate users remove
 
 ## 10. Sharing configs with clients
 
-After creating a tunnel, generate a `slipnet://` URI for one-tap import in the SlipNet app:
+After creating a tunnel, generate a `slipnet://` URI for one-tap import in the Rovunet app:
 
 ```bash
 sudo slipgate tunnel share mytunnel
@@ -323,7 +323,7 @@ This prints:
 - A `slipnet://...` URI (long base64 string).
 - A QR code (in the TUI).
 
-Send the URI to your user. They open SlipNet → **+ → Import from URI** → paste → done.
+Send the URI to your user. They open Rovunet → **+ → Import from URI** → paste → done.
 
 For DNSTT tunnels, the share command asks whether to generate a **DNSTT** or **NoizDNS** profile. The same server handles both — NoizDNS just enables DPI evasion on the client side, so:
 - **DNSTT** profile: a bit faster, easier to detect.
@@ -335,7 +335,7 @@ For DNSTT tunnels, the share command asks whether to generate a **DNSTT** or **N
 
 ## 11. Running multiple tunnels at once
 
-You can run as many tunnels as you want. SlipGate auto-switches into **multi-mode** when you create a second DNS tunnel — the DNS router on port 53 dispatches queries by domain to the correct tunnel.
+You can run as many tunnels as you want. Rovunet Panel auto-switches into **multi-mode** when you create a second DNS tunnel — the DNS router on port 53 dispatches queries by domain to the correct tunnel.
 
 Example: DNSTT + VayDNS + NaiveProxy at the same time:
 
@@ -372,7 +372,7 @@ Cloudflare WARP can be enabled as the server's **outbound** path — useful when
 - Your VPS provider's IP is blacklisted by sites your users want to reach (Netflix, OpenAI, ChatGPT, banking).
 - You want to add an extra layer between the tunnel server and the public internet.
 
-Enable it from the interactive menu (**WARP** option). SlipGate sets up a `wireguard-go` link to WARP and routes user traffic through it.
+Enable it from the interactive menu (**WARP** option). Rovunet Panel sets up a `wireguard-go` link to WARP and routes user traffic through it.
 
 > Trade-off: a small latency penalty, and you depend on Cloudflare. Skip it if your VPS IP already reaches everywhere your users need.
 
@@ -421,7 +421,7 @@ sudo slipgate tunnel status --tag mydnstt                    # keys, port, MTU
 
 ---
 
-## 14. Updating SlipGate
+## 14. Updating Rovunet Panel
 
 Pulls the latest binary from GitHub releases and restarts services:
 
@@ -448,7 +448,7 @@ The backup is one block of text between a `-----BEGIN SLIPGATE BACKUP-----` and 
 
 **Restore on a new server:**
 
-1. Install SlipGate (`curl ... | sudo bash`). When the install wizard asks which transports to install, press Ctrl-C: the restore sets them up.
+1. Install Rovunet Panel (`curl ... | sudo bash`). When the install wizard asks which transports to install, press Ctrl-C: the restore sets them up.
 2. Run `sudo slipgate restore` and paste the text, or give the file: `sudo slipgate restore /root/slipgate-backup.txt`.
 3. Point the DNS records at the new server's IP. Restore lists the ones to change (`ns.<your domain>`, and the domain of any NaiveProxy tunnel).
 
@@ -468,14 +468,14 @@ ssh root@old-server slipgate backup - | ssh root@new-server slipgate restore - -
 
 ## 16. A note on VLESS
 
-The SlipNet client supports **VLESS** (over WebSocket / TLS, typically fronted through Cloudflare). **SlipGate does not run a VLESS server itself** — VLESS is part of the [Xray / V2Ray](https://github.com/XTLS/Xray-core) ecosystem.
+The Rovunet client supports **VLESS** (over WebSocket / TLS, typically fronted through Cloudflare). **Rovunet Panel does not run a VLESS server itself** — VLESS is part of the [Xray / V2Ray](https://github.com/XTLS/Xray-core) ecosystem.
 
 If you want to give your users a VLESS option, you have two paths:
 
-1. **Run Xray separately on the same VPS.** Standard Xray installers (e.g., `Xray-install`, `x-ui`, `3x-ui`) work fine alongside SlipGate, since they typically listen on a different port (or on 443 if SlipGate isn't using NaiveProxy/StunTLS). Your users build a manual VLESS profile in SlipNet using the UUID, domain, and CDN settings from your Xray panel.
-2. **Skip VLESS** — SlipGate's six transports already cover most censorship environments. NaiveProxy and StunTLS solve the "443 is the only port left" problem.
+1. **Run Xray separately on the same VPS.** Standard Xray installers (e.g., `Xray-install`, `x-ui`, `3x-ui`) work fine alongside Rovunet Panel, since they typically listen on a different port (or on 443 if Rovunet Panel isn't using NaiveProxy/StunTLS). Your users build a manual VLESS profile in Rovunet using the UUID, domain, and CDN settings from your Xray panel.
+2. **Skip VLESS** — Rovunet Panel's six transports already cover most censorship environments. NaiveProxy and StunTLS solve the "443 is the only port left" problem.
 
-VLESS support may land in SlipGate in the future. Track the channel for updates.
+VLESS support may land in Rovunet Panel in the future. Track the channel for updates.
 
 ---
 
@@ -509,12 +509,12 @@ journalctl -u slipgate-socks5 -n 200 --no-pager
 |------|-------------|
 | `/etc/slipgate/config.json` | Main configuration (tunnels, users, routing mode) |
 | `/etc/slipgate/tunnels/` | Per-tunnel keys, certs, configs |
-| `/usr/local/bin/slipgate` | SlipGate binary |
+| `/usr/local/bin/slipgate` | Rovunet Panel binary |
 | `/usr/local/bin/dnstt-server` | DNSTT/NoizDNS transport |
 | `/usr/local/bin/slipstream-server` | Slipstream transport |
 | `/usr/local/bin/vaydns-server` | VayDNS transport |
 | `/usr/local/bin/caddy-naive` | NaiveProxy (Caddy + forwardproxy plugin) |
-| `/etc/caddy/Caddyfile` | Caddy config (managed by SlipGate) |
+| `/etc/caddy/Caddyfile` | Caddy config (managed by Rovunet Panel) |
 
 **systemd units:**
 - `slipgate-dnsrouter` — port 53 DNS dispatcher
@@ -533,28 +533,28 @@ Removes all services, configs, and binaries. Your DNS records are untouched — 
 
 ---
 
-Channel: [@SlipNet_app](https://t.me/SlipNet_app)
-SlipGate source: https://github.com/anonvector/slipgate
-SlipNet source: https://github.com/anonvector/SlipNet
+Telegram group: [@RovunetVPN](https://t.me/RovunetVPN)
+Rovunet Panel source: https://github.com/anonvector/slipgate
+App source: https://github.com/msVPNco/rovunet-android
 
 ---
 ---
 
-# راهنمای کامل SlipGate برای ادمین (فارسی)
+# راهنمای کامل Rovunet Panel برای ادمین (فارسی)
 
-> سرور رسمی اپ اندرویدی [SlipNet](https://github.com/anonvector/SlipNet)
+> سرور اپ اندرویدی [Rovunet](https://github.com/msVPNco/rovunet-android)
 > سورس: https://github.com/anonvector/slipgate
-> کانال SlipNet: [@SlipNet_app](https://t.me/SlipNet_app)
+> گروه تلگرام: [@RovunetVPN](https://t.me/RovunetVPN)
 
 ---
 
 ## فهرست
 
-۱. SlipGate چیست
+۱. Rovunet Panel چیست
 ۲. پیش‌نیازها
 ۳. انتخاب VPS
 ۴. تنظیم دامنه و رکوردهای DNS
-۵. نصب SlipGate
+۵. نصب Rovunet Panel
 ۶. منوی تعاملی در برابر CLI
 ۷. اولین تونل
 ۸. transportها — کدام را برای چه شبکه‌ای
@@ -563,7 +563,7 @@ SlipNet source: https://github.com/anonvector/SlipNet
 ۱۱. چند تونل هم‌زمان
 ۱۲. خروجی WARP (اختیاری)
 ۱۳. عملیات روزمره
-۱۴. به‌روزرسانی SlipGate
+۱۴. به‌روزرسانی Rovunet Panel
 ۱۵. بکاپ و مهاجرت
 ۱۶. درباره‌ی VLESS
 ۱۷. عیب‌یابی
@@ -572,13 +572,13 @@ SlipNet source: https://github.com/anonvector/SlipNet
 
 ---
 
-## ۱. SlipGate چیست
+## ۱. Rovunet Panel چیست
 
-SlipGate یک مدیر تونل تک‌باینری برای سرورهای لینوکس است. روی VPS اجرا می‌کنید و سمت سرور تمام پروتکل‌هایی که SlipNet پشتیبانی می‌کند — DNSTT، NoizDNS، VayDNS، Slipstream، NaiveProxy و StunTLS — به همراه سرویس‌های `systemd`، روتر DNS، مدیریت کاربر، داشبورد زنده و تولید لینک `slipnet://` برای ایمپورت یک‌ضربه‌ای در اپ راه‌اندازی می‌کند.
+Rovunet Panel یک مدیر تونل تک‌باینری برای سرورهای لینوکس است. روی VPS اجرا می‌کنید و سمت سرور تمام پروتکل‌هایی که Rovunet پشتیبانی می‌کند — DNSTT، NoizDNS، VayDNS، Slipstream، NaiveProxy و StunTLS — به همراه سرویس‌های `systemd`، روتر DNS، مدیریت کاربر، داشبورد زنده و تولید لینک `slipnet://` برای ایمپورت یک‌ضربه‌ای در اپ راه‌اندازی می‌کند.
 
 به‌طور خلاصه: **یک دستور** کافی است تا یک VPS تازه‌ی Ubuntu/Debian تبدیل به یک نقطه‌ی کامل ضد سانسور شود که گوشی شما (و دوستانتان) به آن وصل می‌شود.
 
-SlipGate برای شما این کارها را انجام می‌دهد:
+Rovunet Panel برای شما این کارها را انجام می‌دهد:
 - نصب باینری‌های transport (`dnstt-server`، `slipstream-server`، `vaydns-server`، `caddy-naive`).
 - تولید کلید Curve25519 برای هر تونل.
 - پیکربندی یونیت‌های systemd که در بوت بالا می‌آیند.
@@ -625,7 +625,7 @@ SlipGate برای شما این کارها را انجام می‌دهد:
 
 ## ۴. تنظیم دامنه و رکوردهای DNS
 
-به یک دامنه نیاز دارید (مثلاً `example.com`). قبل از نصب SlipGate این رکوردها را اضافه کنید:
+به یک دامنه نیاز دارید (مثلاً `example.com`). قبل از نصب Rovunet Panel این رکوردها را اضافه کنید:
 
 ```
 A    ns.example.com   →  <server IP>
@@ -656,7 +656,7 @@ dig +short A ns.example.com
 
 ---
 
-## ۵. نصب SlipGate
+## ۵. نصب Rovunet Panel
 
 با SSH به‌عنوان روت به سرور وصل شوید:
 
@@ -667,7 +667,7 @@ curl -fsSL https://raw.githubusercontent.com/anonvector/slipgate/main/install.sh
 اسکریپت:
 - توزیع شما را تشخیص می‌دهد.
 - پکیج‌های لازم سیستم را نصب می‌کند.
-- باینری SlipGate و `dnstt-server`، `slipstream-server`، `vaydns-server` و `caddy-naive` را دانلود می‌کند.
+- باینری Rovunet Panel و `dnstt-server`، `slipstream-server`، `vaydns-server` و `caddy-naive` را دانلود می‌کند.
 - سرویس‌های systemd (`slipgate-dnsrouter`، `slipgate-socks5`) را نصب می‌کند.
 - در صورت نیاز قواعد فایروال را تنظیم می‌کند.
 
@@ -687,7 +687,7 @@ sudo slipgate
 
 ## ۶. منوی تعاملی در برابر CLI
 
-SlipGate دو رابط دارد:
+Rovunet Panel دو رابط دارد:
 
 **TUI تعاملی** — `sudo slipgate` بدون پارامتر. منوی دوستانه‌ای که شما را در ساخت تونل، کاربر، آمار و عیب‌یابی راه می‌برد. برای نصب اولیه و کاوش بهترین انتخاب است.
 
@@ -762,7 +762,7 @@ sudo slipgate diag
 
 ## ۸. transportها — کدام برای چه شبکه‌ای
 
-SlipGate شش transport را مدیریت می‌کند. بر اساس شبکه‌ای که کاربران از آن می‌خواهند فرار کنند انتخاب کنید.
+Rovunet Panel شش transport را مدیریت می‌کند. بر اساس شبکه‌ای که کاربران از آن می‌خواهند فرار کنند انتخاب کنید.
 
 | Transport | پورت | چیست | کاربرد |
 |-----------|------|------|--------|
@@ -816,9 +816,9 @@ sudo slipgate tunnel add --transport external --tag my-proto \
 
 ## ۹. مدیریت کاربران
 
-کاربر در SlipGate **سراسری** است. همان `username:password` روی همه‌ی تونل‌ها معتبر است، فارغ از transport. پروتکل ویژگی **تونل** است نه کاربر.
+کاربر در Rovunet Panel **سراسری** است. همان `username:password` روی همه‌ی تونل‌ها معتبر است، فارغ از transport. پروتکل ویژگی **تونل** است نه کاربر.
 
-> ⚠️ **هیچ‌وقت اکانت `root` سرور (یا هر اکانت sudoer / لاگین shell) را به‌عنوان credential VPN در اختیار کاربران نگذارید.** کاربر SlipGate یک اکانت ایزوله‌ی SOCKS/SSH-forwarding است که دسترسی shell ندارد — اگر یکی لو برود، فقط دسترسی به تونل از دست می‌رود. اما لو رفتن `root` یعنی از دست رفتن کل سرور: کلیدها، credential سایر کاربران و هر سرویس دیگری که روی سرور است. همیشه برای هر کسی که کانفیگ می‌دهید (حتی خودتان) با `slipgate users add` (یا `bulk_add`) یک کاربر مخصوص بسازید.
+> ⚠️ **هیچ‌وقت اکانت `root` سرور (یا هر اکانت sudoer / لاگین shell) را به‌عنوان credential VPN در اختیار کاربران نگذارید.** کاربر Rovunet Panel یک اکانت ایزوله‌ی SOCKS/SSH-forwarding است که دسترسی shell ندارد — اگر یکی لو برود، فقط دسترسی به تونل از دست می‌رود. اما لو رفتن `root` یعنی از دست رفتن کل سرور: کلیدها، credential سایر کاربران و هر سرویس دیگری که روی سرور است. همیشه برای هر کسی که کانفیگ می‌دهید (حتی خودتان) با `slipgate users add` (یا `bulk_add`) یک کاربر مخصوص بسازید.
 
 **افزودن یک کاربر (تعاملی):**
 
@@ -865,7 +865,7 @@ sudo slipgate tunnel share mytunnel
 - یک URI `slipnet://...` (رشته‌ی base64 طولانی).
 - یک کد QR (در TUI).
 
-URI را به کاربر بدهید. در SlipNet **+ → Import from URI** را می‌زند → پیست → تمام.
+URI را به کاربر بدهید. در Rovunet **+ → Import from URI** را می‌زند → پیست → تمام.
 
 برای تونل DNSTT، دستور share می‌پرسد پروفایل **DNSTT** بسازد یا **NoizDNS**. سرور یکسان است — NoizDNS فقط مقاومت در برابر DPI را در کلاینت روشن می‌کند:
 - پروفایل **DNSTT**: کمی سریع‌تر، تشخیص آسان‌تر.
@@ -877,7 +877,7 @@ URI را به کاربر بدهید. در SlipNet **+ → Import from URI** را
 
 ## ۱۱. چند تونل هم‌زمان
 
-می‌توانید هر تعداد تونل می‌خواهید اجرا کنید. SlipGate وقتی تونل DNS دوم را می‌سازید خودکار به **multi-mode** سوییچ می‌کند — روتر DNS روی پورت ۵۳ کوئری را بر اساس دامنه به تونل درست می‌فرستد.
+می‌توانید هر تعداد تونل می‌خواهید اجرا کنید. Rovunet Panel وقتی تونل DNS دوم را می‌سازید خودکار به **multi-mode** سوییچ می‌کند — روتر DNS روی پورت ۵۳ کوئری را بر اساس دامنه به تونل درست می‌فرستد.
 
 مثال: DNSTT + VayDNS + NaiveProxy هم‌زمان:
 
@@ -914,7 +914,7 @@ sudo slipgate router switch      # تغییر تونل فعال (فقط در sin
 - IP سرویس‌دهنده‌ی VPS شما توسط سایت‌های مقصد بلاک شده (Netflix، OpenAI، ChatGPT، بانک).
 - می‌خواهید لایه‌ی اضافی بین سرور تونل و اینترنت عمومی داشته باشید.
 
-از منوی تعاملی گزینه‌ی **WARP** را روشن کنید. SlipGate یک لینک `wireguard-go` به WARP می‌سازد و ترافیک کاربر را از آن عبور می‌دهد.
+از منوی تعاملی گزینه‌ی **WARP** را روشن کنید. Rovunet Panel یک لینک `wireguard-go` به WARP می‌سازد و ترافیک کاربر را از آن عبور می‌دهد.
 
 > هزینه: کمی تأخیر و وابستگی به Cloudflare. اگر IP VPS شما همه‌جای موردنیاز کاربر را می‌رسد، WARP لازم نیست.
 
@@ -963,7 +963,7 @@ sudo slipgate tunnel status --tag mydnstt                    # کلید، پور
 
 ---
 
-## ۱۴. به‌روزرسانی SlipGate
+## ۱۴. به‌روزرسانی Rovunet Panel
 
 آخرین باینری از Releases گیت‌هاب را می‌گیرد و سرویس‌ها را ری‌استارت می‌کند:
 
@@ -990,7 +990,7 @@ sudo slipgate backup /root/slipgate-backup.txt
 
 **ریستور روی سرور جدید:**
 
-۱. SlipGate را نصب کنید (`curl ... | sudo bash`). وقتی ویزارد نصب پرسید کدام ترنسپورت‌ها نصب شوند، Ctrl-C بزنید؛ ریستور آن‌ها را راه‌اندازی می‌کند.
+۱. Rovunet Panel را نصب کنید (`curl ... | sudo bash`). وقتی ویزارد نصب پرسید کدام ترنسپورت‌ها نصب شوند، Ctrl-C بزنید؛ ریستور آن‌ها را راه‌اندازی می‌کند.
 ۲. `sudo slipgate restore` را اجرا کنید و متن را پیست کنید، یا فایل را بدهید: `sudo slipgate restore /root/slipgate-backup.txt`
 ۳. رکوردهای DNS را به IP سرور جدید تغییر دهید. ریستور رکوردهایی را که باید عوض شوند نشان می‌دهد (`ns.<دامنه‌ی شما>` و دامنه‌ی تونل‌های NaiveProxy).
 
@@ -1010,14 +1010,14 @@ ssh root@old-server slipgate backup - | ssh root@new-server slipgate restore - -
 
 ## ۱۶. درباره‌ی VLESS
 
-اپ SlipNet از **VLESS** پشتیبانی می‌کند (روی WebSocket / TLS، معمولاً پشت Cloudflare). **اما SlipGate خودش سرور VLESS اجرا نمی‌کند** — VLESS بخشی از اکوسیستم [Xray / V2Ray](https://github.com/XTLS/Xray-core) است.
+اپ Rovunet از **VLESS** پشتیبانی می‌کند (روی WebSocket / TLS، معمولاً پشت Cloudflare). **اما Rovunet Panel خودش سرور VLESS اجرا نمی‌کند** — VLESS بخشی از اکوسیستم [Xray / V2Ray](https://github.com/XTLS/Xray-core) است.
 
 اگر می‌خواهید به کاربران گزینه‌ی VLESS بدهید، دو راه دارید:
 
-۱. **Xray را جدا روی همان VPS اجرا کنید.** نصاب‌های استاندارد Xray (مثل `Xray-install`، `x-ui`، `3x-ui`) در کنار SlipGate خوب کار می‌کنند، چون معمولاً روی پورت متفاوتی گوش می‌دهند (یا روی ۴۴۳ اگر SlipGate از NaiveProxy/StunTLS استفاده نمی‌کند). کاربر شما در SlipNet به‌صورت دستی پروفایل VLESS می‌سازد با UUID، دامنه، و تنظیمات CDN از پنل Xray شما.
-۲. **VLESS را رها کنید** — شش transport SlipGate برای اکثر محیط‌های سانسوری کافی است. NaiveProxy و StunTLS مشکل «فقط ۴۴۳ باز است» را حل می‌کنند.
+۱. **Xray را جدا روی همان VPS اجرا کنید.** نصاب‌های استاندارد Xray (مثل `Xray-install`، `x-ui`، `3x-ui`) در کنار Rovunet Panel خوب کار می‌کنند، چون معمولاً روی پورت متفاوتی گوش می‌دهند (یا روی ۴۴۳ اگر Rovunet Panel از NaiveProxy/StunTLS استفاده نمی‌کند). کاربر شما در Rovunet به‌صورت دستی پروفایل VLESS می‌سازد با UUID، دامنه، و تنظیمات CDN از پنل Xray شما.
+۲. **VLESS را رها کنید** — شش transport Rovunet Panel برای اکثر محیط‌های سانسوری کافی است. NaiveProxy و StunTLS مشکل «فقط ۴۴۳ باز است» را حل می‌کنند.
 
-ممکن است در آینده پشتیبانی VLESS به SlipGate اضافه شود. کانال را برای اپدیت دنبال کنید.
+ممکن است در آینده پشتیبانی VLESS به Rovunet Panel اضافه شود. کانال را برای اپدیت دنبال کنید.
 
 ---
 
@@ -1051,12 +1051,12 @@ journalctl -u slipgate-socks5 -n 200 --no-pager
 |------|------|
 | `/etc/slipgate/config.json` | کانفیگ اصلی (تونل، کاربر، حالت روتینگ) |
 | `/etc/slipgate/tunnels/` | کلید، گواهی و کانفیگ هر تونل |
-| `/usr/local/bin/slipgate` | باینری SlipGate |
+| `/usr/local/bin/slipgate` | باینری Rovunet Panel |
 | `/usr/local/bin/dnstt-server` | باینری DNSTT/NoizDNS |
 | `/usr/local/bin/slipstream-server` | باینری Slipstream |
 | `/usr/local/bin/vaydns-server` | باینری VayDNS |
 | `/usr/local/bin/caddy-naive` | NaiveProxy (Caddy + پلاگین forwardproxy) |
-| `/etc/caddy/Caddyfile` | کانفیگ Caddy (مدیریت‌شده توسط SlipGate) |
+| `/etc/caddy/Caddyfile` | کانفیگ Caddy (مدیریت‌شده توسط Rovunet Panel) |
 
 **یونیت‌های systemd:**
 - `slipgate-dnsrouter` — دیسپچر DNS روی پورت ۵۳
@@ -1075,6 +1075,6 @@ sudo slipgate uninstall
 
 ---
 
-کانال: [@SlipNet_app](https://t.me/SlipNet_app)
-سورس SlipGate: https://github.com/anonvector/slipgate
-سورس SlipNet: https://github.com/anonvector/SlipNet
+گروه تلگرام: [@RovunetVPN](https://t.me/RovunetVPN)
+سورس Rovunet Panel: https://github.com/anonvector/slipgate
+سورس اپ: https://github.com/msVPNco/rovunet-android

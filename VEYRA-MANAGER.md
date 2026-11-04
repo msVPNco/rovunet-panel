@@ -13,7 +13,7 @@ Formats:
 - auto: standard VLESS WS link; native Veyra for other supported transports.
 - standard: only transports with an implemented lossless standard exporter (VLESS in this increment); skip others with stderr explanation.
 - veyra: native Veyra payload.
-- legacy: original SlipNet prefix for legacy clients.
+- legacy: original Rovunet prefix for legacy clients.
 
 Only enabled tunnels and an existing user are exported. DNSTT includes normal and NoizDNS variants. This command exports configured tunnels; the installer separately retains its existing Naive backend variants. Output contains credentials; stdout is one URI per line, errors go to stderr. Partial export is allowed; inspect stderr. No exported links is an error.
 

@@ -73,7 +73,7 @@ func setupSOCKSMulti(listenAddr string, users []config.UserConfig) error {
 
 	unit := &service.Unit{
 		Name:        socksServiceName,
-		Description: "SlipGate SOCKS5 proxy",
+		Description: "Rovunet Panel SOCKS5 proxy",
 		ExecStart:   args,
 		ExecReload:  "/bin/kill -HUP $MAINPID",
 		User:        svcUser,

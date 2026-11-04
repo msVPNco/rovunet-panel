@@ -18,7 +18,7 @@ func CreateRouterService() error {
 
 	unit := &service.Unit{
 		Name:        serviceName,
-		Description: "SlipGate DNS Router",
+		Description: "Rovunet Panel DNS Router",
 		ExecStart:   execPath + " dnsrouter serve",
 		User:        "root", // needs to bind port 53
 		Group:       config.SystemGroup,

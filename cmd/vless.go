@@ -78,7 +78,7 @@ func init() {
 	serveCmd.Flags().String("cert", "", "TLS certificate file (omit for plain HTTP)")
 	serveCmd.Flags().String("key", "", "TLS private key file")
 	serveCmd.Flags().String("secret-file", "", "Secret that derives each user's UUID")
-	serveCmd.Flags().String("users-file", config.DefaultConfigFile, "SlipGate config holding the users")
+	serveCmd.Flags().String("users-file", config.DefaultConfigFile, "Panel config holding the users")
 	serveCmd.Flags().String("block-ports", config.DefaultVLESSBlockPorts, `Destination ports to refuse (comma-separated, or "none")`)
 	serveCmd.Flags().Bool("verbose", false, "Log each stream and rejected request")
 	serveCmd.Flags().Bool("allow-private", false, "Let users reach private and loopback addresses (testing only)")

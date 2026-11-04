@@ -2,12 +2,10 @@ name: Release
 
 # Publishes slipgate-linux-amd64 / -arm64 (what install.sh and
 # `slipgate update` download) as release v<VERSION>, VERSION being the one in
-# the Makefile. Runs when main changes and that release doesn't exist yet,
-# so bumping VERSION in the Makefile is all a release takes. Pushing a v* tag
-# or running the workflow by hand works too.
+# the Makefile. Releases are deliberate: run the workflow by hand or push a
+# v* tag. Pushing to main never publishes a release by itself.
 on:
   push:
-    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -68,5 +66,5 @@ jobs:
           gh release create "$tag" \
             slipgate-linux-amd64 slipgate-linux-arm64 SHA256SUMS \
             --target "$GITHUB_SHA" \
-            --title "SlipGate $tag" \
+            --title "Rovunet Panel $tag" \
             "${notes[@]}"

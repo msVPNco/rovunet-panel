@@ -55,7 +55,7 @@ var ClientModeOptions = []SelectOption{
 // destinations itself (direct) or reaches only the SSH backend.
 var SoarBackendOptions = []SelectOption{
 	{Value: "direct", Label: "Direct — no login; server reaches public sites (Lantern-compatible)"},
-	{Value: "ssh", Label: "SSH — per-user logins (SlipNet)"},
+	{Value: "ssh", Label: "SSH — per-user logins (Rovunet app)"},
 	{Value: "both", Label: "Both — Direct + SSH"},
 }
 
