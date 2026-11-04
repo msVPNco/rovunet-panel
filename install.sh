@@ -1,5 +1,5 @@
 #!/bin/bash
-# SlipGate installer — download binary and run `slipgate install`
+# Rovunet Panel installer — download the slipgate binary and run `slipgate install`
 set -e
 
 # Releases carrying the slipgate binary (this fork). Override with SLIPGATE_REPO=owner/repo.
@@ -27,7 +27,7 @@ case "$ARCH" in
 esac
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-[[ "$OS" != "linux" ]] && error "SlipGate only supports Linux"
+[[ "$OS" != "linux" ]] && error "Rovunet Panel only supports Linux"
 
 BINARY="slipgate-${OS}-${ARCH}"
 
@@ -53,14 +53,14 @@ else
 fi
 
 echo -e "${CYAN}"
-echo "   _____ _ _       _____       _       "
-echo "  / ____| (_)     / ____|     | |      "
-echo " | (___ | |_ _ __| |  __  __ _| |_ ___ "
-echo "  \___ \| | | '_ \ | |_ |/ _\` | __/ _ \\"
-echo "  ____) | | | |_) | |__| | (_| | ||  __/"
-echo " |_____/|_|_| .__/ \_____|\__,_|\__\___|"
-echo "             | |                         "
-echo "             |_|                         "
+cat <<'BANNER'
+ ____                                     _
+|  _ \   ___  __   __ _   _  _ __    ___ | |_
+| |_) | / _ \ \ \ / /| | | || '_ \  / _ \| __|
+|  _ < | (_) | \ V / | |_| || | | ||  __/| |_
+|_| \_\ \___/   \_/   \__,_||_| |_| \___| \__|
+                Rovunet Panel
+BANNER
 echo -e "${NC}"
 
 # Kill any running slipgate/tunnel processes and remove old binary

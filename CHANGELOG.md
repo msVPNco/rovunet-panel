@@ -2,7 +2,9 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
-## Unreleased
+## v1.7.0
+
+First release as **Rovunet Panel**.
 
 ### Security
 
@@ -14,6 +16,8 @@ Changes in Rovunet Panel. Each release's notes come from its section here.
 - Rebranded as **Rovunet Panel** (based on SlipGate, not affiliated): logo, README, guides under `docs/`, NOTICE.md. The `slipgate` command, service names and `/etc/slipgate` are unchanged.
 - `rovunet://` v32 exports, `export-clients` and `core-plan` (from the Rovunet 0.3.0 alpha work).
 - Releases run only by hand or from a `v*` tag, never from a push to main.
+- New README in English and Persian, Rovunet banner in the installer and the menu.
+- Install and `slipgate update` now use this repository's releases (`msVPNco/rovunet-panel`).
 
 ## v1.6.8-vless.9
 

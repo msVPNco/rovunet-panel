@@ -587,7 +587,7 @@ func createService() error {
 	}
 
 	content := fmt.Sprintf(`[Unit]
-Description=SlipGate WARP (Cloudflare WireGuard)
+Description=Rovunet Panel WARP (Cloudflare WireGuard)
 After=network.target
 
 [Service]

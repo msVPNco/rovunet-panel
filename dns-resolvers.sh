@@ -1,6 +1,6 @@
 #!/bin/sh
 # dns-resolvers.sh — show which public DNS resolvers clients are using
-# to reach this SlipGate server's DNS-tunneling transports (DNSTT / VayDNS).
+# to reach this Rovunet Panel server's DNS-tunneling transports (DNSTT / VayDNS).
 #
 # Usage:
 #   sudo ./dns-resolvers.sh snapshot [seconds]   # capture N seconds (default 60), print top resolvers

@@ -68,14 +68,14 @@ curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.
 
 ```bash
 git clone https://github.com/msVPNco/rovunet-panel.git
-cd slipgate
+cd rovunet-panel
 make build
 sudo ./slipgate install
 ```
 
 **Offline install (SCP to server):**
 
-Download slipgate from this fork's [latest release](https://github.com/msVPNco/rovunet-panel/releases) and the transport binaries you need from [upstream's](https://github.com/anonvector/slipgate/releases):
+Download slipgate from Rovunet Panel's [latest release](https://github.com/msVPNco/rovunet-panel/releases) and the transport binaries you need from [upstream's](https://github.com/anonvector/slipgate/releases):
 
 ```bash
 # On your local machine — download binaries
@@ -95,7 +95,7 @@ sudo cp /tmp/slipgate/slipgate-linux-amd64 /usr/local/bin/slipgate
 sudo slipgate install --bin-dir /tmp/slipgate
 ```
 
-**Switch a server running upstream Rovunet Panel to this fork** (config, tunnels and users are kept; use `arm64` on ARM servers):
+**Switch a server running SlipGate to Rovunet Panel** (config, tunnels and users are kept; use `arm64` on ARM servers):
 
 ```bash
 sudo curl -fsSL -o /usr/local/bin/slipgate https://github.com/msVPNco/rovunet-panel/releases/latest/download/slipgate-linux-amd64
@@ -103,7 +103,7 @@ sudo chmod +x /usr/local/bin/slipgate
 sudo slipgate post-update      # refreshes transport binaries and regenerates services
 ```
 
-From then on `slipgate update` updates from this fork.
+From then on `slipgate update` updates from Rovunet Panel.
 
 Then launch the interactive menu:
 
