@@ -1,6 +1,8 @@
 package transport
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -111,13 +113,12 @@ func vlessRoutes(cfg *config.Config, naiveTag string) []vlessRoute {
 func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vless []vlessRoute) string {
 	naiveCfg := tunnel.Naive
 
-	user := naiveCfg.User
-	pass := naiveCfg.Password
-	if user == "" {
-		user = "slipgate"
-	}
-	if pass == "" {
-		pass = "slipgate"
+	// No built-in default login: a well-known "slipgate:slipgate" credential
+	// would let anyone use the proxy. Without any credential the proxy gets a
+	// random one, so it stays closed until a panel user exists.
+	auth := naiveAuthLines(naiveCfg.User, naiveCfg.Password, users)
+	if auth == "" {
+		auth = naiveAuthLines("locked-"+randomToken(8), randomToken(24), nil)
 	}
 
 	decoy := naiveCfg.DecoyURL
@@ -136,6 +137,11 @@ func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vles
     output stdout
     level WARN
   }
+  # HTTP/1.1 and HTTP/2 only: NaiveProxy clients use HTTP/2, and HTTP/3
+  # would hold UDP 443, which Hysteria2 or other UDP services may need.
+  servers {
+    protocols h1 h2
+  }
 }
 
 :%d, %s {
@@ -151,7 +157,7 @@ func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vles
     }
   }
 }
-`, port, tunnel.Domain, naiveCfg.Email, vlessRouteLines(vless), naiveAuthLines(user, pass, users), decoy)
+`, port, tunnel.Domain, naiveCfg.Email, vlessRouteLines(vless), auth, decoy)
 }
 
 // vlessRouteLines sends each fronted VLESS WebSocket path to its local
@@ -171,8 +177,8 @@ func vlessRouteLines(routes []vlessRoute) string {
 	return b.String()
 }
 
-// naiveAuthLines lists the tunnel's own credential plus one basic_auth line
-// per SlipGate user, so every user's client config (which carries that
+// naiveAuthLines lists the tunnel's own credential (when set) plus one
+// basic_auth line per panel user, so every user's client config (which carries that
 // user's name and password) authenticates against the proxy.
 func naiveAuthLines(user, pass string, users []config.UserConfig) string {
 	var b strings.Builder
@@ -272,4 +278,13 @@ func SyncNaive(cfg *config.Config) error {
 func lastLine(s string) string {
 	lines := strings.Split(strings.TrimSpace(s), "\n")
 	return lines[len(lines)-1]
+}
+
+// randomToken returns n random bytes as hex.
+func randomToken(n int) string {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(b)
 }

@@ -168,15 +168,10 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 	case config.TransportNaive:
 		if tunnel.Naive != nil {
 			fields[FNaivePort] = fmt.Sprintf("%d", tunnel.Naive.Port)
+			// The tunnel's own login, if any; a user's login replaces it below.
+			// There is no default login on the server side.
 			fields[FNaiveUser] = tunnel.Naive.User
 			fields[FNaivePass] = b64(tunnel.Naive.Password)
-			// Match server-side defaults from buildCaddyfile()
-			if fields[FNaiveUser] == "" {
-				fields[FNaiveUser] = "slipgate"
-			}
-			if tunnel.Naive.Password == "" {
-				fields[FNaivePass] = b64("slipgate")
-			}
 		}
 
 	case config.TransportVLESS:
@@ -272,6 +267,9 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 	if tunnel.Transport == config.TransportNaive && username != "" {
 		fields[FNaiveUser] = username
 		fields[FNaivePass] = b64(password)
+	}
+	if tunnel.Transport == config.TransportNaive && fields[FNaiveUser] == "" {
+		return "", fmt.Errorf("NaiveProxy needs a login: create a user with 'slipgate users add'")
 	}
 
 	// A VLESS config carries the user's UUID, never their SSH/SOCKS password

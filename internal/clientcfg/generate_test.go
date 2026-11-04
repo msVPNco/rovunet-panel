@@ -83,3 +83,24 @@ func TestGenerateURIUnchangedForV22(t *testing.T) {
 		t.Errorf("got %d fields, version %q, type %q", len(f), f[FVersion], f[FTunnelType])
 	}
 }
+
+// TestGenerateURINaiveNeedsLogin: without a user or tunnel login there is
+// nothing the server accepts, so no config is produced (no default login).
+func TestGenerateURINaiveNeedsLogin(t *testing.T) {
+	cfg := &config.Config{Backends: config.DefaultBackends()}
+	tunnel := &config.TunnelConfig{
+		Tag: "naive", Transport: config.TransportNaive, Backend: config.BackendSOCKS, Domain: "n.example.com",
+		Naive: &config.NaiveConfig{Port: 443},
+	}
+	if _, err := GenerateURI(tunnel, nil, cfg, URIOptions{}); err == nil {
+		t.Fatal("a Naive config without any login must be refused")
+	}
+	uri, err := GenerateURI(tunnel, nil, cfg, URIOptions{Username: "alice", Password: "p1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := decodeFields(t, uri)
+	if f[FNaiveUser] != "alice" || f[FNaivePass] != base64.StdEncoding.EncodeToString([]byte("p1")) {
+		t.Fatalf("naive login = %q/%q", f[FNaiveUser], f[FNaivePass])
+	}
+}

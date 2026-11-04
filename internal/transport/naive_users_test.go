@@ -49,3 +49,28 @@ func TestCaddyfileFrontsStunTLSOverTLS(t *testing.T) {
 		t.Fatal("stuntls route must precede forward_proxy")
 	}
 }
+
+func TestCaddyfileHasNoDefaultLogin(t *testing.T) {
+	tun := &config.TunnelConfig{Domain: "n.example.com", Naive: &config.NaiveConfig{Email: "a@b.c", Port: 443, DecoyURL: "https://www.example.org"}}
+	c := buildCaddyfile(tun, nil, nil)
+	if strings.Contains(c, "basic_auth slipgate") {
+		t.Fatalf("well-known default login must not be accepted:\n%s", c)
+	}
+	if strings.Count(c, "basic_auth") != 1 || !strings.Contains(c, "basic_auth locked-") {
+		t.Fatalf("a proxy without users must stay closed behind a random login:\n%s", c)
+	}
+	if again := buildCaddyfile(tun, nil, nil); again == c {
+		t.Fatal("the placeholder login must be random")
+	}
+	c = buildCaddyfile(tun, []config.UserConfig{{Username: "alice", Password: "p1"}}, nil)
+	if strings.Count(c, "basic_auth") != 1 || !strings.Contains(c, "basic_auth alice p1") {
+		t.Fatalf("only the panel user should log in:\n%s", c)
+	}
+}
+
+func TestCaddyfileDisablesHTTP3(t *testing.T) {
+	tun := &config.TunnelConfig{Domain: "n.example.com", Naive: &config.NaiveConfig{Email: "a@b.c", Port: 443, User: "alice", Password: "p1", DecoyURL: "https://www.example.org"}}
+	if c := buildCaddyfile(tun, nil, nil); !strings.Contains(c, "protocols h1 h2") {
+		t.Fatalf("Caddy must not open UDP 443 for HTTP/3:\n%s", c)
+	}
+}

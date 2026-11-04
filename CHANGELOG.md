@@ -1,6 +1,19 @@
 # Changelog
 
-Changes in this fork. Each release's notes come from its section here.
+Changes in Rovunet Panel. Each release's notes come from its section here.
+
+## Unreleased
+
+### Security
+
+- **NaiveProxy no longer accepts the built-in `slipgate:slipgate` login.** A Naive tunnel created without its own login used to fall back to that well-known login in Caddy, so anyone could use the proxy. Now only the tunnel's own login (if set) and panel users can log in; with neither, Caddy gets a random login and stays closed. A Naive config without any login is refused with a hint to run `slipgate users add`.
+
+### Changes
+
+- Caddy serves HTTP/1.1 and HTTP/2 only and no longer opens UDP 443 for HTTP/3, so Hysteria2 or another UDP service can use that port. Naive clients use HTTP/2 and are unaffected.
+- Rebranded as **Rovunet Panel** (based on SlipGate, not affiliated): logo, README, guides under `docs/`, NOTICE.md. The `slipgate` command, service names and `/etc/slipgate` are unchanged.
+- `rovunet://` v32 exports, `export-clients` and `core-plan` (from the Rovunet 0.3.0 alpha work).
+- Releases run only by hand or from a `v*` tag, never from a push to main.
 
 ## v1.6.8-vless.9
 

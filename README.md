@@ -40,6 +40,14 @@ slipgate export-clients --user USER --format rovunet
 - [Export notes](ROVUNET-EXPORT.txt) and [Xray plan notes](VEYRA-MANAGER.md)
 - [Changelog](CHANGELOG.md)
 
+## Support
+
+Rovunet is unpaid volunteer work. If it helps you, donations are welcome:
+
+- **USDT (Tron, TRC20):** `TG3Mhou3pdq9KaFgJSHjDiDx2ahhJuHvbJ`
+
+Send only USDT on the Tron (TRC20) network to this address.
+
 ## License
 
 AGPL-3.0. Rovunet Panel is based on SlipGate by Anonvector and is not
