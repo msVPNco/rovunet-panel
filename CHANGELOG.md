@@ -15,7 +15,7 @@ First release as **Rovunet Panel**.
 - Caddy serves HTTP/1.1 and HTTP/2 only and no longer opens UDP 443 for HTTP/3, so Hysteria2 or another UDP service can use that port. Naive clients use HTTP/2 and are unaffected.
 - Rebranded as **Rovunet Panel** (based on SlipGate, not affiliated): logo, README, guides under `docs/`, NOTICE.md. The `slipgate` command, service names and `/etc/slipgate` are unchanged.
 - `rovunet://` v32 exports, `export-clients` and `core-plan` (from the Rovunet 0.3.0 alpha work).
-- Releases run only by hand or from a `v*` tag, never from a push to main.
+- A release is published only when `VERSION` in the Makefile changes on main (or by hand, or from a `v*` tag); other pushes to main never release.
 - New README in English and Persian, Rovunet banner in the installer and the menu.
 - Install and `slipgate update` now use this repository's releases (`msVPNco/rovunet-panel`).
 

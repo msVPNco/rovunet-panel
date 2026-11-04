@@ -2,10 +2,12 @@ name: Release
 
 # Publishes slipgate-linux-amd64 / -arm64 (what install.sh and
 # `slipgate update` download) as release v<VERSION>, VERSION being the one in
-# the Makefile. Releases are deliberate: run the workflow by hand or push a
-# v* tag. Pushing to main never publishes a release by itself.
+# the Makefile. A release is published only when VERSION changes on main
+# (a release for that version doesn't exist yet), by hand, or from a v* tag.
+# Other pushes to main skip, because their version is already released.
 on:
   push:
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
