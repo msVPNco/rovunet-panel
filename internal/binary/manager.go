@@ -200,7 +200,7 @@ func CheckUpdate() (newVersion string, downloadURL string, err error) {
 	}
 
 	// Find matching asset
-	target := fmt.Sprintf("slipgate-%s-%s", runtime.GOOS, runtime.GOARCH)
+	target := fmt.Sprintf("rovunet-%s-%s", runtime.GOOS, runtime.GOARCH)
 	for _, asset := range release.Assets {
 		if strings.Contains(asset.Name, target) {
 			return release.TagName, asset.BrowserDownloadURL, nil
@@ -212,7 +212,7 @@ func CheckUpdate() (newVersion string, downloadURL string, err error) {
 
 // Download fetches a URL to a temp file.
 func Download(url string) (string, error) {
-	tmp, err := os.CreateTemp("", "slipgate-update-*")
+	tmp, err := os.CreateTemp("", "rovunet-update-*")
 	if err != nil {
 		return "", err
 	}

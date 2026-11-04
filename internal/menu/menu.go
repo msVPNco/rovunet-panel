@@ -80,7 +80,7 @@ func Run(cfg *config.Config, cfgErr error) error {
 				printError(err)
 				waitForEnter()
 			} else {
-				fmt.Println("\n  Restart slipgate to use the new version.")
+				fmt.Println("\n  Restart rovunet to use the new version.")
 				return nil
 			}
 		case "backup":

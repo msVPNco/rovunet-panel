@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	socksServiceName = "slipgate-socks5"
+	socksServiceName = "rovunet-socks5"
 	// socksCredsFile holds `user:pass` lines, one per user. The `socks serve`
 	// command reads this at start and on SIGHUP, so credential changes do not
 	// require a process restart (which would drop every active client).
@@ -51,7 +51,7 @@ func SetupSOCKSExternalWithUsers(users []config.UserConfig) error {
 }
 
 func setupSOCKSMulti(listenAddr string, users []config.UserConfig) error {
-	execPath, err := os.Executable()
+	execPath, err := config.PanelBinary()
 	if err != nil {
 		return err
 	}
@@ -63,8 +63,8 @@ func setupSOCKSMulti(listenAddr string, users []config.UserConfig) error {
 	args := fmt.Sprintf("%s socks serve --addr %s --port 1080 --creds-file %s", execPath, listenAddr, socksCredsFile)
 
 	// Clean up old microsocks service if it exists
-	_ = service.Stop("slipgate-microsocks")
-	_ = service.Remove("slipgate-microsocks")
+	_ = service.Stop("rovunet-microsocks")
+	_ = service.Remove("rovunet-microsocks")
 
 	svcUser := config.SystemUser
 	if RunAsUser != "" {

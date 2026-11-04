@@ -20,7 +20,7 @@ func handleTunnelShare(ctx *actions.Context) error {
 	tunnel := cfg.GetTunnel(tag)
 	if tunnel == nil {
 		return actions.NewErrorWithHint(actions.TunnelShare, "tunnel not found",
-			"Run 'slipgate tunnel status' to see available tunnels", nil)
+			"Run 'rovunet tunnel status' to see available tunnels", nil)
 	}
 
 	// Direct-backend Soar has no login: one config serves everyone

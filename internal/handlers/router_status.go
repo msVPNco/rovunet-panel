@@ -18,7 +18,7 @@ func handleRouterStatus(ctx *actions.Context) error {
 	out.Print(fmt.Sprintf("  Default: %s", cfg.Route.Default))
 
 	// DNS router service status
-	routerStatus, err := service.Status("slipgate-dnsrouter")
+	routerStatus, err := service.Status("rovunet-dnsrouter")
 	if err != nil {
 		routerStatus = "not installed"
 	}

@@ -62,7 +62,7 @@ func EnsureDir(path, owner string) error {
 	return run("chown", "-R", owner+":"+config.SystemGroup, path)
 }
 
-// AddSSHUser creates a system user in the slipgate-ssh group.
+// AddSSHUser creates a system user in the panel's SSH group.
 // If the user already exists, it updates the password instead.
 func AddSSHUser(username, password string) error {
 	// Ensure SSH group exists
@@ -101,7 +101,7 @@ func RemoveSSHUser(username string) error {
 	return run("userdel", "-f", username)
 }
 
-// ListSSHUsers returns all users in the slipgate-ssh group.
+// ListSSHUsers returns all users in the panel's SSH group.
 func ListSSHUsers() ([]string, error) {
 	f, err := os.Open("/etc/group")
 	if err != nil {
@@ -135,7 +135,7 @@ func GeneratePassword(length int) string {
 }
 
 const sshGlobalSettings = `
-# SlipGate global SSH settings
+# Rovunet global SSH settings
 MaxStartups 100:30:300
 MaxSessions 100
 TCPKeepAlive no
@@ -147,8 +147,8 @@ TCPKeepAlive no
 // block turns them back on for this group alone; other accounts keep the
 // server's own rules.
 const sshMatchBlock = `
-# SlipGate SSH tunnel users
-Match Group slipgate-ssh
+# Rovunet SSH tunnel users
+Match Group rovunet-ssh
     PasswordAuthentication yes
     AuthenticationMethods any
     AllowTcpForwarding yes
@@ -165,13 +165,13 @@ func EnsureSSHConfig() error {
 	return ensureSSHMatchGroup()
 }
 
-// withSlipgateSSHConfig returns sshd_config content with SlipGate's global
+// withPanelSSHConfig returns sshd_config content with SlipGate's global
 // settings and its current Match block.
-func withSlipgateSSHConfig(content string) string {
+func withPanelSSHConfig(content string) string {
 	// Global settings must come before any Match block
-	if !strings.Contains(content, "# SlipGate global SSH settings") {
+	if !strings.Contains(content, "# Rovunet global SSH settings") {
 		// Insert before the first Match block or SlipGate block, or append
-		if idx := strings.Index(content, "# SlipGate SSH tunnel users"); idx >= 0 {
+		if idx := strings.Index(content, "# Rovunet SSH tunnel users"); idx >= 0 {
 			content = content[:idx] + sshGlobalSettings + "\n" + content[idx:]
 		} else if idx := strings.Index(content, "\nMatch "); idx >= 0 {
 			content = content[:idx] + sshGlobalSettings + content[idx:]
@@ -184,28 +184,49 @@ func withSlipgateSSHConfig(content string) string {
 		return content // already up to date
 	}
 	// Replace an older SlipGate block, which is always last in the file
-	if idx := strings.Index(content, "# SlipGate SSH tunnel users"); idx >= 0 {
+	if idx := strings.Index(content, "# Rovunet SSH tunnel users"); idx >= 0 {
 		content = strings.TrimRight(content[:idx], "\n") + "\n"
-	} else if strings.Contains(content, "Match Group slipgate-ssh") {
+	} else if strings.Contains(content, "Match Group rovunet-ssh") {
 		return content // a block we didn't write: can't safely replace it
 	}
 	return content + sshMatchBlock
 }
 
 func ensureSSHMatchGroup() error {
+	return updateSSHDConfig(withPanelSSHConfig)
+}
+
+// legacySSHMarkers turns the sshd_config block written before the rename to
+// Rovunet into the current one.
+var legacySSHMarkers = strings.NewReplacer(
+	"# SlipGate global SSH settings", "# Rovunet global SSH settings",
+	"# SlipGate SSH tunnel users", "# Rovunet SSH tunnel users",
+	"Match Group slipgate-ssh", "Match Group "+config.SSHGroup,
+)
+
+// MigrateLegacySSHConfig renames the SlipGate block in sshd_config. Call it
+// only after the slipgate-ssh group has been renamed, or tunnel users would
+// stop matching the block.
+func MigrateLegacySSHConfig() error {
+	return updateSSHDConfig(legacySSHMarkers.Replace)
+}
+
+// updateSSHDConfig applies change to sshd_config, validates the result and
+// reloads sshd. Nothing is written when the change is a no-op.
+func updateSSHDConfig(change func(string) string) error {
 	const path = "/etc/ssh/sshd_config"
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	content := withSlipgateSSHConfig(string(data))
+	content := change(string(data))
 	if content == string(data) {
 		return nil
 	}
 
 	// Validate before replacing the live config: an sshd_config that fails
 	// to parse stops sshd from starting and locks out the server.
-	tmp := path + ".slipgate-new"
+	tmp := path + ".rovunet-new"
 	if err := os.WriteFile(tmp, []byte(content), 0644); err != nil {
 		return err
 	}
@@ -257,7 +278,7 @@ func UserExists(name string) bool {
 	return userExists(name)
 }
 
-// IsSSHUser reports whether name is an account in the slipgate-ssh group.
+// IsSSHUser reports whether name is an account in the panel's SSH group.
 // AddSSHUser makes that group the primary one, which /etc/group's member
 // list doesn't show, so this asks id instead.
 func IsSSHUser(name string) bool {

@@ -44,12 +44,12 @@ func handleSystemUsers(ctx *actions.Context) error {
 	case "configs":
 		out.Print("")
 		if printClientConfigs(cfg, out, cfg.Tunnels) == 0 {
-			out.Info("No tunnels with app configs. Run 'slipgate tunnel add' to create one.")
+			out.Info("No tunnels with app configs. Run 'rovunet tunnel add' to create one.")
 		}
 
 	case "list":
 		if len(cfg.Users) == 0 {
-			out.Info("No users configured. Run 'slipgate users add' to create one, or 'slipgate users configs' for configs that need no login.")
+			out.Info("No users configured. Run 'rovunet users add' to create one, or 'rovunet users configs' for configs that need no login.")
 			return nil
 		}
 

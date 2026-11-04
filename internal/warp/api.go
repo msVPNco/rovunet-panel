@@ -17,7 +17,7 @@ import (
 const (
 	apiBase         = "https://api.cloudflareclient.com/v0a2158"
 	cfClientVersion = "a-6.11-2223"
-	AccountJSON     = "/etc/slipgate/warp/account.json"
+	AccountJSON     = "/etc/rovunet/warp/account.json"
 )
 
 // WarpAccount holds all WARP registration data.

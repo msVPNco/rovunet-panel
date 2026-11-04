@@ -23,7 +23,7 @@ func handleSystemUpdate(ctx *actions.Context) error {
 	out.Info("Current version: " + version.String())
 
 	base := binary.DownloadBase()
-	downloadURL := fmt.Sprintf("%s/slipgate-%s-%s", base, runtime.GOOS, runtime.GOARCH)
+	downloadURL := fmt.Sprintf("%s/rovunet-%s-%s", base, runtime.GOOS, runtime.GOARCH)
 	out.Info("Downloading from: " + downloadURL)
 
 	tmpPath, err := binary.Download(downloadURL)
@@ -50,7 +50,7 @@ func handleSystemUpdate(ctx *actions.Context) error {
 		os.Chmod(execPath, 0755)
 	}
 
-	out.Success("slipgate updated")
+	out.Success("rovunet updated")
 
 	// Hand off to the newly installed binary for transport updates and
 	// service regeneration so the new code's URLs and logic are used.
@@ -198,7 +198,7 @@ func runPostUpdate(ctx *actions.Context) error {
 	}
 
 	// Recreate SOCKS5 proxy service to pick up new ExecStart format (e.g. --creds)
-	if service.Exists("slipgate-socks5") {
+	if service.Exists("rovunet-socks5") {
 		directSOCKS := false
 		for _, t := range cfg.Tunnels {
 			if t.Transport == config.TransportSOCKS {
@@ -219,16 +219,16 @@ func runPostUpdate(ctx *actions.Context) error {
 		if setupErr != nil {
 			out.Warning("Failed to regenerate SOCKS5 proxy: " + setupErr.Error())
 		} else {
-			out.Success("  slipgate-socks5 regenerated and restarted")
+			out.Success("  rovunet-socks5 regenerated and restarted")
 		}
 	}
 
 	// Restart DNS router last so tunnels are ready
-	if service.Exists("slipgate-dnsrouter") {
-		if err := service.Restart("slipgate-dnsrouter"); err != nil {
-			out.Warning(fmt.Sprintf("Failed to restart slipgate-dnsrouter: %v", err))
+	if service.Exists("rovunet-dnsrouter") {
+		if err := service.Restart("rovunet-dnsrouter"); err != nil {
+			out.Warning(fmt.Sprintf("Failed to restart rovunet-dnsrouter: %v", err))
 		} else {
-			out.Success("  slipgate-dnsrouter restarted")
+			out.Success("  rovunet-dnsrouter restarted")
 		}
 	}
 

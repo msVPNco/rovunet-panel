@@ -9,15 +9,15 @@ import (
 )
 
 const (
-	iptablesRulesPath = "/etc/iptables/slipgate-rules.v4"
-	iptablesUnitPath  = "/etc/systemd/system/slipgate-iptables.service"
+	iptablesRulesPath = "/etc/iptables/rovunet-rules.v4"
+	iptablesUnitPath  = "/etc/systemd/system/rovunet-iptables.service"
 )
 
 // iptables-restore is invoked early at boot to re-apply rules saved by
 // iptablesPersist. %s placeholders are filled with the absolute restore-binary
 // path and the rules file path at write time.
 const iptablesUnitTemplate = `[Unit]
-Description=Restore slipgate iptables rules
+Description=Restore rovunet iptables rules
 DefaultDependencies=no
 Before=network-pre.target
 Wants=network-pre.target
@@ -219,7 +219,7 @@ func iptablesPersist() error {
 		if err := run("systemctl", "daemon-reload"); err != nil {
 			return err
 		}
-		if err := run("systemctl", "enable", "slipgate-iptables.service"); err != nil {
+		if err := run("systemctl", "enable", "rovunet-iptables.service"); err != nil {
 			return err
 		}
 	}
@@ -240,7 +240,7 @@ func DisableResolvedStub() error {
 	}
 
 	conf := "[Resolve]\nDNSStubListener=no\n"
-	if err := os.WriteFile("/etc/systemd/resolved.conf.d/slipgate-no-stub.conf", []byte(conf), 0644); err != nil {
+	if err := os.WriteFile("/etc/systemd/resolved.conf.d/rovunet-no-stub.conf", []byte(conf), 0644); err != nil {
 		return fmt.Errorf("write resolved config: %w", err)
 	}
 

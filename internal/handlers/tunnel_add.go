@@ -631,7 +631,7 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 			if tunnel.VLESS != nil {
 				printVLESSSetup(out, cfg, &tunnel)
 			}
-			out.Info(fmt.Sprintf("Share with: slipgate tunnel share %s", tag))
+			out.Info(fmt.Sprintf("Share with: rovunet tunnel share %s", tag))
 		}
 	}
 	return nil

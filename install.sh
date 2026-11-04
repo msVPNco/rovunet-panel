@@ -1,9 +1,9 @@
 #!/bin/bash
-# Rovunet Panel installer — download the slipgate binary and run `slipgate install`
+# Rovunet Panel installer — download the rovunet binary and run `rovunet install`
 set -e
 
-# Releases carrying the slipgate binary (this fork). Override with SLIPGATE_REPO=owner/repo.
-REPO="${SLIPGATE_REPO:-msVPNco/rovunet-panel}"
+# Releases carrying the rovunet binary. Override with ROVUNET_REPO=owner/repo.
+REPO="${ROVUNET_REPO:-msVPNco/rovunet-panel}"
 INSTALL_DIR="/usr/local/bin"
 
 # Colors
@@ -29,10 +29,10 @@ esac
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 [[ "$OS" != "linux" ]] && error "Rovunet Panel only supports Linux"
 
-BINARY="slipgate-${OS}-${ARCH}"
+BINARY="rovunet-${OS}-${ARCH}"
 
-# Override with: SLIPGATE_RELEASE_TAG=v1.5.1 bash install.sh
-RELEASE_TAG="${SLIPGATE_RELEASE_TAG:-}"
+# Override with: ROVUNET_RELEASE_TAG=v1.8.0 bash install.sh
+RELEASE_TAG="${ROVUNET_RELEASE_TAG:-}"
 CHANNEL=""  # ← set to "dev" on dev branch, empty on main
 
 if [[ -n "$RELEASE_TAG" ]]; then
@@ -63,32 +63,33 @@ cat <<'BANNER'
 BANNER
 echo -e "${NC}"
 
-# Kill any running slipgate/tunnel processes and remove old binary
+# Kill any running panel/tunnel processes and remove the old binary
+killall rovunet 2>/dev/null || true
 killall slipgate 2>/dev/null || true
 killall dnstt-server 2>/dev/null || true
 killall slipstream-server 2>/dev/null || true
-rm -f "${INSTALL_DIR}/slipgate"
+rm -f "${INSTALL_DIR}/rovunet"
 
-info "Downloading slipgate ($OS/$ARCH)..."
+info "Downloading rovunet ($OS/$ARCH)..."
 if command -v curl &>/dev/null; then
-    curl -fsSL "$URL" -o "${INSTALL_DIR}/slipgate"
+    curl -fsSL "$URL" -o "${INSTALL_DIR}/rovunet"
 elif command -v wget &>/dev/null; then
-    wget -qO "${INSTALL_DIR}/slipgate" "$URL"
+    wget -qO "${INSTALL_DIR}/rovunet" "$URL"
 else
     error "Neither curl nor wget found"
 fi
 
-chmod +x "${INSTALL_DIR}/slipgate"
+chmod +x "${INSTALL_DIR}/rovunet"
 
-info "Running slipgate install..."
-info "If installation fails, run 'sudo slipgate install' to retry."
-info "When it finishes, run 'sudo slipgate' to see the menu."
+info "Running rovunet install..."
+info "If installation fails, run 'sudo rovunet install' to retry."
+info "When it finishes, run 'sudo rovunet' to see the menu."
 
-# exec so slipgate replaces this shell and becomes sudo's direct child.
+# exec so rovunet replaces this shell and becomes sudo's direct child.
 # Under `curl | sudo bash`, sudo (use_pty, and always with sudo-rs on
 # Ubuntu 25.10+) starts the command in the pty's background process group.
-# The first prompt's tcsetattr then stops slipgate with SIGTTOU; sudo only
+# The first prompt's tcsetattr then stops rovunet with SIGTTOU; sudo only
 # resumes it in the foreground (with the user's terminal in raw mode) if it
-# can see the stop, which it can't when slipgate is a grandchild behind a
+# can see the stop, which it can't when rovunet is a grandchild behind a
 # non-interactive bash.
-exec "${INSTALL_DIR}/slipgate" install </dev/tty
+exec "${INSTALL_DIR}/rovunet" install </dev/tty

@@ -23,7 +23,7 @@ func handleRouterSwitch(ctx *actions.Context) error {
 
 	if cfg.Route.Mode != "single" {
 		return actions.NewErrorWithHint(actions.RouterSwitch, "switch only works in single mode",
-			"Run 'slipgate router mode single' first", nil)
+			"Run 'rovunet router mode single' first", nil)
 	}
 
 	if err := router.SwitchActive(cfg, tag); err != nil {

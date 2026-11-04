@@ -2,7 +2,6 @@ package transport
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/anonvector/slipgate/internal/config"
 	"github.com/anonvector/slipgate/internal/service"
@@ -37,7 +36,7 @@ func buildSoarExecStart(tunnel *config.TunnelConfig, cfg *config.Config) (string
 	}
 
 	// slipgate binary itself serves soar — no external binary needed
-	execPath, err := os.Executable()
+	execPath, err := config.PanelBinary()
 	if err != nil {
 		return "", fmt.Errorf("resolve executable: %w", err)
 	}

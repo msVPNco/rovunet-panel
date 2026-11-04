@@ -10,13 +10,13 @@ import (
 )
 
 const (
-	DefaultConfigDir  = "/etc/slipgate"
-	DefaultConfigFile = "/etc/slipgate/config.json"
-	DefaultTunnelDir  = "/etc/slipgate/tunnels"
+	DefaultConfigDir  = "/etc/rovunet"
+	DefaultConfigFile = "/etc/rovunet/config.json"
+	DefaultTunnelDir  = "/etc/rovunet/tunnels"
 	DefaultBinDir     = "/usr/local/bin"
-	SystemUser        = "slipgate"
-	SystemGroup       = "slipgate"
-	SSHGroup          = "slipgate-ssh"
+	SystemUser        = "rovunet"
+	SystemGroup       = "rovunet"
+	SSHGroup          = "rovunet-ssh"
 )
 
 // WarpConfig tracks Cloudflare WARP outbound state.
@@ -298,4 +298,14 @@ func (c *Config) RemoveUser(username string) bool {
 // TunnelDir returns the directory for a tunnel's files.
 func TunnelDir(tag string) string {
 	return filepath.Join(DefaultTunnelDir, tag)
+}
+
+// PanelBinary is the path systemd services run the panel from: the installed
+// /usr/local/bin/rovunet when present, else the running binary.
+func PanelBinary() (string, error) {
+	p := filepath.Join(DefaultBinDir, "rovunet")
+	if fi, err := os.Stat(p); err == nil && fi.Mode().IsRegular() {
+		return p, nil
+	}
+	return os.Executable()
 }

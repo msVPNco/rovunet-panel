@@ -2,6 +2,14 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## Unreleased
+
+### Changes
+
+- **The command is now `rovunet`.** Services are `rovunet-*`, settings live in `/etc/rovunet`, the system accounts are `rovunet`, `rovunet-socks` and `rovunet-naive`, and SSH tunnel users are in the `rovunet-ssh` group. Releases ship `rovunet-linux-*`.
+- **Existing servers move automatically.** The first `rovunet` or `slipgate` command run as root (including `slipgate update` from v1.7.0) stops the old services, renames accounts, moves `/etc/slipgate` to `/etc/rovunet` (leaving a link), rewrites service files and sshd's tunnel-user block (validated with `sshd -t` first), and starts everything again under the new names. VLESS UUIDs and paths are unchanged, so client configs keep working.
+- For a transition period, `slipgate` stays as a link to `rovunet`, releases also carry `slipgate-linux-*` copies, and backups made by SlipGate still restore.
+
 ## v1.7.0
 
 First release as **Rovunet Panel**.

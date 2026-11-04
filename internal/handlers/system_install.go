@@ -28,7 +28,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 	out := ctx.Output
 
 	if runtime.GOOS != "linux" {
-		return actions.NewError(actions.SystemInstall, "slipgate only supports Linux servers", nil)
+		return actions.NewError(actions.SystemInstall, "rovunet only supports Linux servers", nil)
 	}
 
 	// Offline mode: use local binaries instead of downloading
@@ -55,7 +55,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 	}
 
 	// ── Step 2: Create system user and directories ─────────────────
-	out.Info("Creating system user 'slipgate'...")
+	out.Info("Creating system user 'rovunet'...")
 	if err := system.EnsureUser(); err != nil {
 		return actions.NewError(actions.SystemInstall, "failed to create system user", err)
 	}
@@ -211,7 +211,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 		// Running install again on a configured server keeps what is there:
 		// a second tunnel of the same kind would clash on its domain or port.
 		if existing := tunnelTagsOf(cfg, selectedTransport); len(existing) > 0 {
-			out.Info(fmt.Sprintf("Already installed (%s), kept as is; add another with 'slipgate tunnel add'", strings.Join(existing, ", ")))
+			out.Info(fmt.Sprintf("Already installed (%s), kept as is; add another with 'rovunet tunnel add'", strings.Join(existing, ", ")))
 			if knownParent == "" {
 				if t := cfg.GetTunnel(existing[0]); t != nil && t.Domain != "" {
 					knownParent = baseDomain(t.Domain)
@@ -757,7 +757,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 		// (wg-tools, service users, account registration) or rewrites
 		// the same content (wg0.conf, resolved drop-in, systemd unit).
 		// Running it unconditionally when WARP is already enabled turns
-		// `slipgate install` into a recovery path for bugs that ship
+		// `rovunet install` into a recovery path for bugs that ship
 		// new setup steps in binary upgrades (e.g. the DNS resolver
 		// override added in c219d39). Without this, a user on an
 		// already-WARP'd box can't pick up new fixes without manually
@@ -906,8 +906,8 @@ func handleSystemInstall(ctx *actions.Context) error {
 	out.Print("  Next steps:")
 	out.Print("    - Set up DNS records above with your domain registrar")
 	out.Print("    - Import the rovunet:// or standard vless:// config into Rovunet")
-	out.Print("    - Add more tunnels: sudo slipgate tunnel add")
-	out.Print("    - Add more users:   sudo slipgate users")
+	out.Print("    - Add more tunnels: sudo rovunet tunnel add")
+	out.Print("    - Add more users:   sudo rovunet users")
 	out.Print("")
 
 	return nil

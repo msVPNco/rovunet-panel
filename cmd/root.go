@@ -7,6 +7,7 @@ import (
 	"github.com/anonvector/slipgate/internal/config"
 	"github.com/anonvector/slipgate/internal/handlers"
 	"github.com/anonvector/slipgate/internal/menu"
+	"github.com/anonvector/slipgate/internal/migrate"
 	"github.com/anonvector/slipgate/internal/version"
 	"github.com/spf13/cobra"
 
@@ -15,9 +16,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "slipgate",
+	Use:   "rovunet",
 	Short: "Unified server tunnel manager",
-	Long:  "Rovunet Panel (slipgate) manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar) and HTTPS proxies (NaiveProxy) with systemd services.",
+	Long:  "Rovunet Panel (rovunet) manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar) and HTTPS proxies (NaiveProxy) with systemd services.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if v, _ := cmd.Flags().GetBool("version"); v {
 			cmd.Println(version.String())
@@ -29,6 +30,19 @@ var rootCmd = &cobra.Command{
 	},
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	// A server installed under the old SlipGate names moves to the Rovunet
+	// names on the first panel command run as root. Services ("serve") never
+	// trigger it, so a reboot can't start a migration halfway through boot.
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if os.Geteuid() != 0 || cmd.Name() == "serve" || cmd.Name() == "help" || !migrate.Needed() {
+			return nil
+		}
+		if v, _ := cmd.Flags().GetBool("version"); v {
+			return nil
+		}
+		out := &actions.StdOutput{}
+		return migrate.Run(out.Info, out.Warning)
+	},
 }
 
 func init() {

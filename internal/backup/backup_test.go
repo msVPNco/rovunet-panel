@@ -295,3 +295,24 @@ func TestDecodeRejectsUnsafeBundles(t *testing.T) {
 		}
 	}
 }
+
+// TestDecodeAcceptsSlipGateBackups: backups made before the rename to Rovunet
+// have SLIPGATE in their BEGIN and END lines and must still restore.
+func TestDecodeAcceptsSlipGateBackups(t *testing.T) {
+	cfg, root := testServer(t)
+	b, err := Create(cfg, root, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text, err := b.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(text, BeginMarker) || !strings.Contains(text, EndMarker) {
+		t.Fatal("new backups use the Rovunet lines")
+	}
+	old := strings.NewReplacer(BeginMarker, legacyBeginMarker, EndMarker, legacyEndMarker).Replace(text)
+	if _, err := Decode(old); err != nil {
+		t.Fatalf("old backup: %v", err)
+	}
+}

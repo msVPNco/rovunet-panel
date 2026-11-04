@@ -27,7 +27,7 @@ func handleQuickWizard(ctx *actions.Context) error {
 	out := ctx.Output
 
 	if runtime.GOOS != "linux" {
-		return actions.NewError(actions.QuickWizard, "slipgate only supports Linux servers", nil)
+		return actions.NewError(actions.QuickWizard, "rovunet only supports Linux servers", nil)
 	}
 
 	out.Print("")

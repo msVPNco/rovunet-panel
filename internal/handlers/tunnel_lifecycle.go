@@ -70,7 +70,7 @@ func handleTunnelStatus(ctx *actions.Context) error {
 		}
 	}
 	if len(cfg.Tunnels) == 0 {
-		ctx.Output.Info("No tunnels configured. Run 'slipgate tunnel add' to create one.")
+		ctx.Output.Info("No tunnels configured. Run 'rovunet tunnel add' to create one.")
 	}
 	return nil
 }

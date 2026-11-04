@@ -16,27 +16,27 @@ print-version:
 	@echo $(VERSION)
 
 build:
-	go build -trimpath -ldflags "$(LDFLAGS)" -o slipgate .
+	go build -trimpath -ldflags "$(LDFLAGS)" -o rovunet .
 
 build-linux:
-	GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(LDFLAGS)" -o slipgate-linux-amd64 .
-	GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(LDFLAGS)" -o slipgate-linux-arm64 .
+	GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(LDFLAGS)" -o rovunet-linux-amd64 .
+	GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(LDFLAGS)" -o rovunet-linux-arm64 .
 
 build-dev: RELEASE_TAG = dev-$(COMMIT)
 build-dev: build-linux
 	@echo "Dev binaries built (release tag: dev-$(COMMIT))"
-	@ls -la slipgate-linux-*
+	@ls -la rovunet-linux-*
 
 clean:
-	rm -f slipgate slipgate-linux-*
+	rm -f rovunet rovunet-linux-* slipgate-linux-*
 
 test:
 	go test ./...
 
 install: build
-	sudo cp slipgate /usr/local/bin/
-	@echo "Installed to /usr/local/bin/slipgate"
+	sudo cp rovunet /usr/local/bin/
+	@echo "Installed to /usr/local/bin/rovunet"
 
 release: clean build-linux
 	@echo "Built release binaries"
-	@ls -la slipgate-linux-*
+	@ls -la rovunet-linux-*

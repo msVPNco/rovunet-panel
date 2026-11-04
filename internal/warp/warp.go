@@ -16,20 +16,20 @@ import (
 )
 
 const (
-	WarpDir     = "/etc/slipgate/warp"
-	WarpConf    = "/etc/slipgate/warp/wg0.conf"
-	ProfileFile = "/etc/slipgate/warp/wgcf-profile.conf" // legacy wgcf profile
-	ServiceName = "slipgate-warp"
+	WarpDir     = "/etc/rovunet/warp"
+	WarpConf    = "/etc/rovunet/warp/wg0.conf"
+	ProfileFile = "/etc/rovunet/warp/wgcf-profile.conf" // legacy wgcf profile
+	ServiceName = "rovunet-warp"
 	RouteTable  = 200
 
 	// SocksUser is a dedicated system user for the SOCKS5 proxy so its
 	// outbound traffic can be routed through WARP independently of the
 	// tunnel processes that also run as config.SystemUser.
-	SocksUser = "slipgate-socks"
+	SocksUser = "rovunet-socks"
 
 	// NaiveUser is a dedicated system user for the Caddy/NaiveProxy
 	// process so its forward-proxy traffic can be routed through WARP.
-	NaiveUser = "slipgate-naive"
+	NaiveUser = "rovunet-naive"
 
 	// PublicAddrRulePref is the `ip rule` priority for "from <public-ip>
 	// lookup main" rules. Set well below the default uidrange rule pref
@@ -114,7 +114,7 @@ func Setup(cfg *config.Config, log func(string)) error {
 	// If WARP is already running, the new wg0.conf won't take effect until
 	// the interface is restarted — which would drop every in-flight TCP
 	// stream. Live-install the public-addr rules now so existing servers
-	// upgrading via `slipgate install` get the asymmetric-routing fix
+	// upgrading via `rovunet install` get the asymmetric-routing fix
 	// without a restart.
 	if IsRunning() {
 		ensurePublicAddrRules()
@@ -621,7 +621,7 @@ func removeService() error {
 
 // resolvedDropIn is the systemd-resolved drop-in slipgate installs so that
 // WARP-routed services can resolve DNS. Removed on Uninstall.
-const resolvedDropIn = "/etc/systemd/resolved.conf.d/slipgate-warp-dns.conf"
+const resolvedDropIn = "/etc/systemd/resolved.conf.d/rovunet-warp-dns.conf"
 
 // ensurePublicResolvers makes the system use public DNS resolvers reachable
 // from behind WARP. Many cloud providers default to LAN-only resolvers

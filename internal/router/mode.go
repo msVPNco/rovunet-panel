@@ -51,7 +51,7 @@ func SwitchActive(cfg *config.Config, tag string) error {
 }
 
 func ensureRouterRunning() error {
-	status, err := service.Status("slipgate-dnsrouter")
+	status, err := service.Status("rovunet-dnsrouter")
 	if err != nil || status != "active" {
 		if err := dnsrouter.CreateRouterService(); err != nil {
 			return err

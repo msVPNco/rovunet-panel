@@ -12,7 +12,7 @@ const systemdDir = "/etc/systemd/system"
 
 // TunnelServiceName returns the systemd service name for a tunnel.
 func TunnelServiceName(tag string) string {
-	return "slipgate-" + tag
+	return "rovunet-" + tag
 }
 
 // Unit represents a systemd unit file.
@@ -176,9 +176,9 @@ func GetUser(name string) string {
 	return ""
 }
 
-// ListSlipgateServices returns the names of all slipgate-* service files
+// ListPanelServices returns the names of all rovunet-* service files
 // found in the systemd directory (without the .service suffix).
-func ListSlipgateServices() []string {
+func ListPanelServices() []string {
 	entries, err := os.ReadDir(systemdDir)
 	if err != nil {
 		return nil
@@ -186,7 +186,7 @@ func ListSlipgateServices() []string {
 	var names []string
 	for _, e := range entries {
 		name := e.Name()
-		if strings.HasPrefix(name, "slipgate-") && strings.HasSuffix(name, ".service") {
+		if strings.HasPrefix(name, "rovunet-") && strings.HasSuffix(name, ".service") {
 			names = append(names, strings.TrimSuffix(name, ".service"))
 		}
 	}

@@ -17,7 +17,7 @@ func handleConfigExport(ctx *actions.Context) error {
 	}
 	ctx.Output.Print(string(data))
 	// Warning goes to stderr, so a redirected export stays plain JSON.
-	ctx.Output.Warning("This is config.json only, without tunnel keys or certificates. To move a server, use 'slipgate backup'.")
+	ctx.Output.Warning("This is config.json only, without tunnel keys or certificates. To move a server, use 'rovunet backup'.")
 	return nil
 }
 

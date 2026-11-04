@@ -1,13 +1,13 @@
 # Veyra Manager foundation
 
 Based on this repository's earlier VLESS fork history (see git log).
-Original LICENSE and upstream attribution retained. Binary/command remains `slipgate` in this increment.
+Original LICENSE and upstream attribution retained. Binary/command remains `rovunet` in this increment.
 
 Install/share/wizard and managed-user outputs now use `veyra://` for native configurations. VLESS paired output retains its standard `vless://` link as well. Native payload bytes remain unchanged, retaining DNS and chain settings.
 
 New command:
 
-    slipgate export-clients --user alice --format auto
+    rovunet export-clients --user alice --format auto
 
 Formats:
 - auto: standard VLESS WS link; native Veyra for other supported transports.
@@ -26,15 +26,15 @@ Validation: `go test ./...` passed; updated install/user-output tests and new lo
 `core-plan` creates a new mode-0700 directory with server.json and individual
 mode-0600 device profiles. Example (replace host, SNI, paths and port):
 
-    slipgate core-plan --protocol reality --host SERVER_IP --sni TLS_TARGET_NAME \
+    rovunet core-plan --protocol reality --host SERVER_IP --sni TLS_TARGET_NAME \
       --target TLS_TARGET_NAME:443 --port 8443 --devices 20 --output ./reality-plan
-    slipgate core-plan --protocol xhttp --host vpn.example.org --sni vpn.example.org \
+    rovunet core-plan --protocol xhttp --host vpn.example.org --sni vpn.example.org \
       --cert /path/fullchain.pem --key /path/privkey.pem --port 8444 \
       --devices 20 --output ./xhttp-plan
-    slipgate core-plan --protocol hysteria2 --host vpn.example.org --sni vpn.example.org \
+    rovunet core-plan --protocol hysteria2 --host vpn.example.org --sni vpn.example.org \
       --cert /path/fullchain.pem --key /path/privkey.pem --port 8445 \
       --devices 20 --output ./hy2-plan
-    slipgate core-plan --protocol wireguard --host SERVER_IP --port 51820 \
+    rovunet core-plan --protocol wireguard --host SERVER_IP --port 51820 \
       --devices 20 --output ./wg-plan
 
 Validate with pinned Xray: `xray run -test -c ./reality-plan/server.json`.

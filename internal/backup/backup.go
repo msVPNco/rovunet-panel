@@ -23,8 +23,12 @@ import (
 
 // The first and last lines of a backup.
 const (
-	BeginMarker = "-----BEGIN SLIPGATE BACKUP-----"
-	EndMarker   = "-----END SLIPGATE BACKUP-----"
+	BeginMarker = "-----BEGIN ROVUNET BACKUP-----"
+	EndMarker   = "-----END ROVUNET BACKUP-----"
+
+	// Backups made before the rename to Rovunet use these lines.
+	legacyBeginMarker = "-----BEGIN SLIPGATE BACKUP-----"
+	legacyEndMarker   = "-----END SLIPGATE BACKUP-----"
 )
 
 const (
@@ -231,12 +235,16 @@ func (b *Bundle) Encode() (string, error) {
 // ignored, as are spaces and line breaks between them, which copy-paste
 // tends to change.
 func Decode(text string) (*Bundle, error) {
-	start := strings.Index(text, BeginMarker)
-	end := strings.Index(text, EndMarker)
-	if start < 0 || end < start {
-		return nil, errors.New("no slipgate backup found: the text must include the BEGIN and END lines")
+	begin, endMarker := BeginMarker, EndMarker
+	if !strings.Contains(text, BeginMarker) && strings.Contains(text, legacyBeginMarker) {
+		begin, endMarker = legacyBeginMarker, legacyEndMarker
 	}
-	body := strings.Join(strings.Fields(text[start+len(BeginMarker):end]), "")
+	start := strings.Index(text, begin)
+	end := strings.Index(text, endMarker)
+	if start < 0 || end < start {
+		return nil, errors.New("no rovunet backup found: the text must include the BEGIN and END lines")
+	}
+	body := strings.Join(strings.Fields(text[start+len(begin):end]), "")
 
 	damaged := errors.New("backup text is damaged or incomplete; copy it again from the BEGIN line to the END line")
 	zipped, err := base64.StdEncoding.DecodeString(body)
@@ -261,7 +269,7 @@ func Decode(text string) (*Bundle, error) {
 		return nil, fmt.Errorf("invalid backup: %w", err)
 	}
 	if b.Format > formatVersion {
-		return nil, fmt.Errorf("backup was made by a newer slipgate (%s); update slipgate on this server first", b.Version)
+		return nil, fmt.Errorf("backup was made by a newer rovunet (%s); update rovunet on this server first", b.Version)
 	}
 	if b.Format < 1 || b.Config == nil {
 		return nil, errors.New("invalid backup: missing format or config")

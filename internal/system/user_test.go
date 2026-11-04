@@ -17,8 +17,8 @@ UsePAM yes
 
 // oldSlipgateBlock is the Match block before password logins were enabled.
 const oldSlipgateBlock = `
-# SlipGate SSH tunnel users
-Match Group slipgate-ssh
+# Rovunet SSH tunnel users
+Match Group rovunet-ssh
     AllowTcpForwarding yes
     X11Forwarding no
     AllowAgentForwarding no
@@ -28,43 +28,43 @@ Match Group slipgate-ssh
 `
 
 func TestSlipgateSSHConfigFresh(t *testing.T) {
-	got := withSlipgateSSHConfig(cloudSSHDConfig)
+	got := withPanelSSHConfig(cloudSSHDConfig)
 	if !strings.HasPrefix(got, cloudSSHDConfig) || !strings.HasSuffix(got, sshMatchBlock) {
 		t.Fatalf("got:\n%s", got)
 	}
-	if g, m := strings.Index(got, "# SlipGate global SSH settings"), strings.Index(got, "Match Group"); g < 0 || g > m {
+	if g, m := strings.Index(got, "# Rovunet global SSH settings"), strings.Index(got, "Match Group"); g < 0 || g > m {
 		t.Errorf("global settings missing or after the Match block:\n%s", got)
 	}
 }
 
 func TestSlipgateSSHConfigUpgradesOldBlock(t *testing.T) {
-	got := withSlipgateSSHConfig(cloudSSHDConfig + sshGlobalSettings + oldSlipgateBlock)
-	if n := strings.Count(got, "Match Group slipgate-ssh"); n != 1 {
+	got := withPanelSSHConfig(cloudSSHDConfig + sshGlobalSettings + oldSlipgateBlock)
+	if n := strings.Count(got, "Match Group rovunet-ssh"); n != 1 {
 		t.Fatalf("%d Match blocks:\n%s", n, got)
 	}
-	if !strings.HasSuffix(got, sshMatchBlock) || strings.Count(got, "# SlipGate global SSH settings") != 1 {
+	if !strings.HasSuffix(got, sshMatchBlock) || strings.Count(got, "# Rovunet global SSH settings") != 1 {
 		t.Errorf("got:\n%s", got)
 	}
 }
 
 func TestSlipgateSSHConfigIdempotent(t *testing.T) {
-	once := withSlipgateSSHConfig(cloudSSHDConfig)
-	if twice := withSlipgateSSHConfig(once); twice != once {
+	once := withPanelSSHConfig(cloudSSHDConfig)
+	if twice := withPanelSSHConfig(once); twice != once {
 		t.Errorf("second pass changed the config:\n%s", twice)
 	}
 }
 
 func TestSlipgateSSHConfigKeepsForeignBlock(t *testing.T) {
-	in := cloudSSHDConfig + sshGlobalSettings + "\nMatch Group slipgate-ssh\n    AllowTcpForwarding yes\n"
-	if got := withSlipgateSSHConfig(in); got != in {
+	in := cloudSSHDConfig + sshGlobalSettings + "\nMatch Group rovunet-ssh\n    AllowTcpForwarding yes\n"
+	if got := withPanelSSHConfig(in); got != in {
 		t.Errorf("hand-written block replaced:\n%s", got)
 	}
 }
 
 func TestSlipgateSSHConfigGlobalsBeforeOtherMatch(t *testing.T) {
 	in := cloudSSHDConfig + "\nMatch User backup\n    ForceCommand /usr/bin/rsync\n"
-	got := withSlipgateSSHConfig(in)
-	if g, m := strings.Index(got, "# SlipGate global SSH settings"), strings.Index(got, "Match User backup"); g < 0 || g > m {
+	got := withPanelSSHConfig(in)
+	if g, m := strings.Index(got, "# Rovunet global SSH settings"), strings.Index(got, "Match User backup"); g < 0 || g > m {
 		t.Errorf("global settings after an existing Match block:\n%s", got)
 	}
 }
@@ -85,5 +85,25 @@ func TestEnsureSSHDRunDir(t *testing.T) {
 	}
 	if err := ensureSSHDRunDir(); err != nil {
 		t.Fatalf("second call: %v", err)
+	}
+}
+
+// TestLegacySSHBlockMigrates: the block a SlipGate install wrote becomes the
+// current block once its markers and group are renamed, without duplicates.
+func TestLegacySSHBlockMigrates(t *testing.T) {
+	legacy := strings.NewReplacer(
+		"# Rovunet global SSH settings", "# SlipGate global SSH settings",
+		"# Rovunet SSH tunnel users", "# SlipGate SSH tunnel users",
+		"Match Group rovunet-ssh", "Match Group slipgate-ssh",
+	).Replace(withPanelSSHConfig(cloudSSHDConfig))
+	if !strings.Contains(legacy, "Match Group slipgate-ssh") {
+		t.Fatal("test setup: expected a SlipGate block")
+	}
+	got := withPanelSSHConfig(legacySSHMarkers.Replace(legacy))
+	if got != withPanelSSHConfig(cloudSSHDConfig) {
+		t.Fatalf("migrated config differs from a fresh one:\n%s", got)
+	}
+	if strings.Contains(got, "slipgate") || strings.Contains(got, "SlipGate") {
+		t.Fatalf("old names left:\n%s", got)
 	}
 }

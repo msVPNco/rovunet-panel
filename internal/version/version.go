@@ -8,7 +8,7 @@ var (
 	ReleaseTag = "" // set via ldflags for dev builds (e.g. "dev-abc1234")
 
 	// Repo is the GitHub repository whose releases carry the slipgate
-	// binary: install.sh and `slipgate update` download from it, so a fork's
+	// binary: install.sh and `rovunet update` download from it, so a fork's
 	// builds keep updating from the fork. Override with -ldflags -X.
 	Repo = "msVPNco/rovunet-panel"
 )
@@ -23,9 +23,9 @@ func String() string {
 		tag = "-dev"
 	}
 	if Commit == "unknown" {
-		return fmt.Sprintf("slipgate v%s%s", Version, tag)
+		return fmt.Sprintf("rovunet v%s%s", Version, tag)
 	}
-	return fmt.Sprintf("slipgate v%s%s (%s)", Version, tag, Commit)
+	return fmt.Sprintf("rovunet v%s%s (%s)", Version, tag, Commit)
 }
 
 // IsDev returns true if this is a dev channel build.

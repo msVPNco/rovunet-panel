@@ -13,7 +13,7 @@ func AddTunnel(cfg *config.Config, tunnel *config.TunnelConfig) error {
 		return nil
 	}
 
-	status, _ := service.Status("slipgate-dnsrouter")
+	status, _ := service.Status("rovunet-dnsrouter")
 	if status == "active" {
 		return dnsrouter.RestartRouterService()
 	}
@@ -23,7 +23,7 @@ func AddTunnel(cfg *config.Config, tunnel *config.TunnelConfig) error {
 // RemoveTunnel unregisters a tunnel from routing.
 // Restarts the router to drop the removed tunnel's route.
 func RemoveTunnel(cfg *config.Config, tag string) error {
-	status, _ := service.Status("slipgate-dnsrouter")
+	status, _ := service.Status("rovunet-dnsrouter")
 	if status == "active" {
 		return dnsrouter.RestartRouterService()
 	}

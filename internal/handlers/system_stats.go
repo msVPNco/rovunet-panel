@@ -272,8 +272,8 @@ func drawDashboard(cpuH, ramH, rxH, txH []float64,
 	b.WriteString(fmt.Sprintf("  %s────────────────────────────────────────────────────────────%s\r\n",
 		cDivider, cReset))
 	for _, svc := range []struct{ name, label string }{
-		{"slipgate-dnsrouter", "DNS Router"},
-		{"slipgate-socks5", "SOCKS5 Proxy"},
+		{"rovunet-dnsrouter", "DNS Router"},
+		{"rovunet-socks5", "SOCKS5 Proxy"},
 	} {
 		if service.Exists(svc.name) {
 			status, _ := service.Status(svc.name)

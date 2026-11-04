@@ -269,7 +269,7 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 		fields[FNaivePass] = b64(password)
 	}
 	if tunnel.Transport == config.TransportNaive && fields[FNaiveUser] == "" {
-		return "", fmt.Errorf("NaiveProxy needs a login: create a user with 'slipgate users add'")
+		return "", fmt.Errorf("NaiveProxy needs a login: create a user with 'rovunet users add'")
 	}
 
 	// A VLESS config carries the user's UUID, never their SSH/SOCKS password

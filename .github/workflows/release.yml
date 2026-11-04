@@ -1,7 +1,8 @@
 name: Release
 
-# Publishes slipgate-linux-amd64 / -arm64 (what install.sh and
-# `slipgate update` download) as release v<VERSION>, VERSION being the one in
+# Publishes rovunet-linux-amd64 / -arm64 (what install.sh and
+# `rovunet update` download), plus the same binaries as slipgate-linux-* so
+# servers still on the old name can update and migrate, as release v<VERSION>, VERSION being the one in
 # the Makefile. A release is published only when VERSION changes on main
 # (a release for that version doesn't exist yet), by hand, or from a v* tag.
 # Other pushes to main skip, because their version is already released.
@@ -63,7 +64,11 @@ jobs:
         run: |
           tag="${{ steps.tag.outputs.tag }}"
           make build-linux VERSION="${tag#v}" COMMIT="${GITHUB_SHA::7}"
-          sha256sum slipgate-linux-* > SHA256SUMS
+          # Same binaries under the old names, for `slipgate update` on servers
+          # that haven't moved to the new names yet
+          cp rovunet-linux-amd64 slipgate-linux-amd64
+          cp rovunet-linux-arm64 slipgate-linux-arm64
+          sha256sum rovunet-linux-* slipgate-linux-* > SHA256SUMS
 
       - name: Publish
         if: steps.tag.outputs.skip != 'true'
@@ -75,6 +80,7 @@ jobs:
           awk -v h="## $tag" '$0==h{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md > notes.md || true
           if [ -s notes.md ]; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
           gh release create "$tag" \
+            rovunet-linux-amd64 rovunet-linux-arm64 \
             slipgate-linux-amd64 slipgate-linux-arm64 SHA256SUMS \
             --target "$GITHUB_SHA" \
             --title "Rovunet Panel $tag" \

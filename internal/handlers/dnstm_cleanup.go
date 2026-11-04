@@ -56,7 +56,7 @@ func offerDnstmCleanup(out actions.OutputWriter, action string) (bool, error) {
 	}
 
 	out.Warning("Detected existing dnstm installation")
-	ok, err := prompt.Confirm("Remove dnstm? Its services may conflict with slipgate (port 53)")
+	ok, err := prompt.Confirm("Remove dnstm? Its services may conflict with rovunet (port 53)")
 	if err != nil {
 		return false, err
 	}

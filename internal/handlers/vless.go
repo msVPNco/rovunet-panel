@@ -227,7 +227,7 @@ func printVLESSSetup(out actions.OutputWriter, cfg *config.Config, t *config.Tun
 func handleVLESSShare(ctx *actions.Context, cfg *config.Config, tunnel *config.TunnelConfig) error {
 	if len(cfg.Users) == 0 {
 		return actions.NewErrorWithHint(actions.TunnelShare, "VLESS configs are per user and there are no users",
-			"Create one with: sudo slipgate users add", nil)
+			"Create one with: sudo rovunet users add", nil)
 	}
 	username := ctx.GetArg("user")
 	if username == "" {

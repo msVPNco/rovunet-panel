@@ -2,7 +2,6 @@ package transport
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/anonvector/slipgate/internal/config"
@@ -20,7 +19,7 @@ func createStunTLSService(tunnel *config.TunnelConfig, cfg *config.Config) error
 	}
 
 	// slipgate binary itself serves as the TLS proxy — no external binary needed
-	execPath, err := os.Executable()
+	execPath, err := config.PanelBinary()
 	if err != nil {
 		return fmt.Errorf("resolve executable: %w", err)
 	}

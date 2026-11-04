@@ -18,7 +18,7 @@ func VLESSUserUUID(tunnel *config.TunnelConfig, username, password string) (stri
 		return "", fmt.Errorf("vless config is nil")
 	}
 	if username == "" {
-		return "", fmt.Errorf("vless configs are per user: choose a user (create one with: slipgate users add)")
+		return "", fmt.Errorf("vless configs are per user: choose a user (create one with: rovunet users add)")
 	}
 	secret, err := keys.LoadVLESSSecret(tunnel.VLESS.SecretFile)
 	if err != nil {

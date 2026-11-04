@@ -25,7 +25,7 @@ Designed to work with the [Rovunet Android app](https://github.com/msVPNco/rovun
 
 **Scope of support:** `core-plan` can generate configurations for additional paths for manual deployment; this does not mean that all such paths are installed and managed automatically. Connection quality and availability depend on the network, server configuration and selected protocol. See [integration status and development priorities](docs/ROVUNET-STATUS.md) for the distinction between available functionality and remaining work.
 
-> **Project status: early release under active development.** Test the required protocols in your own environment before operational use, and back up configuration with `slipgate backup`.
+> **Project status: early release under active development.** Test the required protocols in your own environment before operational use, and back up configuration with `rovunet backup`.
 
 ## Quick install
 
@@ -39,10 +39,10 @@ The installer asks which protocols to enable, sets them up, creates the first
 user and prints all of that user's configs. Then:
 
 ```bash
-sudo slipgate                 # interactive menu
-sudo slipgate users add       # add a user
-sudo slipgate users configs   # print every user's configs again
-sudo slipgate diag            # check services, ports, keys and DNS
+sudo rovunet                 # interactive menu
+sudo rovunet users add       # add a user
+sudo rovunet users configs   # print every user's configs again
+sudo rovunet diag            # check services, ports, keys and DNS
 ```
 
 Coming from SlipGate? See [switching a server](docs/GUIDE.md#quick-start);
@@ -64,7 +64,7 @@ your config, tunnels and users are kept.
 | **SOCKS5** | Plain SOCKS5 | 1080/tcp | Open networks only (not encrypted) |
 
 Protocol suitability depends on the server, operator and current network. These are usage guidelines, not guaranteed availability or comparative benchmark results. The Rovunet app tests connection paths. Xray protocols (REALITY,
-XHTTP, Hysteria2, WireGuard) can already be generated with `slipgate core-plan`
+XHTTP, Hysteria2, WireGuard) can already be generated with `rovunet core-plan`
 for manual deployment; managed support is in progress.
 
 ## Client apps
@@ -79,7 +79,7 @@ for manual deployment; managed support is in progress.
   links the panel prints next to each VLESS config.
 
 ```bash
-sudo slipgate export-clients --user USER --format rovunet
+sudo rovunet export-clients --user USER --format rovunet
 ```
 
 ## Requirements
@@ -111,5 +111,4 @@ Questions and news: [t.me/RovunetVPN](https://t.me/RovunetVPN)
 
 AGPL-3.0. Rovunet Panel is based on
 [SlipGate](https://github.com/anonvector/slipgate) by Anonvector and is not
-affiliated with it; see [NOTICE](NOTICE.md). For compatibility the command is
-still `slipgate`.
+affiliated with it; see [NOTICE](NOTICE.md).
