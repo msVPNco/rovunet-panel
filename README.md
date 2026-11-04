@@ -6,7 +6,7 @@
 
 <p align="center">
   Self-hosted, multi-protocol censorship-circumvention server.<br>
-  One install, every protocol, ready-to-use configs for each user.
+  One install for supported managed protocols, with client configs for each user.
 </p>
 
 <p align="center">
@@ -63,12 +63,13 @@ your config, tunnels and users are kept.
 | **Soar** | Multipath DNS with resolver discovery | 53/udp | When DNS resolvers are filtered unevenly |
 | **SOCKS5** | Plain SOCKS5 | 1080/tcp | Open networks only (not encrypted) |
 
-These notes come from field tests in Iran in late 2026; networks change, so the
-Rovunet app tests each path and picks one that works. Xray protocols (REALITY,
+Protocol suitability depends on the server, operator and current network. These are usage guidelines, not guaranteed availability or comparative benchmark results. The Rovunet app tests connection paths. Xray protocols (REALITY,
 XHTTP, Hysteria2, WireGuard) can already be generated with `slipgate core-plan`
 for manual deployment; managed support is in progress.
 
 ## Client apps
+
+[Download Rovunet Android 0.3.0-alpha06 Full](https://github.com/msVPNco/rovunet-android/releases/tag/v0.3.0-alpha06) — experimental, debug-signed. APK, Android source and Persian guide are attached. See [integration status](docs/ROVUNET-STATUS.md).
 
 - **[Rovunet for Android](https://github.com/msVPNco/rovunet-android)**
   (recommended): imports the `rovunet://` links, groups each user's paths into
