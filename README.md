@@ -73,6 +73,7 @@ for manual deployment; managed support is in progress.
 - **[Rovunet for Android](https://github.com/msVPNco/rovunet-android)**
   (recommended): imports the `rovunet://` links, groups each user's paths into
   one collection and tests them for you.
+  [Download the latest test build](https://github.com/msVPNco/rovunet-android/releases).
 - **Standard clients** such as v2rayNG, Hiddify or NekoBox: use the `vless://`
   links the panel prints next to each VLESS config.
 
