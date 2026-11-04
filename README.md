@@ -17,15 +17,15 @@
 
 ---
 
-Rovunet Panel sets up and manages the server side of the
-[Rovunet](https://github.com/msVPNco/rovunet-android) Android app on any Linux
-VPS: DNS tunnels for the hardest networks, HTTPS proxies that look like an
-ordinary website, VLESS, SSH over TLS and SOCKS5. It creates users, keeps every
-service running under systemd and prints each user's configs at the end of the
-install.
+**Rovunet Panel is an open-source, self-hosted tool for deploying and managing multi-protocol internet access on compatible Linux servers.** It is designed to provide several connection paths for each user, so access does not depend on a single protocol or a fixed set of network conditions.
 
-> **Status: early release.** Run it on a server you can rebuild, and keep a
-> backup (`slipgate backup`).
+The panel brings installation and configuration of managed protocols, user creation, client configuration export and systemd service management into a command-line workflow with an interactive menu. Available paths include VLESS over WebSocket, NaiveProxy, direct SSH, SSH over TLS, SOCKS5 and DNS tunnel families such as DNSTT, NoizDNS, VayDNS, Slipstream and Soar. Diagnostics and backup tools support ongoing server maintenance and troubleshooting.
+
+Designed to work with the [Rovunet Android app](https://github.com/msVPNco/rovunet-android), the panel's native export can carry collection metadata alongside related connection paths. The app tests connectivity through the actual tunnel and asks before proceeding to DNS fallback. Standard VLESS links are also available for other compatible clients.
+
+**Scope of support:** `core-plan` can generate configurations for additional paths for manual deployment; this does not mean that all such paths are installed and managed automatically. Connection quality and availability depend on the network, server configuration and selected protocol. See [integration status and development priorities](docs/ROVUNET-STATUS.md) for the distinction between available functionality and remaining work.
+
+> **Project status: early release under active development.** Test the required protocols in your own environment before operational use, and back up configuration with `slipgate backup`.
 
 ## Quick install
 
