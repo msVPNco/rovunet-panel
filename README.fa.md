@@ -67,9 +67,9 @@ sudo slipgate diag            # بررسی سرویس‌ها، پورت‌ها،
 
 ## اپ‌های کلاینت
 
-[دانلود Rovunet آلفا ۶ Full](https://github.com/msVPNco/rovunet-android/releases/tag/v0.3.0-alpha06) — آزمایشی با امضای debug؛ APK، سورس اندروید و راهنمای فارسی پیوست هستند. [وضعیت یکپارچگی](docs/ROVUNET-STATUS.md) را ببینید.
+[دانلود Rovunet آلفا ۶ Full](https://github.com/msVPNco/rovunet-android/releases/tag/v0.3.0-alpha06) — با امضای debug؛ APK، سورس اندروید و راهنمای فارسی پیوست هستند. [وضعیت یکپارچگی](docs/ROVUNET-STATUS.md) را ببینید.
 
-- **[رووُنت برای اندروید](https://github.com/msVPNco/rovunet-android)** (پیشنهادی): لینک‌های `rovunet://` را وارد می‌کند، مسیرهای هر کاربر را در یک مجموعه کنار هم می‌گذارد و خودش آن‌ها را آزمایش می‌کند. [دانلود آخرین نسخهٔ آزمایشی](https://github.com/msVPNco/rovunet-android/releases).
+- **[رووُنت برای اندروید](https://github.com/msVPNco/rovunet-android)** (پیشنهادی): لینک‌های `rovunet://` را وارد می‌کند، مسیرهای هر کاربر را در یک مجموعه کنار هم می‌گذارد و خودش آن‌ها را آزمایش می‌کند. [دانلود آخرین نسخه](https://github.com/msVPNco/rovunet-android/releases).
 - **کلاینت‌های استاندارد** مثل v2rayNG، Hiddify یا NekoBox: از لینک‌های `vless://` استفاده کنید که پنل کنار هر کانفیگ VLESS نمایش می‌دهد.
 
 ```bash

@@ -69,12 +69,12 @@ for manual deployment; managed support is in progress.
 
 ## Client apps
 
-[Download Rovunet Android 0.3.0-alpha06 Full](https://github.com/msVPNco/rovunet-android/releases/tag/v0.3.0-alpha06) — experimental, debug-signed. APK, Android source and Persian guide are attached. See [integration status](docs/ROVUNET-STATUS.md).
+[Download Rovunet Android 0.3.0-alpha06 Full](https://github.com/msVPNco/rovunet-android/releases/tag/v0.3.0-alpha06) — debug-signed. APK, Android source and Persian guide are attached. See [integration status](docs/ROVUNET-STATUS.md).
 
 - **[Rovunet for Android](https://github.com/msVPNco/rovunet-android)**
   (recommended): imports the `rovunet://` links, groups each user's paths into
   one collection and tests them for you.
-  [Download the latest test build](https://github.com/msVPNco/rovunet-android/releases).
+  [Download the latest release](https://github.com/msVPNco/rovunet-android/releases).
 - **Standard clients** such as v2rayNG, Hiddify or NekoBox: use the `vless://`
   links the panel prints next to each VLESS config.
 
