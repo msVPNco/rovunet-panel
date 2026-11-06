@@ -2,7 +2,7 @@
 
 > Based on [SlipGate](https://github.com/anonvector/slipgate) by Anonvector; not affiliated. See [NOTICE](../NOTICE.md).
 
-Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar), HTTPS proxies (NaiveProxy, StunTLS) and VLESS over WebSocket, with systemd services, multi-tunnel DNS routing, and user management. Designed for use with the [Rovunet](https://github.com/anonvector/SlipNet) Android VPN app.
+Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar), HTTPS proxies (NaiveProxy, StunTLS) and VLESS over WebSocket, with systemd services, multi-tunnel DNS routing, and user management. Designed for use with the [Rovunet](https://github.com/msVPNco/rovunet-android) Android VPN app.
 
 
 ## Changes compared with SlipGate
@@ -16,7 +16,7 @@ Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, S
 | **SOCKS5** | The direct SOCKS5 tunnel listens publicly again after user changes |
 | **Soar** | Direct (no-login) Soar configs appear in `users configs` |
 | **Install** | One command sets up every selected protocol and prints all configs at the end. Running it again on a configured server keeps existing tunnels (no clashing copies) and still prints every config. `/run/sshd` is created on systems with socket-activated SSH; firewall rules are inserted ahead of REJECT rules |
-| **VLESS links** | SNI fragmentation stays off when Rovunet imports either the `slipnet://` config or the `vless://` link (it slowed connections to time-outs behind Cloudflare); it can be turned on in the app |
+| **VLESS links** | SNI fragmentation stays off when Rovunet imports either the `rovunet://` config or the `vless://` link (it slowed connections to time-outs behind Cloudflare); it can be turned on in the app |
 
 ### Which protocol where
 
@@ -47,7 +47,7 @@ Field results from Iran (one server, late 2026), as a starting point:
 - **Systemd integration**: Service creation, lifecycle, and logs
 - **Auto-TLS**: Let's Encrypt via Caddy for NaiveProxy tunnels
 - **Self-update**: Version checking and binary replacement from GitHub releases
-- **Client sharing**: Generates `slipnet://` URIs for one-tap app import, plus standard `vless://` links for VLESS tunnels
+- **Client sharing**: Generates `rovunet://` URIs for one-tap app import, plus standard `vless://` links for VLESS tunnels
 
 ## Requirements
 
@@ -143,7 +143,7 @@ slipgate tunnel start [tag]     # Start a tunnel
 slipgate tunnel stop [tag]      # Stop a tunnel
 slipgate tunnel status          # Show all tunnel statuses
 slipgate tunnel status [tag]    # Show tunnel details (keys, MTU, port)
-slipgate tunnel share [tag]     # Generate slipnet:// URI for clients (+ vless:// link per user for VLESS)
+slipgate tunnel share [tag]     # Generate rovunet:// URI for clients (+ vless:// link per user for VLESS)
 slipgate tunnel logs [tag]      # View tunnel logs
 
 # DNS routing
@@ -313,10 +313,10 @@ sudo slipgate tunnel edit --tag myvaydns \
 # View tunnel details (keys, MTU, port, status)
 sudo slipgate tunnel status --tag mydnstt
 
-# Share tunnel config as slipnet:// URI
+# Share tunnel config as rovunet:// URI
 sudo slipgate tunnel share mydnstt
 
-# VLESS configs are per user: slipnet:// and vless:// for alice
+# VLESS configs are per user: rovunet:// and vless:// for alice
 sudo slipgate tunnel share myvless --user alice
 
 # Move to a new server: same keys and passwords, so client configs keep working.
@@ -383,7 +383,7 @@ Everything HTTPS arrives on one domain and port 443. Caddy (NaiveProxy) holds th
 | **DNSTT/NoizDNS** | DNS | 53/udp | Curve25519 encrypted DNS tunnel. A single server serves both DNSTT and NoizDNS clients. NoizDNS adds DPI evasion with base36/hex encoding and CDN prefix stripping |
 | **Slipstream** | QUIC DNS | 53/udp | QUIC-based tunnel with certificate authentication |
 | **VayDNS** | KCP DNS | 53/udp | KCP-based DNS tunnel with Curve25519 encryption. Supports configurable idle timeout, keepalive, queue size, and multiple DNS record types |
-| **Soar** | DNS | 53/udp | [Soar](https://github.com/getlantern/soar) multipath DNS tunnel (X25519 + Ed25519-signed handshake), served by slipgate itself. Soar has no per-user login, so it has two backends. **Direct**: like soar-server, it dials the destination each stream names, limited to public addresses and the allowed ports (default `80,443`, or `any`); anyone who finds the zone can use it, and it works with stock soar clients (zone + base64 public key from `tunnel status`). **SSH**: it reaches only the SSH server, so access goes through SSH users, added and removed one by one. Both export `slipnet://` configs for a Rovunet version with Soar support |
+| **Soar** | DNS | 53/udp | [Soar](https://github.com/getlantern/soar) multipath DNS tunnel (X25519 + Ed25519-signed handshake), served by slipgate itself. Soar has no per-user login, so it has two backends. **Direct**: like soar-server, it dials the destination each stream names, limited to public addresses and the allowed ports (default `80,443`, or `any`); anyone who finds the zone can use it, and it works with stock soar clients (zone + base64 public key from `tunnel status`). **SSH**: it reaches only the SSH server, so access goes through SSH users, added and removed one by one. Both export `rovunet://` configs for a Rovunet version with Soar support |
 | **NaiveProxy** | HTTPS | 443/tcp | Caddy with forwardproxy plugin. Auto-TLS via Let's Encrypt. Probe-resistant with decoy site |
 | **StunTLS** | TLS/WSS | 8443/tcp, or 443 fronted | SSH over TLS + WebSocket proxy. Auto-detects WebSocket, HTTP CONNECT, raw TLS, and payload (DPI bypass) modes. Self-signed TLS cert, no domain required. Fronted by NaiveProxy (`--front`), clients reach it as SSH over WebSocket on the Naive domain, port 443, real certificate |
 | **VLESS** | WS/WSS | 443 fronted; or 2053, 2083, 2087, 2096, 8443/tcp | VLESS over WebSocket, served by slipgate itself, with Rovunet's VLESS profiles and any VLESS client (v2rayNG, Hiddify, NekoBox…). **Fronted by NaiveProxy** (recommended): Caddy carries it on 443 with its Let's Encrypt certificate, so links need no `allowInsecure` (which Xray clients drop from 2026-08). **Behind Cloudflare**: clients reach a Cloudflare IP and the server's IP stays hidden; set SSL/TLS mode to **Full**. **Direct**: its own port with a self-signed certificate. Each user's UUID is derived from their credentials and a server-wide secret: removing a user or changing the password revokes it within seconds, and a shared config never carries the password. Streams reach public addresses only, port 25 blocked by default; TCP and plain UDP (no mux/XUDP). Other paths answer like a stock nginx. Outbound traffic doesn't go through WARP |
@@ -450,11 +450,11 @@ After creating a tunnel, generate a shareable config:
 sudo slipgate tunnel share mytunnel
 ```
 
-This outputs a `slipnet://` URI that can be scanned or imported into the Rovunet Android app. For DNSTT tunnels, you'll be asked to choose between a DNSTT or NoizDNS client profile — both connect to the same server, but NoizDNS profiles enable DPI evasion on the client side.
+This outputs a `rovunet://` URI that can be scanned or imported into the Rovunet Android app. For DNSTT tunnels, you'll be asked to choose between a DNSTT or NoizDNS client profile — both connect to the same server, but NoizDNS profiles enable DPI evasion on the client side.
 
 `slipgate install` offers VLESS too and then asks only for its domain: it picks a free port, derives the WebSocket path from a server-wide secret (`/etc/slipgate/vless.secret`, kept when a tunnel is removed, so removing and re-adding a tunnel gives the same links) and prints every user's links at the end. When NaiveProxy is selected as well, VLESS and StunTLS are fronted by it from the start.
 
-For VLESS tunnels it asks which user's config to show (or pass `--user <name>`) and prints both a `slipnet://` URI and a standard `vless://` link for other clients. Behind Cloudflare you can replace the CDN address with a clean Cloudflare IP in Rovunet at any time. A step-by-step guide in Persian is in [docs/VLESS_FA.md](VLESS_FA.md).
+For VLESS tunnels it asks which user's config to show (or pass `--user <name>`) and prints both a `rovunet://` URI and a standard `vless://` link for other clients. Behind Cloudflare you can replace the CDN address with a clean Cloudflare IP in Rovunet at any time. A step-by-step guide in Persian is in [docs/VLESS_FA.md](VLESS_FA.md).
 
 To move an existing VLESS or StunTLS tunnel onto NaiveProxy's 443 (or back with `-`), then hand out the new configs:
 
@@ -483,7 +483,7 @@ Configs for DNS tunnels, Soar, NaiveProxy, VLESS and fronted StunTLS connect by 
 
 ### User Model
 
-Users are **global**, not scoped to specific tunnels or transports. `slipgate users add` only asks for a username and password — the protocol is a property of the tunnel, chosen at `tunnel add` time. Every user can authenticate against every tunnel using the same credentials, and `slipgate users list` prints one config block per (user × tunnel) pair. `slipgate users configs` prints them all at once, together with the configs that need no login (Soar with the direct backend), which belong to no user. The client picks which tunnel to use by importing the matching `slipnet://` URI. On VLESS tunnels each user's UUID is derived from their username and password (with a per-tunnel secret), so removing a user or changing their password also revokes their VLESS access, within seconds and without a restart.
+Users are **global**, not scoped to specific tunnels or transports. `slipgate users add` only asks for a username and password — the protocol is a property of the tunnel, chosen at `tunnel add` time. Every user can authenticate against every tunnel using the same credentials, and `slipgate users list` prints one config block per (user × tunnel) pair. `slipgate users configs` prints them all at once, together with the configs that need no login (Soar with the direct backend), which belong to no user. The client picks which tunnel to use by importing the matching `rovunet://` URI. On VLESS tunnels each user's UUID is derived from their username and password (with a per-tunnel secret), so removing a user or changing their password also revokes their VLESS access, within seconds and without a restart.
 
 ## File Locations
 

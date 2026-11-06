@@ -1,7 +1,7 @@
 # Rovunet Panel — Complete Operator Guide
 
 > Server panel for the [Rovunet](https://github.com/msVPNco/rovunet-android) Android app.
-> Source: https://github.com/anonvector/slipgate
+> Source: https://github.com/msVPNco/rovunet-panel · based on [SlipGate](https://github.com/anonvector/slipgate), see [NOTICE](../NOTICE.md)
 > Telegram group: [@RovunetVPN](https://t.me/RovunetVPN)
 
 ---
@@ -17,7 +17,7 @@
 7. Adding your first tunnel
 8. Tunnel transports — when to use which
 9. Adding & managing users
-10. Sharing configs with clients (`slipnet://` URIs)
+10. Sharing configs with clients (`rovunet://` URIs)
 11. Running multiple tunnels at once
 12. WARP outbound (optional)
 13. Daily operations: stats, logs, diagnostics
@@ -32,7 +32,7 @@
 
 ## 1. What Rovunet Panel is
 
-Rovunet Panel is a one-binary tunnel manager for Linux servers. You run it on your VPS, and it sets up the server side of every protocol Rovunet supports — DNSTT, NoizDNS, VayDNS, Slipstream, NaiveProxy, and StunTLS — with `systemd` services, a DNS router, user management, a live dashboard, and `slipnet://` URI generation for one-tap import in the Rovunet app.
+Rovunet Panel is a one-binary tunnel manager for Linux servers. You run it on your VPS, and it sets up the server side of every protocol Rovunet supports — DNSTT, NoizDNS, VayDNS, Slipstream, NaiveProxy, and StunTLS — with `systemd` services, a DNS router, user management, a live dashboard, and `rovunet://` URI generation for one-tap import in the Rovunet app.
 
 In practice: **one command** turns a fresh Ubuntu/Debian VPS into a full anti-censorship endpoint that your phone (and your friends' phones) can connect to.
 
@@ -119,7 +119,7 @@ dig +short A ns.example.com
 SSH into your server as root, then run the installer:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anonvector/slipgate/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.sh | sudo bash
 ```
 
 The script:
@@ -131,8 +131,8 @@ The script:
 
 **Offline install** (when your VPS can't reach GitHub directly):
 
-1. On your laptop, download from https://github.com/anonvector/slipgate/releases.
-2. SCP the binaries to the server: `scp slipgate-* user@server:/tmp/slipgate/`
+1. On your laptop, download the `slipgate-linux-<arch>` binary from https://github.com/msVPNco/rovunet-panel/releases and the transport binaries (`dnstt-server`, `slipstream-server`, `vaydns-server`, `caddy-naive`) from https://github.com/anonvector/slipgate/releases.
+2. SCP the binaries to the server: `scp slipgate-* dnstt-server-* slipstream-server-* vaydns-server-* caddy-naive-* user@server:/tmp/slipgate/`
 3. On the server: `sudo slipgate install --bin-dir /tmp/slipgate`
 
 After install, launch the interactive menu:
@@ -173,7 +173,7 @@ slipgate tunnel remove --all    Remove all tunnels
 slipgate tunnel start [tag]     Start a tunnel
 slipgate tunnel stop [tag]      Stop a tunnel
 slipgate tunnel status [tag]    Show status / details
-slipgate tunnel share [tag]     Print slipnet:// URI + QR
+slipgate tunnel share [tag]     Print rovunet:// URI + QR
 slipgate tunnel logs [tag]      Show systemd logs
 
 slipgate router status          DNS routing config
@@ -299,7 +299,7 @@ sudo slipgate users bulk_add --count=50 --prefix=user
 sudo slipgate users list
 ```
 
-This prints one config block per (user × tunnel) pair, including the `slipnet://` URI for each.
+This prints one config block per (user × tunnel) pair, including the `rovunet://` URI for each.
 
 **Remove a user:**
 
@@ -313,14 +313,14 @@ sudo slipgate users remove
 
 ## 10. Sharing configs with clients
 
-After creating a tunnel, generate a `slipnet://` URI for one-tap import in the Rovunet app:
+After creating a tunnel, generate a `rovunet://` URI for one-tap import in the Rovunet app:
 
 ```bash
 sudo slipgate tunnel share mytunnel
 ```
 
 This prints:
-- A `slipnet://...` URI (long base64 string).
+- A `rovunet://...` URI (long base64 string).
 - A QR code (in the TUI).
 
 Send the URI to your user. They open Rovunet → **+ → Import from URI** → paste → done.
@@ -429,13 +429,13 @@ Pulls the latest binary from GitHub releases and restarts services:
 sudo slipgate update
 ```
 
-The update is in-place — your tunnels, users, and keys are untouched. Existing client `slipnet://` URIs keep working.
+The update is in-place — your tunnels, users, and keys are untouched. Existing client links (`rovunet://`, and older `slipnet://` ones) keep working.
 
 ---
 
 ## 15. Backup & migration
 
-A backup holds everything needed to run your setup on another server: the config, every tunnel's private keys and certificates, and all users with their passwords. Restoring it on a new server brings back the same tunnels with the same keys, so clients keep working without new `slipnet://` URIs.
+A backup holds everything needed to run your setup on another server: the config, every tunnel's private keys and certificates, and all users with their passwords. Restoring it on a new server brings back the same tunnels with the same keys, so clients keep working without new links.
 
 **Make a backup** (menu → 10 Backup / Restore, or):
 
@@ -534,7 +534,7 @@ Removes all services, configs, and binaries. Your DNS records are untouched — 
 ---
 
 Telegram group: [@RovunetVPN](https://t.me/RovunetVPN)
-Rovunet Panel source: https://github.com/anonvector/slipgate
+Rovunet Panel source: https://github.com/msVPNco/rovunet-panel (based on [SlipGate](https://github.com/anonvector/slipgate))
 App source: https://github.com/msVPNco/rovunet-android
 
 ---
@@ -543,7 +543,7 @@ App source: https://github.com/msVPNco/rovunet-android
 # راهنمای کامل Rovunet Panel برای ادمین (فارسی)
 
 > سرور اپ اندرویدی [Rovunet](https://github.com/msVPNco/rovunet-android)
-> سورس: https://github.com/anonvector/slipgate
+> سورس: https://github.com/msVPNco/rovunet-panel · بر پایهٔ [SlipGate](https://github.com/anonvector/slipgate)، [NOTICE](../NOTICE.md) را ببینید
 > گروه تلگرام: [@RovunetVPN](https://t.me/RovunetVPN)
 
 ---
@@ -574,7 +574,7 @@ App source: https://github.com/msVPNco/rovunet-android
 
 ## ۱. Rovunet Panel چیست
 
-Rovunet Panel یک مدیر تونل تک‌باینری برای سرورهای لینوکس است. روی VPS اجرا می‌کنید و سمت سرور تمام پروتکل‌هایی که Rovunet پشتیبانی می‌کند — DNSTT، NoizDNS، VayDNS، Slipstream، NaiveProxy و StunTLS — به همراه سرویس‌های `systemd`، روتر DNS، مدیریت کاربر، داشبورد زنده و تولید لینک `slipnet://` برای ایمپورت یک‌ضربه‌ای در اپ راه‌اندازی می‌کند.
+Rovunet Panel یک مدیر تونل تک‌باینری برای سرورهای لینوکس است. روی VPS اجرا می‌کنید و سمت سرور تمام پروتکل‌هایی که Rovunet پشتیبانی می‌کند — DNSTT، NoizDNS، VayDNS، Slipstream، NaiveProxy و StunTLS — به همراه سرویس‌های `systemd`، روتر DNS، مدیریت کاربر، داشبورد زنده و تولید لینک `rovunet://` برای ایمپورت یک‌ضربه‌ای در اپ راه‌اندازی می‌کند.
 
 به‌طور خلاصه: **یک دستور** کافی است تا یک VPS تازه‌ی Ubuntu/Debian تبدیل به یک نقطه‌ی کامل ضد سانسور شود که گوشی شما (و دوستانتان) به آن وصل می‌شود.
 
@@ -661,7 +661,7 @@ dig +short A ns.example.com
 با SSH به‌عنوان روت به سرور وصل شوید:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anonvector/slipgate/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.sh | sudo bash
 ```
 
 اسکریپت:
@@ -673,8 +673,8 @@ curl -fsSL https://raw.githubusercontent.com/anonvector/slipgate/main/install.sh
 
 **نصب آفلاین** (اگر VPS به گیت‌هاب دسترسی ندارد):
 
-۱. روی لپ‌تاپ از https://github.com/anonvector/slipgate/releases دانلود کنید.
-۲. باینری‌ها را با SCP به سرور بفرستید: `scp slipgate-* user@server:/tmp/slipgate/`
+۱. روی لپ‌تاپ باینری `slipgate-linux-<arch>` را از https://github.com/msVPNco/rovunet-panel/releases و باینری‌های ترنسپورت (`dnstt-server`، `slipstream-server`، `vaydns-server`، `caddy-naive`) را از https://github.com/anonvector/slipgate/releases دانلود کنید.
+۲. باینری‌ها را با SCP به سرور بفرستید: `scp slipgate-* dnstt-server-* slipstream-server-* vaydns-server-* caddy-naive-* user@server:/tmp/slipgate/`
 ۳. روی سرور: `sudo slipgate install --bin-dir /tmp/slipgate`
 
 پس از نصب، منوی تعاملی را باز کنید:
@@ -715,7 +715,7 @@ slipgate tunnel remove --all    حذف همه‌ی تونل‌ها
 slipgate tunnel start [tag]     استارت تونل
 slipgate tunnel stop [tag]      استاپ تونل
 slipgate tunnel status [tag]    وضعیت / جزئیات
-slipgate tunnel share [tag]     چاپ slipnet:// URI + QR
+slipgate tunnel share [tag]     چاپ rovunet:// URI + QR
 slipgate tunnel logs [tag]      دیدن لاگ‌های systemd
 
 slipgate router status          وضعیت روتر DNS
@@ -841,7 +841,7 @@ sudo slipgate users bulk_add --count=50 --prefix=user
 sudo slipgate users list
 ```
 
-برای هر زوج (کاربر × تونل) یک بلوک کانفیگ چاپ می‌شود، شامل URI به فرمت `slipnet://`.
+برای هر زوج (کاربر × تونل) یک بلوک کانفیگ چاپ می‌شود، شامل URI به فرمت `rovunet://`.
 
 **حذف کاربر:**
 
@@ -855,14 +855,14 @@ sudo slipgate users remove
 
 ## ۱۰. اشتراک کانفیگ با کلاینت‌ها
 
-پس از ساخت تونل، یک URI به فرمت `slipnet://` بسازید:
+پس از ساخت تونل، یک URI به فرمت `rovunet://` بسازید:
 
 ```bash
 sudo slipgate tunnel share mytunnel
 ```
 
 این چاپ می‌کند:
-- یک URI `slipnet://...` (رشته‌ی base64 طولانی).
+- یک URI `rovunet://...` (رشته‌ی base64 طولانی).
 - یک کد QR (در TUI).
 
 URI را به کاربر بدهید. در Rovunet **+ → Import from URI** را می‌زند → پیست → تمام.
@@ -977,7 +977,7 @@ sudo slipgate update
 
 ## ۱۵. بکاپ و مهاجرت
 
-بکاپ همه‌ی چیزهایی را که برای اجرای همین تنظیمات روی سرور دیگری لازم است در خود دارد: کانفیگ، کلیدهای خصوصی و گواهی‌های همه‌ی تونل‌ها، و همه‌ی کاربران با رمزهایشان. با ریستور آن روی سرور جدید، همان تونل‌ها با همان کلیدها برمی‌گردند و کلاینت‌ها بدون URI جدید `slipnet://` کار می‌کنند.
+بکاپ همه‌ی چیزهایی را که برای اجرای همین تنظیمات روی سرور دیگری لازم است در خود دارد: کانفیگ، کلیدهای خصوصی و گواهی‌های همه‌ی تونل‌ها، و همه‌ی کاربران با رمزهایشان. با ریستور آن روی سرور جدید، همان تونل‌ها با همان کلیدها برمی‌گردند و کلاینت‌ها بدون لینک جدید کار می‌کنند.
 
 **گرفتن بکاپ** (منو ← ۱۰ Backup / Restore، یا):
 
@@ -1076,5 +1076,5 @@ sudo slipgate uninstall
 ---
 
 گروه تلگرام: [@RovunetVPN](https://t.me/RovunetVPN)
-سورس Rovunet Panel: https://github.com/anonvector/slipgate
+سورس Rovunet Panel: https://github.com/msVPNco/rovunet-panel (بر پایهٔ [SlipGate](https://github.com/anonvector/slipgate))
 سورس اپ: https://github.com/msVPNco/rovunet-android

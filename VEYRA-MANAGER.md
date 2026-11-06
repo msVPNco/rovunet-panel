@@ -1,23 +1,25 @@
-# Veyra Manager foundation
+# Rovunet Panel export formats and core-plan notes
 
+This file began as the "Veyra Manager foundation" notes; Veyra was the project's earlier name.
 Based on this repository's earlier VLESS fork history (see git log).
-Original LICENSE and upstream attribution retained. Binary/command remains `slipgate` in this increment.
+Original LICENSE and upstream attribution retained. Binary/command remains `slipgate`.
 
-Install/share/wizard and managed-user outputs now use `veyra://` for native configurations. VLESS paired output retains its standard `vless://` link as well. Native payload bytes remain unchanged, retaining DNS and chain settings.
+Install/share/wizard and managed-user outputs use `rovunet://` (format v32, with collection metadata) for native configurations. Earlier increments used `veyra://`, which the app still accepts as an alias. VLESS paired output retains its standard `vless://` link as well. The native payload keeps DNS and chain settings.
 
 New command:
 
     slipgate export-clients --user alice --format auto
 
 Formats:
-- auto: standard VLESS WS link; native Veyra for other supported transports.
-- standard: only transports with an implemented lossless standard exporter (VLESS in this increment); skip others with stderr explanation.
-- veyra: native Veyra payload.
-- legacy: original Rovunet prefix for legacy clients.
+- auto: standard VLESS WS link; native `rovunet://` for other supported transports.
+- standard: only transports with an implemented lossless standard exporter (currently VLESS); skip others with stderr explanation.
+- rovunet: native `rovunet://` payload (v32) for every supported transport.
+- veyra: compatibility alias; the legacy native payload under the `veyra://` prefix, without collection metadata.
+- legacy: the original `slipnet://` prefix for old clients.
 
 Only enabled tunnels and an existing user are exported. DNSTT includes normal and NoizDNS variants. This command exports configured tunnels; the installer separately retains its existing Naive backend variants. Output contains credentials; stdout is one URI per line, errors go to stderr. Partial export is allowed; inspect stderr. No exported links is an error.
 
-Non-legacy VLESS output refuses self-signed TLS endpoints to match Veyra's corrected trust validation. Configure a certificate front or CDN. Existing old links using self-signed origins will fail in Veyra until the endpoint is corrected. Public per-user enrollment, quotas and device-specific WireGuard keys are not implemented.
+Non-legacy VLESS output refuses self-signed TLS endpoints to match the Rovunet app's trust validation. Configure a certificate front or CDN. Existing old links using self-signed origins will fail in the app until the endpoint is corrected. Public per-user enrollment, quotas and device-specific WireGuard keys are not implemented.
 
 Validation: `go test ./...` passed; updated install/user-output tests and new lossless payload/unsupported format/TLS tests included. No live server was modified, deployed or load-tested.
 

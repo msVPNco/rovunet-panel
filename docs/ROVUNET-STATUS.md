@@ -2,7 +2,7 @@
 
 [انتشارهای عمومی اپ](https://github.com/msVPNco/rovunet-android/releases) · [وضعیت دقیق اپ](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md) · [راهنمای ارتقا](https://github.com/msVPNco/rovunet-android/blob/main/docs/UPGRADE.md)
 
-اپ آلفا۱۴ Full/کد ۲۵ از هویت تولیدی ثابت جدید استفاده می‌کند؛ مالک پروژه تعویض امضای قدیمی را پیش از استقرار کاربران تأیید کرد. فایل نصب را از انتشار گیت‌هاب بگیرید. این نسخه روی آلفا۱۱ با امضای قدیمی ارتقای مستقیم نیست؛ نسخه‌های عمومی بعدی همین کلید جدید را حفظ می‌کنند. بسته‌های خصوصی Rovunet Test مستقل‌اند. [هویت و سیاست بازیابی امضا](https://github.com/msVPNco/rovunet-android/blob/main/docs/SIGNING-IDENTITY.md).
+نسخهٔ فعلی اپ را فقط از [وضعیت اپ](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md) بخوانید؛ این سند نسخه را تکرار نمی‌کند تا دوباره کهنه نشود. نسخه‌های عمومی از آلفا۱۴ به بعد یک هویت تولیدی ثابت دارند (مالک پروژه تعویض امضای قدیمی را پیش از استقرار کاربران تأیید کرد) و روی هم بدون حذف برنامه نصب می‌شوند. فایل نصب را از انتشار گیت‌هاب بگیرید. نصب‌های آلفا۱۱ با امضای قدیمی ارتقای مستقیم ندارند؛ نسخه‌های عمومی بعدی همین کلید را حفظ می‌کنند. بسته‌های خصوصی Rovunet Test مستقل‌اند. [هویت و سیاست بازیابی امضا](https://github.com/msVPNco/rovunet-android/blob/main/docs/SIGNING-IDENTITY.md).
 
 ## قرارداد خروجی و اتصال
 
@@ -30,4 +30,4 @@
 
 ## English
 
-Alpha14 Full/code 25 uses a managed production signer, explicitly authorized before user deployment. It is a fresh install relative to the historical alpha11 signer; subsequent direct APKs must reuse the pinned identity. Private candidates remain separate from public updates. Read the app's current status and migration notes. Native exports retain collection metadata; explicit connection does not require a ping, and HTTPS tests are separate. Client protocol support does not imply panel-managed deployment. SOCKS/Soar field diagnosis, stable subscription identity, core-plan integration, port allocation and multi-user resource/recovery checks remain necessary.
+For the current app version, read the [app status](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md); this document does not repeat it so it cannot drift again. Public releases from alpha14 onward share one managed production signer (explicitly authorized before user deployment) and install over each other without uninstalling. It is a fresh install relative to the historical alpha11 signer; subsequent direct APKs must reuse the pinned identity. Private candidates remain separate from public updates. Read the app's current status and migration notes. Native exports retain collection metadata; explicit connection does not require a ping, and HTTPS tests are separate. Client protocol support does not imply panel-managed deployment. SOCKS/Soar field diagnosis, stable subscription identity, core-plan integration, port allocation and multi-user resource/recovery checks remain necessary.
