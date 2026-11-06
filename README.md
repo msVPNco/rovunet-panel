@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <b>English</b> · <a href="README.fa.md">فارسی</a> ·
+  <b>English</b> · <a href="README.fa.md">فارسی</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> ·
   <a href="https://t.me/RovunetVPN">Telegram</a> ·
   <a href="https://github.com/msVPNco/rovunet-android">Android app</a>
 </p>
@@ -57,7 +57,7 @@ your config, tunnels and users are kept.
 | **SSH over TLS (StunTLS)** | SSH inside TLS/WebSocket, fronted on 443 | 443/tcp | Alternative to VLESS on the same port |
 | **Direct SSH** | Plain SSH | 22/tcp | Fast where port 22 is open |
 | **VLESS behind Cloudflare** | WebSocket through Cloudflare's CDN | 2053/tcp | When the server's IP is blocked; slower |
-| **DNSTT / NoizDNS** | Encrypted DNS tunnel | 53/udp | When only DNS gets through; slow but resilient |
+| **DNSTT / NoizDNS** | Encrypted DNS tunnel | 53/udp | For restricted networks; performance depends on the resolver and path |
 | **VayDNS** | DNS tunnel with tunable wire format | 53/udp | Like DNSTT, with more tuning options |
 | **Slipstream** | QUIC over DNS | 53/udp | Experimental |
 | **Soar** | Multipath DNS with resolver discovery | 53/udp | When DNS resolvers are filtered unevenly |
@@ -69,11 +69,11 @@ for manual deployment; managed support is in progress.
 
 ## Client apps
 
-[Download Rovunet Android 0.3.0-alpha06 Full](https://github.com/msVPNco/rovunet-android/releases/tag/v0.3.0-alpha06) — debug-signed. APK, Android source and Persian guide are attached. See [integration status](docs/ROVUNET-STATUS.md).
+[Rovunet Android releases](https://github.com/msVPNco/rovunet-android/releases) contain published installers and source assets. Read the app's [current status](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md) and signing/migration notes before installation; private candidates are not public in-place updates. See [integration status](docs/ROVUNET-STATUS.md).
 
 - **[Rovunet for Android](https://github.com/msVPNco/rovunet-android)**
   (recommended): imports the `rovunet://` links, groups each user's paths into
-  one collection and tests them for you.
+  one collection, connects a selected path without a prerequisite ping, and offers separate real-tunnel HTTPS tests.
   [Download the latest release](https://github.com/msVPNco/rovunet-android/releases).
 - **Standard clients** such as v2rayNG, Hiddify or NekoBox: use the `vless://`
   links the panel prints next to each VLESS config.

@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <b>فارسی</b> ·
+  <a href="README.md">English</a> · <b>فارسی</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> ·
   <a href="https://t.me/RovunetVPN">تلگرام</a> ·
   <a href="https://github.com/msVPNco/rovunet-android">اپ اندروید</a>
 </p>
@@ -57,7 +57,7 @@ sudo slipgate diag            # بررسی سرویس‌ها، پورت‌ها،
 | **SSH روی TLS (StunTLS)** | SSH داخل TLS/WebSocket، پشت 443 | 443/tcp | جایگزین VLESS روی همان پورت |
 | **SSH مستقیم** | SSH ساده | 22/tcp | سریع، در شبکه‌هایی که پورت 22 باز است |
 | **VLESS پشت Cloudflare** | WebSocket از طریق CDN کلادفلر | 2053/tcp | وقتی IP سرور مسدود شده؛ کندتر |
-| **DNSTT / NoizDNS** | تونل رمزنگاری‌شده روی DNS | 53/udp | وقتی فقط DNS باز است؛ کند ولی مقاوم |
+| **DNSTT / NoizDNS** | تونل رمزنگاری‌شده روی DNS | 53/udp | برای شبکهٔ محدود؛ عملکرد وابسته به resolver و مسیر |
 | **VayDNS** | تونل DNS با قالب قابل تنظیم | 53/udp | مثل DNSTT با تنظیمات بیشتر |
 | **Slipstream** | QUIC روی DNS | 53/udp | آزمایشی |
 | **Soar** | DNS چندمسیره با کشف resolver | 53/udp | وقتی resolverها به‌طور ناهمسان فیلتر شده‌اند |
@@ -67,9 +67,9 @@ sudo slipgate diag            # بررسی سرویس‌ها، پورت‌ها،
 
 ## اپ‌های کلاینت
 
-[دانلود Rovunet آلفا ۶ Full](https://github.com/msVPNco/rovunet-android/releases/tag/v0.3.0-alpha06) — با امضای debug؛ APK، سورس اندروید و راهنمای فارسی پیوست هستند. [وضعیت یکپارچگی](docs/ROVUNET-STATUS.md) را ببینید.
+[انتشارهای اپ اندروید Rovunet](https://github.com/msVPNco/rovunet-android/releases) شامل فایل‌های نصب منتشرشده و سورس‌اند. پیش از نصب، [وضعیت فعلی اپ](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md) و توضیح امضا/مهاجرت را بخوانید؛ نسخهٔ خصوصی، آپدیت مستقیم نسخهٔ عمومی نیست. [وضعیت یکپارچگی](docs/ROVUNET-STATUS.md) را ببینید.
 
-- **[رووُنت برای اندروید](https://github.com/msVPNco/rovunet-android)** (پیشنهادی): لینک‌های `rovunet://` را وارد می‌کند، مسیرهای هر کاربر را در یک مجموعه کنار هم می‌گذارد و خودش آن‌ها را آزمایش می‌کند. [دانلود آخرین نسخه](https://github.com/msVPNco/rovunet-android/releases).
+- **[رووُنت برای اندروید](https://github.com/msVPNco/rovunet-android)** (پیشنهادی): لینک‌های `rovunet://` را وارد می‌کند، مسیرهای مرتبط را در یک مجموعه می‌گذارد، مسیر انتخاب‌شده را بدون پینگ اجباری وصل می‌کند و تست جداگانهٔ HTTPS از داخل تونل دارد. [دانلود آخرین نسخه](https://github.com/msVPNco/rovunet-android/releases).
 - **کلاینت‌های استاندارد** مثل v2rayNG، Hiddify یا NekoBox: از لینک‌های `vless://` استفاده کنید که پنل کنار هر کانفیگ VLESS نمایش می‌دهد.
 
 ```bash
