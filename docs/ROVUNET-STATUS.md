@@ -2,7 +2,7 @@
 
 [انتشارهای عمومی اپ](https://github.com/msVPNco/rovunet-android/releases) · [وضعیت دقیق اپ](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md) · [راهنمای ارتقا](https://github.com/msVPNco/rovunet-android/blob/main/docs/UPGRADE.md)
 
-اپ آلفا۱۴ Full/کد ۲۵ از هویت تولیدی ثابت جدید استفاده می‌کند؛ مالک پروژه تعویض امضای قدیمی را پیش از استقرار کاربران تأیید کرد. فایل نصب را از انتشار گیت‌هاب بگیرید. این نسخه روی آلفا۱۱ با امضای قدیمی ارتقای مستقیم نیست؛ نسخه‌های عمومی بعدی همین کلید جدید را حفظ می‌کنند. بسته‌های خصوصی Rovunet Test مستقل‌اند. [هویت و سیاست بازیابی امضا](https://github.com/msVPNco/rovunet-android/blob/main/docs/SIGNING-IDENTITY.md).
+اپ فعلی آلفا۱۵ Full/کد ۲۶ است و همان هویت تولیدی ثابتی را حفظ می‌کند که در آلفا۱۴ معرفی شد (مالک پروژه تعویض امضای قدیمی را پیش از استقرار کاربران تأیید کرد)؛ پس روی آلفا۱۴ عمومی بدون حذف برنامه نصب می‌شود. فایل نصب را از انتشار گیت‌هاب بگیرید. نصب‌های آلفا۱۱ با امضای قدیمی ارتقای مستقیم ندارند؛ نسخه‌های عمومی بعدی همین کلید را حفظ می‌کنند. بسته‌های خصوصی Rovunet Test مستقل‌اند. [هویت و سیاست بازیابی امضا](https://github.com/msVPNco/rovunet-android/blob/main/docs/SIGNING-IDENTITY.md).
 
 ## قرارداد خروجی و اتصال
 
@@ -30,4 +30,4 @@
 
 ## English
 
-Alpha14 Full/code 25 uses a managed production signer, explicitly authorized before user deployment. It is a fresh install relative to the historical alpha11 signer; subsequent direct APKs must reuse the pinned identity. Private candidates remain separate from public updates. Read the app's current status and migration notes. Native exports retain collection metadata; explicit connection does not require a ping, and HTTPS tests are separate. Client protocol support does not imply panel-managed deployment. SOCKS/Soar field diagnosis, stable subscription identity, core-plan integration, port allocation and multi-user resource/recovery checks remain necessary.
+The current app is alpha15 Full/code 26. It keeps the managed production signer introduced in alpha14 (explicitly authorized before user deployment), so it installs over public alpha14 without uninstalling. It is a fresh install relative to the historical alpha11 signer; subsequent direct APKs must reuse the pinned identity. Private candidates remain separate from public updates. Read the app's current status and migration notes. Native exports retain collection metadata; explicit connection does not require a ping, and HTTPS tests are separate. Client protocol support does not imply panel-managed deployment. SOCKS/Soar field diagnosis, stable subscription identity, core-plan integration, port allocation and multi-user resource/recovery checks remain necessary.
