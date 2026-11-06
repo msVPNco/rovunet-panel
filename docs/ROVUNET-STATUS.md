@@ -2,7 +2,7 @@
 
 [انتشارهای عمومی اپ](https://github.com/msVPNco/rovunet-android/releases) · [وضعیت دقیق اپ](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md) · [راهنمای ارتقا](https://github.com/msVPNco/rovunet-android/blob/main/docs/UPGRADE.md)
 
-سورس اپ برای آلفا۱۴/کد ۲۵ آماده می‌شود؛ انتشار عمومی قبلی آلفا۱۱ است. این صفحه انتشار APK امضاشدهٔ تازه را ادعا نمی‌کند. بسته‌های خصوصی Rovunet Test مستقل‌اند و آپدیت مستقیم نسخهٔ عمومی نیستند. امضای تولیدی و مسیر مهاجرت باید قبل از انتشار تعیین شوند.
+اپ آلفا۱۴ Full/کد ۲۵ از هویت تولیدی ثابت جدید استفاده می‌کند؛ مالک پروژه تعویض امضای قدیمی را پیش از استقرار کاربران تأیید کرد. فایل نصب را از انتشار گیت‌هاب بگیرید. این نسخه روی آلفا۱۱ با امضای قدیمی ارتقای مستقیم نیست؛ نسخه‌های عمومی بعدی همین کلید جدید را حفظ می‌کنند. بسته‌های خصوصی Rovunet Test مستقل‌اند. [هویت و سیاست بازیابی امضا](https://github.com/msVPNco/rovunet-android/blob/main/docs/SIGNING-IDENTITY.md).
 
 ## قرارداد خروجی و اتصال
 
@@ -30,4 +30,4 @@
 
 ## English
 
-Android source is preparing alpha14/code 25; alpha11 is the prior public release. Private candidates are separate from public updates. Read the app's current status and migration notes. Native exports retain collection metadata; explicit connection does not require a ping, and HTTPS tests are separate. Client protocol support does not imply panel-managed deployment. SOCKS/Soar field diagnosis, stable subscription identity, core-plan integration, port allocation and multi-user resource/recovery checks remain necessary.
+Alpha14 Full/code 25 uses a managed production signer, explicitly authorized before user deployment. It is a fresh install relative to the historical alpha11 signer; subsequent direct APKs must reuse the pinned identity. Private candidates remain separate from public updates. Read the app's current status and migration notes. Native exports retain collection metadata; explicit connection does not require a ping, and HTTPS tests are separate. Client protocol support does not imply panel-managed deployment. SOCKS/Soar field diagnosis, stable subscription identity, core-plan integration, port allocation and multi-user resource/recovery checks remain necessary.
