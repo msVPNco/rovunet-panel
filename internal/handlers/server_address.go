@@ -142,9 +142,10 @@ func handleConfigAddress(ctx *actions.Context) error {
 	if len(cfg.ExtraAddresses) > 0 {
 		out.Success("Subscription links also carry each address-based config for: " + strings.Join(cfg.ExtraAddresses, ", "))
 		out.Info("Every extra address must be an IP or hostname of THIS server, with the same ports open.")
-		if err := WriteSubscriptions(cfg, out); err != nil {
-			out.Warning("Failed to refresh subscription links: " + err.Error())
-		}
+	}
+	// Also when the extras were removed, so their configs leave the links now.
+	if err := WriteSubscriptions(cfg, out); err != nil {
+		out.Warning("Failed to refresh subscription links: " + err.Error())
 	}
 	out.Info("Configs handed out before keep the old address; show the new ones with: sudo rovunet users configs")
 	return nil
