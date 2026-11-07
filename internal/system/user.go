@@ -1,7 +1,6 @@
 package system
 
 import (
-	"bufio"
 	"crypto/rand"
 	"fmt"
 	"math/big"
@@ -43,6 +42,14 @@ func EnsureUser() error {
 
 // RemoveUser removes the slipgate system user and groups.
 func RemoveUser() error {
+	// SSH users must go first: slipgate-ssh is their primary group, so
+	// groupdel refuses while any remain, and they'd otherwise outlive the
+	// uninstall as password-enabled accounts.
+	if users, err := ListSSHUsers(); err == nil {
+		for _, u := range users {
+			_ = RemoveSSHUser(u)
+		}
+	}
 	_ = run("userdel", config.SystemUser)
 	_ = run("groupdel", config.SSHGroup)
 	_ = run("groupdel", config.SystemGroup)
@@ -101,26 +108,51 @@ func RemoveSSHUser(username string) error {
 	return run("userdel", "-f", username)
 }
 
-// ListSSHUsers returns all users in the slipgate-ssh group.
+// ListSSHUsers returns all users in the slipgate-ssh group: those whose
+// primary group it is (how AddSSHUser creates them, which /etc/group's
+// member list never shows) as well as any explicit supplementary members.
 func ListSSHUsers() ([]string, error) {
-	f, err := os.Open("/etc/group")
+	return listGroupUsers("/etc/group", "/etc/passwd", config.SSHGroup)
+}
+
+func listGroupUsers(groupFile, passwdFile, group string) ([]string, error) {
+	gdata, err := os.ReadFile(groupFile)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.Split(line, ":")
-		if len(parts) >= 4 && parts[0] == config.SSHGroup {
-			if parts[3] == "" {
-				return nil, nil
-			}
-			return strings.Split(parts[3], ","), nil
+	gid := ""
+	var users []string
+	seen := make(map[string]bool)
+	add := func(u string) {
+		if u != "" && !seen[u] {
+			seen[u] = true
+			users = append(users, u)
 		}
 	}
-	return nil, nil
+	for _, line := range strings.Split(string(gdata), "\n") {
+		parts := strings.Split(line, ":")
+		if len(parts) >= 4 && parts[0] == group {
+			gid = parts[2]
+			for _, m := range strings.Split(parts[3], ",") {
+				add(strings.TrimSpace(m))
+			}
+			break
+		}
+	}
+	if gid == "" {
+		return nil, nil // group doesn't exist
+	}
+	pdata, err := os.ReadFile(passwdFile)
+	if err != nil {
+		return nil, err
+	}
+	for _, line := range strings.Split(string(pdata), "\n") {
+		parts := strings.Split(line, ":")
+		if len(parts) >= 4 && parts[3] == gid {
+			add(parts[0])
+		}
+	}
+	return users, nil
 }
 
 // GeneratePassword generates a random alphanumeric password.

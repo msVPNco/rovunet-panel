@@ -87,3 +87,18 @@ func TestEnsureSSHDRunDir(t *testing.T) {
 		t.Fatalf("second call: %v", err)
 	}
 }
+
+func TestListGroupUsersIncludesPrimaryGroupMembers(t *testing.T) {
+	dir := t.TempDir()
+	group := dir + "/group"
+	passwd := dir + "/passwd"
+	_ = os.WriteFile(group, []byte("root:x:0:\nslipgate-ssh:x:998:extra\n"), 0600)
+	_ = os.WriteFile(passwd, []byte("root:x:0:0::/root:/bin/bash\nalice:x:997:998::/:/bin/false\nbob:x:996:100::/:/bin/sh\n"), 0600)
+	got, err := listGroupUsers(group, passwd, "slipgate-ssh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0] != "extra" || got[1] != "alice" {
+		t.Fatalf("got %v, want [extra alice]", got)
+	}
+}

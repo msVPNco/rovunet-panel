@@ -271,7 +271,14 @@ func FreePort(port int, proto string) error {
 	}
 
 	// Fallback: ss to find PIDs, then kill
-	out, err := exec.Command("ss", "-tlnp", fmt.Sprintf("sport = :%d", port)).Output()
+	// Match the requested protocol: "-tlnp" alone lists only TCP listeners,
+	// so freeing a UDP port used to miss the real holder and could instead
+	// kill an unrelated TCP service that happened to share the port number.
+	ssFlags := "-tlnp"
+	if proto == "udp" {
+		ssFlags = "-ulnp"
+	}
+	out, err := exec.Command("ss", ssFlags, fmt.Sprintf("sport = :%d", port)).Output()
 	if err != nil {
 		return nil // can't determine, skip
 	}
