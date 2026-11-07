@@ -155,7 +155,7 @@ func handleTunnelAdd(ctx *actions.Context) error {
 			create, err = prompt.Confirm("Create another user now?")
 		}
 		if err == nil && create {
-			if err := createUserInteractive(cfg, out, ""); err != nil {
+			if err := createUserInteractive(cfg, out, "", "", ""); err != nil {
 				out.Warning("User creation failed: " + err.Error())
 			}
 		}

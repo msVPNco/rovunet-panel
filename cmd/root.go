@@ -91,6 +91,12 @@ func init() {
 			if err := coreinstall.EnsureCertTimer(); err != nil {
 				fmt.Fprintln(os.Stderr, "Warning: certificate renewal timer:", err)
 			}
+			// Users with an expiry need the hourly timer that removes them.
+			if cfg != nil {
+				if err := handlers.EnsureExpiryTimer(cfg); err != nil {
+					fmt.Fprintln(os.Stderr, "Warning: user expiry timer:", err)
+				}
+			}
 			return nil
 		},
 		SilenceUsage:  true,

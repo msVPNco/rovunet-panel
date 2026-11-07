@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
@@ -58,7 +59,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 		// Show user list
 		out.Print("")
 		for _, u := range cfg.Users {
-			out.Print(fmt.Sprintf("  %s", u.Username))
+			out.Print(fmt.Sprintf("  %-20s %s", u.Username, limitSummary(u)))
 		}
 		out.Print("")
 
@@ -89,7 +90,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 		}
 
 	case "add":
-		if err := createUserInteractive(cfg, out, username); err != nil {
+		if err := createUserInteractive(cfg, out, username, ctx.GetArg("days"), ctx.GetArg("gb")); err != nil {
 			return actions.NewError(actions.SystemUsers, err.Error(), nil)
 		}
 
@@ -117,6 +118,11 @@ func handleSystemUsers(ctx *actions.Context) error {
 			return actions.NewError(actions.SystemUsers, "prefix "+err.Error(), nil)
 		}
 
+		days, gb, err := askUserLimits(ctx.GetArg("days"), ctx.GetArg("gb"))
+		if err != nil {
+			return actions.NewError(actions.SystemUsers, err.Error(), nil)
+		}
+
 		type newCred struct{ Username, Password string }
 		created := make([]newCred, 0, count)
 
@@ -134,7 +140,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 				out.Warning(fmt.Sprintf("failed to create %s: %v (skipping)", uname, err))
 				continue
 			}
-			cfg.AddUser(config.UserConfig{Username: uname, Password: password})
+			cfg.AddUser(newUser(uname, password, days, gb, time.Now()))
 			created = append(created, newCred{uname, password})
 		}
 
@@ -167,7 +173,15 @@ func handleSystemUsers(ctx *actions.Context) error {
 			}
 		}
 
-		out.Success(fmt.Sprintf("Created %d users", len(created)))
+		if days > 0 {
+			if err := EnsureExpiryTimer(cfg); err != nil {
+				out.Warning("Could not set up the expiry timer: " + err.Error() + " (the users will not be removed automatically)")
+			}
+		}
+		if gb > 0 {
+			out.Warning("The traffic limit is recorded but not enforced yet; only the expiry is.")
+		}
+		out.Success(fmt.Sprintf("Created %d users (%s)", len(created), limitSummary(newUser("", "", days, gb, time.Now()))))
 		out.Print("")
 		for _, c := range created {
 			out.Print(fmt.Sprintf("  %s : %s", c.Username, c.Password))
@@ -228,7 +242,9 @@ func handleSystemUsers(ctx *actions.Context) error {
 		if err := system.AddSSHUser(username, password); err != nil {
 			return actions.NewError(actions.SystemUsers, "failed to update SSH password: "+err.Error(), err)
 		}
-		cfg.AddUser(config.UserConfig{Username: username, Password: password})
+		updated := *cfg.GetUser(username) // keeps the user's expiry and limit
+		updated.Password = password
+		cfg.AddUser(updated)
 
 		if err := cfg.Save(); err != nil {
 			return actions.NewError(actions.SystemUsers, "failed to save config", err)
@@ -266,31 +282,11 @@ func handleSystemUsers(ctx *actions.Context) error {
 			return actions.NewError(actions.SystemUsers, "username is required", nil)
 		}
 
-		if err := system.RemoveSSHUser(username); err != nil {
-			return actions.NewError(actions.SystemUsers, "failed to remove SSH user: "+err.Error(), err)
-		}
-
-		cfg.RemoveUser(username)
-
-		if cfg.Warp.Enabled {
-			proxy.RunAsUser = warp.SocksUser
-		}
-		_ = setupSOCKS(cfg)
-		syncNaive(cfg, out)
-		syncCores(cfg, out)
-
-		if err := cfg.Save(); err != nil {
-			return actions.NewError(actions.SystemUsers, "failed to save config", err)
+		if err := removeUserFully(cfg, out, username); err != nil {
+			return actions.NewError(actions.SystemUsers, err.Error(), err)
 		}
 
 		out.Success(fmt.Sprintf("User %q removed", username))
-
-		// Update WARP routing rules after removal
-		if cfg.Warp.Enabled {
-			if err := warp.RefreshRouting(cfg); err != nil {
-				out.Warning("Failed to update WARP routing: " + err.Error())
-			}
-		}
 	}
 
 	return nil
@@ -302,7 +298,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 // and prints the resulting tunnel configs. Pass providedUsername to skip the
 // first prompt (e.g. when the name came in as a CLI arg); pass "" to prompt.
 // Used from both the `users add` action and the post-`tunnel add` offer.
-func createUserInteractive(cfg *config.Config, out actions.OutputWriter, providedUsername string) error {
+func createUserInteractive(cfg *config.Config, out actions.OutputWriter, providedUsername, daysArg, gbArg string) error {
 	username := providedUsername
 	if username == "" {
 		var err error
@@ -330,11 +326,16 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 		return err
 	}
 
+	days, gb, err := askUserLimits(daysArg, gbArg)
+	if err != nil {
+		return err
+	}
+
 	if err := system.AddSSHUser(username, password); err != nil {
 		return fmt.Errorf("failed to create SSH user: %w", err)
 	}
 
-	cfg.AddUser(config.UserConfig{Username: username, Password: password})
+	cfg.AddUser(newUser(username, password, days, gb, time.Now()))
 
 	// Save before SOCKS so the config file is always at least as current
 	// as the SOCKS creds file; a failed save leaves SOCKS untouched.
@@ -357,7 +358,15 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 		}
 	}
 
-	out.Success(fmt.Sprintf("User %q added (SSH + SOCKS)", username))
+	out.Success(fmt.Sprintf("User %q added (SSH + SOCKS): %s", username, limitSummary(*cfg.GetUser(username))))
+	if days > 0 {
+		if err := EnsureExpiryTimer(cfg); err != nil {
+			out.Warning("Could not set up the expiry timer: " + err.Error() + " (the user will not be removed automatically)")
+		}
+	}
+	if gb > 0 {
+		out.Warning("The traffic limit is recorded but not enforced yet; only the expiry is.")
+	}
 
 	if len(cfg.Tunnels) > 0 {
 		out.Print("")

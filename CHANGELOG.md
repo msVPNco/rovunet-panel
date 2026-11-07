@@ -2,6 +2,15 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.12.0
+
+### Users can expire
+
+- **Adding a user asks "Unlimited or Limited?"** Unlimited is the default. For Limited you are asked for days and then for GB, and a blank answer to either means unlimited. For scripts, `rovunet users --action add --username bob --days 30 --gb 50` skips the questions; `bulk_add` takes the same two options.
+- **An expired user is removed automatically.** An hourly timer (`rovunet-user-expiry.timer`, set up when the first user with an expiry is added, or by `rovunet update`) runs `rovunet expire-users`, which removes the user exactly like `users remove`, so open sessions end too. The user is deleted, not suspended.
+- **`users list` shows each user's limits.** Changing a password keeps the user's expiry and limit.
+- **The GB limit is recorded but not enforced yet.** The panel says so when you set one. Enforcement, and a subscription link, are the next releases.
+
 ## v1.11.3
 
 - **`rovunet diag` names the process on every listening port**, including VLESS (2053), the DNS router (53) and SOCKS5 (1080), which v1.11.2 had left out. Names are no longer cut at 15 characters (`slipstream-serv` is now `slipstream-server`).
