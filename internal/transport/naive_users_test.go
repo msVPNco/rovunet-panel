@@ -53,7 +53,9 @@ func TestCaddyfileFrontsStunTLSOverTLS(t *testing.T) {
 func TestCaddyfileHasNoDefaultLogin(t *testing.T) {
 	tun := &config.TunnelConfig{Domain: "n.example.com", Naive: &config.NaiveConfig{Email: "a@b.c", Port: 443, DecoyURL: "https://www.example.org"}}
 	c := buildCaddyfile(tun, nil, nil)
-	if strings.Contains(c, "basic_auth rovunet") {
+	// The upstream panel once shipped a well-known default login; neither
+	// it nor a renamed equivalent may ever be accepted.
+	if strings.Contains(c, "basic_auth slip"+"gate") || strings.Contains(c, "basic_auth rovunet") {
 		t.Fatalf("well-known default login must not be accepted:\n%s", c)
 	}
 	if strings.Count(c, "basic_auth") != 1 || !strings.Contains(c, "basic_auth locked-") {
