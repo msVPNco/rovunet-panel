@@ -20,8 +20,19 @@ import (
 type Server struct {
 	listenAddr string
 
+	// requireAuth marks a server where an empty credential set must mean
+	// "accept no one", never "accept everyone". Loopback/intentionally-open
+	// listeners (created via NewServer/NewServerMulti) leave this false, so
+	// an empty map there keeps meaning no-auth, exactly as before. Listeners
+	// reachable from outside the host should be created via
+	// NewServerMultiStrict instead, which sets this true.
+	requireAuth bool
+
 	credsMu     sync.RWMutex
-	credentials map[string]string // username → password (empty map = no auth)
+	credentials map[string]string // username → password (empty map = no auth, unless requireAuth)
+
+	connsMu sync.Mutex
+	conns   map[net.Conn]struct{}
 }
 
 // NewServer creates a SOCKS5 server with a single credential pair.
@@ -34,7 +45,12 @@ func NewServer(addr string, user, pass string) *Server {
 	return &Server{listenAddr: addr, credentials: creds}
 }
 
-// NewServerMulti creates a SOCKS5 server with multiple credential pairs.
+// NewServerMulti creates a SOCKS5 server with multiple credential pairs. An
+// empty credential set means no auth is required — use this constructor
+// only for listeners that are loopback-only or otherwise meant to be open
+// by design. For a listener reachable from outside the host, use
+// NewServerMultiStrict so a config change that empties the credential set
+// cannot silently turn it into an open relay.
 func NewServerMulti(addr string, creds map[string]string) *Server {
 	if creds == nil {
 		creds = make(map[string]string)
@@ -42,23 +58,69 @@ func NewServerMulti(addr string, creds map[string]string) *Server {
 	return &Server{listenAddr: addr, credentials: creds}
 }
 
-// SetCredentials replaces the server's credential set atomically. Existing
-// connections are unaffected; new connections authenticate against the new
-// set. Pass an empty map to disable auth.
+// NewServerMultiStrict is like NewServerMulti, but an empty credential set
+// (now, or after a later SetCredentials call) rejects every connection
+// instead of allowing unauthenticated access. A SetCredentials call that
+// empties the set also closes every connection already open on this
+// server, so reaching zero configured users leaves no live session
+// running either. Use this for any listener bound to a non-loopback
+// address.
+func NewServerMultiStrict(addr string, creds map[string]string) *Server {
+	s := NewServerMulti(addr, creds)
+	s.requireAuth = true
+	return s
+}
+
+// SetCredentials replaces the server's credential set atomically. New
+// connections authenticate against the new set. For a server created with
+// NewServerMulti, an empty map disables auth for new connections, same as
+// before, and existing connections are left running. For a server created
+// with NewServerMultiStrict, an empty map instead rejects every new
+// connection and closes every connection already open.
 func (s *Server) SetCredentials(creds map[string]string) {
 	if creds == nil {
 		creds = make(map[string]string)
 	}
 	s.credsMu.Lock()
 	s.credentials = creds
+	emptyAndStrict := s.requireAuth && len(creds) == 0
 	s.credsMu.Unlock()
+
+	if emptyAndStrict {
+		s.closeAllConns()
+	}
 }
 
 // hasAuth reports whether auth is currently required.
 func (s *Server) hasAuth() bool {
 	s.credsMu.RLock()
 	defer s.credsMu.RUnlock()
-	return len(s.credentials) > 0
+	return s.requireAuth || len(s.credentials) > 0
+}
+
+// trackConn records or forgets a live connection so closeAllConns can reach it.
+func (s *Server) trackConn(conn net.Conn, add bool) {
+	s.connsMu.Lock()
+	defer s.connsMu.Unlock()
+	if s.conns == nil {
+		s.conns = make(map[net.Conn]struct{})
+	}
+	if add {
+		s.conns[conn] = struct{}{}
+	} else {
+		delete(s.conns, conn)
+	}
+}
+
+// closeAllConns forcibly closes every connection currently tracked for this
+// server. Safe to call concurrently with handleConn's own close of the same
+// connection: net.Conn.Close is idempotent-safe to call twice.
+func (s *Server) closeAllConns() {
+	s.connsMu.Lock()
+	defer s.connsMu.Unlock()
+	for c := range s.conns {
+		c.Close()
+	}
 }
 
 // checkCredential reports whether (user, pass) is in the current cred set.
@@ -114,6 +176,8 @@ func (s *Server) ListenAndServe() error {
 }
 
 func (s *Server) handleConn(conn net.Conn) {
+	s.trackConn(conn, true)
+	defer s.trackConn(conn, false)
 	defer conn.Close()
 
 	// Greeting: client sends version + auth methods
