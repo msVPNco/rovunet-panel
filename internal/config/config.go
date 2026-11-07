@@ -35,8 +35,10 @@ type Config struct {
 	Tunnels  []TunnelConfig  `json:"tunnels"`
 	Backends []BackendConfig `json:"backends"`
 	Users    []UserConfig    `json:"users,omitempty"`
-	Route    RouteConfig     `json:"route"`
-	Warp     WarpConfig      `json:"warp,omitempty"`
+	// Archived holds users removed for expiry or traffic; see ArchivedUser.
+	Archived []ArchivedUser `json:"archived,omitempty"`
+	Route    RouteConfig    `json:"route"`
+	Warp     WarpConfig     `json:"warp,omitempty"`
 	// PublicAddress is the IP or hostname client configs use to reach this
 	// server; empty means detect it (see clientcfg.ServerAddress).
 	PublicAddress string `json:"public_address,omitempty"`
@@ -53,7 +55,22 @@ type UserConfig struct {
 	// SubToken is the unguessable name of the user's subscription file. It is
 	// replaced when the password changes, which retires the old link.
 	SubToken string `json:"sub_token,omitempty"`
+	// UsageBase is the traffic already counted for this name when the user
+	// was created or renewed; the limit counts what is used beyond it.
+	UsageBase int64 `json:"usage_base,omitempty"`
 }
+
+// ArchivedUser is a user who was removed because the expiry passed or the
+// traffic limit was reached. The record keeps the password and link, so
+// renewing restores the same configs.
+type ArchivedUser struct {
+	UserConfig
+	Reason string `json:"reason"` // "expired" or "traffic limit"
+	At     string `json:"at"`     // RFC 3339
+}
+
+// QuotaBytes is the traffic limit in bytes (1 GB = 1024^3), or 0 for none.
+func (u UserConfig) QuotaBytes() int64 { return int64(u.QuotaGB) << 30 }
 
 // NewSubToken returns a fresh 128-bit random subscription token (32 hex).
 func NewSubToken() string {

@@ -14,6 +14,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
 	"github.com/msVPNco/rovunet-panel/internal/system"
+	"github.com/msVPNco/rovunet-panel/internal/usage"
 	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
 
@@ -85,7 +86,7 @@ func askUserLimits(daysArg, gbArg string) (days, gb int, err error) {
 
 // newUser builds a user with the chosen limits, counted from now.
 func newUser(username, password string, days, gb int, now time.Time) config.UserConfig {
-	u := config.UserConfig{Username: username, Password: password, QuotaGB: gb, SubToken: config.NewSubToken()}
+	u := config.UserConfig{Username: username, Password: password, QuotaGB: gb, SubToken: config.NewSubToken(), UsageBase: usage.Totals()[username]}
 	if days > 0 {
 		u.ExpiresAt = now.UTC().Add(time.Duration(days) * 24 * time.Hour).Format(time.RFC3339)
 	}
@@ -133,34 +134,71 @@ func removeUserFully(cfg *config.Config, out actions.OutputWriter, username stri
 	return nil
 }
 
-// ExpireUsers removes every user whose expiry has passed and returns their
-// names. It stops being a no-op only when someone has expired.
-func ExpireUsers(cfg *config.Config, out actions.OutputWriter, now time.Time) ([]string, error) {
+// overQuota reports whether a limited user has used up the traffic limit.
+func overQuota(u config.UserConfig, totals map[string]int64) bool {
+	return u.QuotaGB > 0 && totals[u.Username]-u.UsageBase >= u.QuotaBytes()
+}
+
+// UsedBytes is the traffic a user has used since creation or renewal.
+func UsedBytes(u config.UserConfig, totals map[string]int64) int64 {
+	if n := totals[u.Username] - u.UsageBase; n > 0 {
+		return n
+	}
+	return 0
+}
+
+// retireUser removes a user from every service and keeps a record that
+// "users renew" can bring back with the same password and link.
+func retireUser(cfg *config.Config, out actions.OutputWriter, u config.UserConfig, reason string, now time.Time) error {
+	cfg.Archived = append(cfg.Archived, config.ArchivedUser{UserConfig: u, Reason: reason, At: now.UTC().Format(time.RFC3339)})
+	if err := removeUserFully(cfg, out, u.Username); err != nil {
+		cfg.Archived = cfg.Archived[:len(cfg.Archived)-1]
+		return err
+	}
+	return nil
+}
+
+// EnforceLimits retires every user whose expiry has passed or whose traffic
+// limit is used up, and returns "name (reason)" for each.
+func EnforceLimits(cfg *config.Config, out actions.OutputWriter, now time.Time) ([]string, error) {
+	totals := usage.Totals()
 	var gone []string
 	for _, u := range append([]config.UserConfig(nil), cfg.Users...) {
-		if !u.Expired(now) {
+		reason := ""
+		switch {
+		case u.Expired(now):
+			reason = "expired"
+		case overQuota(u, totals):
+			reason = "traffic limit"
+		default:
 			continue
 		}
-		if err := removeUserFully(cfg, out, u.Username); err != nil {
+		if err := retireUser(cfg, out, u, reason, now); err != nil {
 			return gone, fmt.Errorf("%s: %w", u.Username, err)
 		}
-		gone = append(gone, u.Username)
+		gone = append(gone, fmt.Sprintf("%s (%s)", u.Username, reason))
 	}
 	return gone, nil
 }
 
-// HasExpiringUsers reports whether any user has an expiry date.
-func HasExpiringUsers(cfg *config.Config) bool {
+// HasLimitedUsers reports whether any user has an expiry or a traffic limit.
+func HasLimitedUsers(cfg *config.Config) bool {
 	for _, u := range cfg.Users {
-		if u.ExpiresAt != "" {
+		if u.ExpiresAt != "" || u.QuotaGB > 0 {
 			return true
 		}
 	}
 	return false
 }
 
+// quotaLimited reports whether a user has a traffic limit.
+func quotaLimited(cfg *config.Config, username string) bool {
+	u := cfg.GetUser(username)
+	return u != nil && u.QuotaGB > 0
+}
+
 const expiryService = `[Unit]
-Description=Remove expired Rovunet users
+Description=Retire Rovunet users whose time or traffic is used up
 
 [Service]
 Type=oneshot
@@ -168,11 +206,11 @@ ExecStart=%s expire-users
 `
 
 const expiryTimer = `[Unit]
-Description=Remove expired Rovunet users every hour
+Description=Check Rovunet user time and traffic limits every 5 minutes
 
 [Timer]
-OnCalendar=hourly
-RandomizedDelaySec=2min
+OnCalendar=*:0/5
+RandomizedDelaySec=20
 Persistent=true
 
 [Install]
@@ -182,10 +220,10 @@ WantedBy=timers.target
 // ExpiryTimerName is the systemd timer that runs expire-users.
 const ExpiryTimerName = "rovunet-user-expiry.timer"
 
-// EnsureExpiryTimer installs the hourly timer when some user has an expiry.
-// It is idempotent.
+// EnsureExpiryTimer installs the 5-minute limits timer when some user has an
+// expiry or a traffic limit. It is idempotent.
 func EnsureExpiryTimer(cfg *config.Config) error {
-	if !HasExpiringUsers(cfg) {
+	if !HasLimitedUsers(cfg) {
 		return nil
 	}
 	self, err := config.SelfPath()
@@ -204,5 +242,101 @@ func EnsureExpiryTimer(cfg *config.Config) error {
 			return fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
 		}
 	}
+	return nil
+}
+
+func formatGB(b int64) string { return fmt.Sprintf("%.2f GB", float64(b)/float64(1<<30)) }
+
+// warnQuotaScope tells the operator what a traffic limit covers.
+func warnQuotaScope(cfg *config.Config, out actions.OutputWriter) {
+	out.Info("Traffic limit: only VLESS (WebSocket) traffic is counted, so this user is given only the VLESS config. Counting updates every 15 seconds and the limit is checked every 5 minutes, so a little more than the limit can pass.")
+	for _, t := range cfg.Tunnels {
+		if t.Transport == config.TransportVLESS {
+			return
+		}
+	}
+	out.Warning("There is no VLESS tunnel yet, so this user would get no config. Add one with 'rovunet tunnel add'.")
+}
+
+// forgetArchived drops a stopped user's record for good.
+func forgetArchived(cfg *config.Config, username string) bool {
+	for i, a := range cfg.Archived {
+		if a.Username == username {
+			cfg.Archived = append(cfg.Archived[:i], cfg.Archived[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// renewUser brings a stopped user back with the same password and link and
+// new limits counted from now.
+func renewUser(cfg *config.Config, out actions.OutputWriter, username, daysArg, gbArg string) error {
+	if len(cfg.Archived) == 0 {
+		return fmt.Errorf("no stopped users: nobody has expired or used up a traffic limit")
+	}
+	username = strings.TrimSpace(username)
+	if username == "" {
+		opts := make([]actions.SelectOption, 0, len(cfg.Archived))
+		for _, a := range cfg.Archived {
+			opts = append(opts, actions.SelectOption{Value: a.Username, Label: fmt.Sprintf("%s (%s)", a.Username, a.Reason)})
+		}
+		var err error
+		if username, err = prompt.Select("User to renew", opts); err != nil {
+			return err
+		}
+	}
+	var arch *config.ArchivedUser
+	idx := -1
+	for i := range cfg.Archived {
+		if cfg.Archived[i].Username == username {
+			arch, idx = &cfg.Archived[i], i
+		}
+	}
+	if arch == nil {
+		return fmt.Errorf("%q is not a stopped user", username)
+	}
+	if cfg.GetUser(username) != nil {
+		return fmt.Errorf("user %q already exists", username)
+	}
+	days, gb, err := askUserLimits(daysArg, gbArg)
+	if err != nil {
+		return err
+	}
+	u := newUser(username, arch.Password, days, gb, time.Now())
+	u.SubToken = arch.SubToken // the same link works again
+	if u.SubToken == "" {
+		u.SubToken = config.NewSubToken()
+	}
+	if err := system.AddSSHUser(username, u.Password); err != nil {
+		return fmt.Errorf("failed to create SSH user: %w", err)
+	}
+	cfg.AddUser(u)
+	cfg.Archived = append(cfg.Archived[:idx], cfg.Archived[idx+1:]...)
+	if err := cfg.Save(); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+	if cfg.Warp.Enabled {
+		proxy.RunAsUser = warp.SocksUser
+	}
+	if err := setupSOCKS(cfg); err != nil {
+		out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
+	}
+	syncNaive(cfg, out)
+	syncCores(cfg, out)
+	if cfg.Warp.Enabled {
+		if err := warp.RefreshRouting(cfg); err != nil {
+			out.Warning("Failed to update WARP routing: " + err.Error())
+		}
+	}
+	if days > 0 || gb > 0 {
+		if err := EnsureExpiryTimer(cfg); err != nil {
+			out.Warning("Could not set up the limits timer: " + err.Error())
+		}
+	}
+	if gb > 0 {
+		warnQuotaScope(cfg, out)
+	}
+	out.Success(fmt.Sprintf("User %q renewed: %s. The same password and subscription link work again.", username, limitSummary(u)))
 	return nil
 }

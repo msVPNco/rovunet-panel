@@ -13,7 +13,7 @@ import (
 func init() {
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "expire-users",
-		Short: "Remove users whose expiry date has passed (run hourly by a timer)",
+		Short: "Retire users whose time or traffic limit is used up (run every 5 minutes by a timer)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.Load()
@@ -21,9 +21,9 @@ func init() {
 				return err
 			}
 			var out actions.OutputWriter = &actions.StdOutput{}
-			gone, err := handlers.ExpireUsers(cfg, out, time.Now())
+			gone, err := handlers.EnforceLimits(cfg, out, time.Now())
 			for _, name := range gone {
-				fmt.Printf("Removed expired user %q\n", name)
+				fmt.Printf("Retired user %s\n", name)
 			}
 			return err
 		},

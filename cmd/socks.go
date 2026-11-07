@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
+	"github.com/msVPNco/rovunet-panel/internal/usage"
 	"github.com/spf13/cobra"
 )
 
@@ -64,6 +66,10 @@ func init() {
 				go watchCredsFile(srv, credsFile)
 			}
 
+			// Count each user's traffic for the panel's traffic limits.
+			meter := usage.NewCounter("socks5")
+			proxy.Meter = meter
+			go meter.Run(context.Background())
 			return srv.ListenAndServe()
 		},
 		SilenceUsage:  true,

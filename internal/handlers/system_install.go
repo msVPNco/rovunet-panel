@@ -965,7 +965,8 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 	for _, u := range users {
 		// Fastest first: this user's Xray cores are slotted in by rank.
 		flushCores := func(int) int { return 0 }
-		if u.Username != "" {
+		limited := u.QuotaGB > 0
+		if u.Username != "" && !limited {
 			flushCores = coreProfilePrinter(cfg, u, out)
 		}
 		hidden = 0
@@ -973,6 +974,10 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 			printed += flushCores(clientcfg.TunnelRank(t.Transport))
 			if skipPlainSOCKS(&t) {
 				hidden++
+				continue
+			}
+			// A traffic-limited user gets only VLESS: only its traffic is counted
+			if limited && t.Transport != config.TransportVLESS {
 				continue
 			}
 			// VLESS has one UUID per user and no shared backend
@@ -1080,7 +1085,14 @@ func soarRecipients(cfg *config.Config) []config.UserConfig {
 	if len(cfg.Users) == 0 {
 		return []config.UserConfig{{}}
 	}
-	return cfg.Users
+	// A traffic-limited user is not given the shared, unmeasured Soar config.
+	var out []config.UserConfig
+	for _, u := range cfg.Users {
+		if u.QuotaGB == 0 {
+			out = append(out, u)
+		}
+	}
+	return out
 }
 
 // baseDomain extracts the parent domain from a subdomain.

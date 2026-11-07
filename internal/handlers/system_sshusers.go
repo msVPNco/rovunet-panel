@@ -14,6 +14,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
 	"github.com/msVPNco/rovunet-panel/internal/system"
+	"github.com/msVPNco/rovunet-panel/internal/usage"
 	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
 
@@ -34,6 +35,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 			{Value: "add", Label: "Add user"},
 			{Value: "bulk_add", Label: "Add multiple users (random creds)"},
 			{Value: "edit_password", Label: "Edit user password"},
+			{Value: "renew", Label: "Renew a stopped user"},
 			{Value: "remove", Label: "Remove user"},
 			{Value: "list", Label: "List users & configs"},
 			{Value: "configs", Label: "Show all configs (every tunnel and user)"},
@@ -58,8 +60,16 @@ func handleSystemUsers(ctx *actions.Context) error {
 
 		// Show user list
 		out.Print("")
+		totals := usage.Totals()
 		for _, u := range cfg.Users {
-			out.Print(fmt.Sprintf("  %-20s %s", u.Username, limitSummary(u)))
+			line := limitSummary(u)
+			if u.QuotaGB > 0 {
+				line += fmt.Sprintf(" (used %s)", formatGB(UsedBytes(u, totals)))
+			}
+			out.Print(fmt.Sprintf("  %-20s %s", u.Username, line))
+		}
+		for _, a := range cfg.Archived {
+			out.Print(fmt.Sprintf("  %-20s stopped: %s (restore with 'users --action renew')", a.Username, a.Reason))
 		}
 		out.Print("")
 
@@ -91,6 +101,11 @@ func handleSystemUsers(ctx *actions.Context) error {
 
 	case "add":
 		if err := createUserInteractive(cfg, out, username, ctx.GetArg("days"), ctx.GetArg("gb")); err != nil {
+			return actions.NewError(actions.SystemUsers, err.Error(), nil)
+		}
+
+	case "renew":
+		if err := renewUser(cfg, out, username, ctx.GetArg("days"), ctx.GetArg("gb")); err != nil {
 			return actions.NewError(actions.SystemUsers, err.Error(), nil)
 		}
 
@@ -179,7 +194,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 			}
 		}
 		if gb > 0 {
-			out.Warning("The traffic limit is recorded but not enforced yet; only the expiry is.")
+			warnQuotaScope(cfg, out)
 		}
 		out.Success(fmt.Sprintf("Created %d users (%s)", len(created), limitSummary(newUser("", "", days, gb, time.Now()))))
 		out.Print("")
@@ -283,6 +298,15 @@ func handleSystemUsers(ctx *actions.Context) error {
 			return actions.NewError(actions.SystemUsers, "username is required", nil)
 		}
 
+		if cfg.GetUser(username) == nil {
+			if forgetArchived(cfg, username) {
+				if err := cfg.Save(); err != nil {
+					return actions.NewError(actions.SystemUsers, "failed to save config", err)
+				}
+				out.Success(fmt.Sprintf("Stopped user %q forgotten", username))
+				return nil
+			}
+		}
 		if err := removeUserFully(cfg, out, username); err != nil {
 			return actions.NewError(actions.SystemUsers, err.Error(), err)
 		}
@@ -366,7 +390,7 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 		}
 	}
 	if gb > 0 {
-		out.Warning("The traffic limit is recorded but not enforced yet; only the expiry is.")
+		warnQuotaScope(cfg, out)
 	}
 
 	if len(cfg.Tunnels) > 0 {
@@ -451,12 +475,20 @@ func printSubscriptionLink(cfg *config.Config, u config.UserConfig, out actions.
 func printUserConfigs(cfg *config.Config, username, password string, out actions.OutputWriter) {
 	ensureServerAddress(cfg, out, cfg.Tunnels)
 	// Fastest first: Xray cores are slotted in among the tunnels by rank.
+	limited := quotaLimited(cfg, username)
 	flushCores := coreProfilePrinter(cfg, config.UserConfig{Username: username, Password: password}, out)
+	if limited {
+		flushCores = func(int) int { return 0 } // Xray cores are not measured
+		out.Print("  # Traffic-limited user: only the VLESS config is given, because only its traffic is counted.")
+	}
 	hidden := 0
 	for _, t := range clientcfg.SortByRank(cfg.Tunnels, tunnelRank) {
 		flushCores(clientcfg.TunnelRank(t.Transport))
 		if t.Transport == config.TransportVLESS {
 			printVLESSLinks(out, cfg, &t, username, password)
+			continue
+		}
+		if limited {
 			continue
 		}
 		if skipPlainSOCKS(&t) {
@@ -471,7 +503,9 @@ func printUserConfigs(cfg *config.Config, username, password string, out actions
 			printTunnelConfig(cfg, &vt, username, password, out)
 		}
 	}
-	flushCores(1 << 30)
+	if !limited {
+		flushCores(1 << 30)
+	}
 	noteHidden(out, hidden)
 }
 
