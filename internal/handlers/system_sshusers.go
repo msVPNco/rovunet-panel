@@ -419,51 +419,63 @@ func showUserConfigs(cfg *config.Config, username, password string, out actions.
 			printVLESSLinks(out, cfg, &t, username, password)
 			continue
 		}
-		backend := cfg.GetBackend(t.Backend)
-		// Soar's direct backend is built into the Soar server: there is no
-		// backend entry, and its config needs none (it has no login).
-		soarDirect := t.Transport == config.TransportSoar && t.Backend == config.BackendDirect
-		if backend == nil && !soarDirect {
-			continue
-		}
-
-		// Show public key for DNSTT/VayDNS/Soar tunnels
-		if t.Transport == config.TransportDNSTT && t.DNSTT != nil && t.DNSTT.PublicKey != "" {
-			out.Print(fmt.Sprintf("  [%s] Public Key: %s", t.Tag, t.DNSTT.PublicKey))
-		} else if t.Transport == config.TransportVayDNS && t.VayDNS != nil && t.VayDNS.PublicKey != "" {
-			out.Print(fmt.Sprintf("  [%s] Public Key: %s", t.Tag, t.VayDNS.PublicKey))
-		} else if t.Transport == config.TransportSoar && t.Soar != nil && t.Soar.PublicKey != "" {
-			out.Print(fmt.Sprintf("  [%s] Public Key: %s", t.Tag, t.Soar.PublicKey))
-		}
-
-		modes := []string{""}
-		if t.Transport == config.TransportDNSTT {
-			modes = []string{clientcfg.ClientModeDNSTT, clientcfg.ClientModeNoizDNS}
-		}
-
-		for _, mode := range modes {
-			opts := clientcfg.URIOptions{
-				ClientMode: mode,
-				Username:   username,
-				Password:   password,
-			}
-			uri, err := clientcfg.GeneratePortableURI(&t, backend, cfg, opts, "rovunet")
-			if err != nil {
-				continue
-			}
-			label := t.Tag
-			if mode == clientcfg.ClientModeNoizDNS {
-				label = strings.ReplaceAll(label, "dnstt", "noizdns")
-			}
-			if soarDirect {
-				out.Print("  # Soar: no login, same for every user")
-			}
-			out.Print(fmt.Sprintf("  [%s] user=%s", label, username))
-			out.Print(fmt.Sprintf("  %s", uri))
-			out.Print("")
+		// A NaiveProxy tunnel serves SOCKS and SSH clients alike: print both.
+		for _, v := range naiveAwareVariants(&t) {
+			vt := t
+			vt.Backend = v.backend
+			vt.Tag = v.tag
+			printTunnelConfig(cfg, &vt, username, password, out)
 		}
 	}
 	flushCores(1 << 30)
+}
+
+// printTunnelConfig prints one tunnel's config(s) for a user: its public key
+// where it has one, then a rovunet:// link per client mode.
+func printTunnelConfig(cfg *config.Config, t *config.TunnelConfig, username, password string, out actions.OutputWriter) {
+	backend := cfg.GetBackend(t.Backend)
+	// Soar's direct backend is built into the Soar server: there is no
+	// backend entry, and its config needs none (it has no login).
+	soarDirect := t.Transport == config.TransportSoar && t.Backend == config.BackendDirect
+	if backend == nil && !soarDirect {
+		return
+	}
+
+	// Show public key for DNSTT/VayDNS/Soar tunnels
+	if t.Transport == config.TransportDNSTT && t.DNSTT != nil && t.DNSTT.PublicKey != "" {
+		out.Print(fmt.Sprintf("  [%s] Public Key: %s", t.Tag, t.DNSTT.PublicKey))
+	} else if t.Transport == config.TransportVayDNS && t.VayDNS != nil && t.VayDNS.PublicKey != "" {
+		out.Print(fmt.Sprintf("  [%s] Public Key: %s", t.Tag, t.VayDNS.PublicKey))
+	} else if t.Transport == config.TransportSoar && t.Soar != nil && t.Soar.PublicKey != "" {
+		out.Print(fmt.Sprintf("  [%s] Public Key: %s", t.Tag, t.Soar.PublicKey))
+	}
+
+	modes := []string{""}
+	if t.Transport == config.TransportDNSTT {
+		modes = []string{clientcfg.ClientModeDNSTT, clientcfg.ClientModeNoizDNS}
+	}
+
+	for _, mode := range modes {
+		opts := clientcfg.URIOptions{
+			ClientMode: mode,
+			Username:   username,
+			Password:   password,
+		}
+		uri, err := clientcfg.GeneratePortableURI(t, backend, cfg, opts, "rovunet")
+		if err != nil {
+			continue
+		}
+		label := t.Tag
+		if mode == clientcfg.ClientModeNoizDNS {
+			label = strings.ReplaceAll(label, "dnstt", "noizdns")
+		}
+		if soarDirect {
+			out.Print("  # Soar: no login, same for every user")
+		}
+		out.Print(fmt.Sprintf("  [%s] user=%s", label, username))
+		out.Print(fmt.Sprintf("  %s", uri))
+		out.Print("")
+	}
 }
 
 // tunnelRank orders tunnels for output, fastest first.

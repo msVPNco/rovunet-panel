@@ -73,18 +73,27 @@ func init() {
 				if t.Transport == config.TransportDNSTT {
 					modes = append(modes, "noizdns")
 				}
-				for _, mode := range modes {
-					link, err := clientcfg.GeneratePortableURI(t, cfg.GetBackend(t.Backend), cfg, clientcfg.URIOptions{Username: u.Username, Password: u.Password, ClientMode: mode}, format)
-					if err != nil {
-						fmt.Fprintf(cmd.ErrOrStderr(), "%s: %v\n", t.Tag, err)
+				// NaiveProxy serves SOCKS and SSH clients: export both.
+				for _, v := range clientcfg.Variants(t) {
+					vt := *t
+					vt.Backend = v.Backend
+					vt.Tag = v.Tag
+					if t.Transport == config.TransportNaive && cfg.GetBackend(v.Backend) == nil {
 						continue
 					}
-					if annotated {
-						fmt.Fprintf(cmd.OutOrStdout(), "%s (%s): %s\n", t.Tag, mode, link)
-					} else {
-						fmt.Fprintln(cmd.OutOrStdout(), link)
+					for _, mode := range modes {
+						link, err := clientcfg.GeneratePortableURI(&vt, cfg.GetBackend(vt.Backend), cfg, clientcfg.URIOptions{Username: u.Username, Password: u.Password, ClientMode: mode}, format)
+						if err != nil {
+							fmt.Fprintf(cmd.ErrOrStderr(), "%s: %v\n", vt.Tag, err)
+							continue
+						}
+						if annotated {
+							fmt.Fprintf(cmd.OutOrStdout(), "%s (%s): %s\n", vt.Tag, mode, link)
+						} else {
+							fmt.Fprintln(cmd.OutOrStdout(), link)
+						}
+						count++
 					}
-					count++
 				}
 			}
 			emitCores(1 << 30)

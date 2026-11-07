@@ -103,3 +103,22 @@ func TestPrintClientConfigsVLESS(t *testing.T) {
 		t.Errorf("printed %d configs without users, want 0", n)
 	}
 }
+
+// TestShowUserConfigsNaiveBothModes: one NaiveProxy tunnel serves SOCKS and
+// SSH clients, so `users configs` must print both, like the install summary.
+func TestShowUserConfigsNaiveBothModes(t *testing.T) {
+	cfg := &config.Config{
+		PublicAddress: "203.0.113.7",
+		Backends:      config.DefaultBackends(),
+		Tunnels: []config.TunnelConfig{{
+			Tag: "naive", Transport: config.TransportNaive, Backend: config.BackendSOCKS,
+			Domain: "n.example.com", Naive: &config.NaiveConfig{Port: 443},
+		}},
+	}
+	out := &printOutput{}
+	showUserConfigs(cfg, "alice", "pw", out)
+	all := strings.Join(out.lines, "\n")
+	if out.count("[naive-socks] user=alice") != 1 || out.count("[naive-ssh] user=alice") != 1 || out.count("rovunet://") != 2 {
+		t.Fatalf("want naive-socks and naive-ssh:\n%s", all)
+	}
+}
