@@ -27,6 +27,7 @@ func init() {
 			port, _ := cmd.Flags().GetInt("port")
 			credsList, _ := cmd.Flags().GetStringArray("creds")
 			credsFile, _ := cmd.Flags().GetString("creds-file")
+			requireAuth, _ := cmd.Flags().GetBool("require-auth")
 
 			creds := parseCredsList(credsList)
 
@@ -50,7 +51,12 @@ func init() {
 			}
 
 			listenAddr := fmt.Sprintf("%s:%d", addr, port)
-			srv := proxy.NewServerMulti(listenAddr, creds)
+			var srv *proxy.Server
+			if requireAuth {
+				srv = proxy.NewServerMultiStrict(listenAddr, creds)
+			} else {
+				srv = proxy.NewServerMulti(listenAddr, creds)
+			}
 
 			// On SIGHUP, re-read the creds-file and swap credentials live,
 			// leaving existing client connections untouched.
@@ -69,6 +75,7 @@ func init() {
 	serveCmd.Flags().String("pass", "", "Password for auth (single user, legacy)")
 	serveCmd.Flags().StringArray("creds", nil, "Credentials as user:pass (repeatable)")
 	serveCmd.Flags().String("creds-file", "", "Path to a file with user:pass per line; SIGHUP reloads")
+	serveCmd.Flags().Bool("require-auth", false, "Reject every connection (and drop any already open) when the credential set is empty, instead of allowing unauthenticated access; set this for any listener bound to a non-loopback address")
 
 	socksCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(socksCmd)

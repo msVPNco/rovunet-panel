@@ -96,7 +96,14 @@ func (c *Config) SaveTo(path string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(data, '\n'), 0644)
+	if err := os.WriteFile(path, append(data, '\n'), 0600); err != nil {
+		return err
+	}
+	// os.WriteFile's mode argument only applies when the file is created;
+	// an existing config.json saved by a pre-fix build (0644, world-readable
+	// despite holding credentials) needs an explicit chmod to be tightened
+	// on its next save too.
+	return os.Chmod(path, 0600)
 }
 
 // Path returns the file the config was loaded from (or will be saved to).

@@ -27,30 +27,37 @@ var RunAsUser string
 
 // SetupSOCKS creates the SOCKS5 proxy service (localhost only, no auth).
 func SetupSOCKS() error {
-	return setupSOCKSMulti("127.0.0.1", nil)
+	return setupSOCKSMulti("127.0.0.1", nil, false)
 }
 
 // SetupSOCKSWithAuth creates the SOCKS5 proxy with a single user (localhost only).
 func SetupSOCKSWithAuth(user, password string) error {
-	return setupSOCKSMulti("127.0.0.1", []config.UserConfig{{Username: user, Password: password}})
+	return setupSOCKSMulti("127.0.0.1", []config.UserConfig{{Username: user, Password: password}}, false)
 }
 
 // SetupSOCKSWithUsers creates the SOCKS5 proxy with multiple users (localhost only).
 func SetupSOCKSWithUsers(users []config.UserConfig) error {
-	return setupSOCKSMulti("127.0.0.1", users)
+	return setupSOCKSMulti("127.0.0.1", users, false)
 }
 
 // SetupSOCKSExternal creates the SOCKS5 proxy on all interfaces (for direct SOCKS5).
+// requireAuth is always on for this listener: a non-loopback bind must never
+// fall back to an open relay.
 func SetupSOCKSExternal(user, password string) error {
-	return setupSOCKSMulti("0.0.0.0", []config.UserConfig{{Username: user, Password: password}})
+	return setupSOCKSMulti("0.0.0.0", []config.UserConfig{{Username: user, Password: password}}, true)
 }
 
-// SetupSOCKSExternalWithUsers creates the SOCKS5 proxy on all interfaces with multiple users.
+// SetupSOCKSExternalWithUsers creates the SOCKS5 proxy on all interfaces with
+// multiple users. requireAuth is always on: if users is empty (e.g. the last
+// user was just removed), the resulting listener rejects every connection
+// instead of serving as an unauthenticated open relay on 0.0.0.0. This is the
+// shared enforcement point for every caller of this function — a caller that
+// forgets to guard against an empty user list is still safe.
 func SetupSOCKSExternalWithUsers(users []config.UserConfig) error {
-	return setupSOCKSMulti("0.0.0.0", users)
+	return setupSOCKSMulti("0.0.0.0", users, true)
 }
 
-func setupSOCKSMulti(listenAddr string, users []config.UserConfig) error {
+func setupSOCKSMulti(listenAddr string, users []config.UserConfig, requireAuth bool) error {
 	execPath, err := os.Executable()
 	if err != nil {
 		return err
@@ -61,6 +68,9 @@ func setupSOCKSMulti(listenAddr string, users []config.UserConfig) error {
 	}
 
 	args := fmt.Sprintf("%s socks serve --addr %s --port 1080 --creds-file %s", execPath, listenAddr, socksCredsFile)
+	if requireAuth {
+		args += " --require-auth"
+	}
 
 	// Clean up old microsocks service if it exists
 	_ = service.Stop("slipgate-microsocks")
