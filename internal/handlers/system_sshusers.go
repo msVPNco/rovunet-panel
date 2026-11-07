@@ -479,6 +479,17 @@ func printCoreProfiles(cfg *config.Config, user config.UserConfig, out actions.O
 		}
 		out.Print(fmt.Sprintf("  [%s] %s, user=%s", p.Core, coreProtocolName(p.Protocol), user.Username))
 		out.Print(fmt.Sprintf("  %s", uri))
+		// The same profile for other clients: a one-line link, or the
+		// WireGuard file to save and import.
+		if p.Protocol == "wireguard" {
+			out.Print("  # WireGuard file for other apps (save as rovunet.conf):")
+			for _, line := range strings.Split(strings.TrimRight(p.Link, "\n"), "\n") {
+				out.Print("  " + line)
+			}
+		} else {
+			out.Print("  # Standard link for other apps:")
+			out.Print("  " + p.Link)
+		}
 		out.Print("")
 		printed++
 	}
