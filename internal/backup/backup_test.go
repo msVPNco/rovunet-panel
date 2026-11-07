@@ -279,6 +279,15 @@ func TestDecodeRejectsUnsafeBundles(t *testing.T) {
 		"newline in domain": func(b *Bundle) {
 			b.Config.Tunnels[0].Domain = "t.example.com\nExecStartPre=/bin/sh -c id"
 		},
+		"core file escapes directory": func(b *Bundle) {
+			b.Cores = map[string]map[string]File{"r1": {"meta": {Data: []byte("x")}, "server.json": {Data: []byte("{}")}, "clients/../../x": {Data: []byte("x")}}}
+		},
+		"core name escapes directory": func(b *Bundle) {
+			b.Cores = map[string]map[string]File{"../r1": {"meta": {Data: []byte("x")}, "server.json": {Data: []byte("{}")}}}
+		},
+		"core without server.json": func(b *Bundle) {
+			b.Cores = map[string]map[string]File{"r1": {"meta": {Data: []byte("x")}}}
+		},
 		"newer format": func(b *Bundle) {
 			b.Format = formatVersion + 1
 		},
@@ -293,5 +302,61 @@ func TestDecodeRejectsUnsafeBundles(t *testing.T) {
 		if _, err := Decode(text); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
+	}
+}
+
+func TestBackupRoundTripsCores(t *testing.T) {
+	cfg, root := testServer(t)
+	cores := t.TempDir()
+	dir := filepath.Join(cores, "r1")
+	if err := os.MkdirAll(filepath.Join(dir, "clients"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"meta":                   "protocol=reality\nport=8443\nproto=tcp\n",
+		"server.json":            `{"inbounds":[]}`,
+		"clients/device-001.txt": "vless://x\n",
+	}
+	for rel, data := range want {
+		if err := os.WriteFile(filepath.Join(dir, rel), []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	b, err := Create(cfg, root, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := b.AddCores(cores); err != nil {
+		t.Fatal(err)
+	}
+	text, err := b.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Decode(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := t.TempDir()
+	names, err := got.RestoreCores(out)
+	if err != nil || len(names) != 1 || names[0] != "r1" {
+		t.Fatalf("restored %v, %v", names, err)
+	}
+	for rel, data := range want {
+		path := filepath.Join(out, "r1", rel)
+		b, err := os.ReadFile(path)
+		if err != nil || string(b) != data {
+			t.Fatalf("%s: got %q, %v", rel, b, err)
+		}
+		if info, _ := os.Stat(path); info.Mode().Perm() != 0600 {
+			t.Fatalf("%s: mode %v, want 0600", rel, info.Mode().Perm())
+		}
+	}
+}
+
+func TestAddCoresWithoutCoreDir(t *testing.T) {
+	b := &Bundle{}
+	if err := b.AddCores(filepath.Join(t.TempDir(), "missing")); err != nil || b.Cores != nil {
+		t.Fatalf("got %v, %v", b.Cores, err)
 	}
 }

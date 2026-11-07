@@ -16,6 +16,7 @@ import (
 	"github.com/anonvector/slipgate/internal/backup"
 	"github.com/anonvector/slipgate/internal/binary"
 	"github.com/anonvector/slipgate/internal/config"
+	"github.com/anonvector/slipgate/internal/coreinstall"
 	"github.com/anonvector/slipgate/internal/dnsrouter"
 	"github.com/anonvector/slipgate/internal/network"
 	"github.com/anonvector/slipgate/internal/prompt"
@@ -177,6 +178,18 @@ func handleSystemRestore(ctx *actions.Context) error {
 
 	openTunnelPorts(cfg, out)
 
+	names, err := b.RestoreCores(coreinstall.Root)
+	if err != nil {
+		out.Warning("Failed to restore Xray cores: " + err.Error())
+	}
+	for _, name := range names {
+		if err := coreinstall.Activate(name); err != nil {
+			out.Warning(fmt.Sprintf("Xray core %q restored but not started: %v", name, err))
+		} else {
+			out.Success(fmt.Sprintf("Xray core %q restored and started", name))
+		}
+	}
+
 	if current.Warp.Enabled && !cfg.Warp.Enabled {
 		_ = warp.Disable()
 	}
@@ -267,6 +280,9 @@ func handleSystemRestore(ctx *actions.Context) error {
 func encodeBackup(cfg *config.Config) (string, []string, error) {
 	b, err := backup.Create(cfg, config.DefaultTunnelDir, version.String())
 	if err != nil {
+		return "", nil, err
+	}
+	if err := b.AddCores(coreinstall.Root); err != nil {
 		return "", nil, err
 	}
 	text, err := b.Encode()

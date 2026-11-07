@@ -51,6 +51,10 @@ type Bundle struct {
 	// Files holds each tunnel's files by tag and file name. The config's key
 	// and certificate paths are stored as names in this map.
 	Files map[string]map[string]File `json:"files"`
+	// Cores holds each Xray core's files (see coreinstall) by core name and
+	// relative path. Additive: an older panel ignores it and still restores
+	// the tunnels, so formatVersion stays the same.
+	Cores map[string]map[string]File `json:"cores,omitempty"`
 
 	// Skipped lists files left out of a new backup (too large to be keys).
 	Skipped []string `json:"-"`
@@ -292,6 +296,25 @@ func (b *Bundle) validate() error {
 			}
 		}
 	}
+	for name, files := range b.Cores {
+		if !coreNameRegex.MatchString(name) {
+			return fmt.Errorf("invalid core name %q", name)
+		}
+		if _, ok := files["meta"]; !ok {
+			return fmt.Errorf("core %s: meta is missing", name)
+		}
+		if _, ok := files["server.json"]; !ok {
+			return fmt.Errorf("core %s: server.json is missing", name)
+		}
+		for rel, f := range files {
+			if !validCorePath(rel) {
+				return fmt.Errorf("core %s: invalid file name %q", name, rel)
+			}
+			if len(f.Data) > maxFileSize {
+				return fmt.Errorf("core %s: file %s is too large", name, rel)
+			}
+		}
+	}
 	for i := range b.Config.Tunnels {
 		t := &b.Config.Tunnels[i]
 		for _, p := range keyPaths(t) {
@@ -353,4 +376,87 @@ func (b *Bundle) Restore(tunnelRoot string) (*config.Config, error) {
 		}
 	}
 	return &c, nil
+}
+
+var coreNameRegex = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,30}$`)
+
+// validCorePath accepts a core's top-level files and its per-device client
+// files, nothing that could escape the core's directory.
+func validCorePath(rel string) bool {
+	if rel == "meta" || rel == "server.json" {
+		return true
+	}
+	dir, name, ok := strings.Cut(rel, "/")
+	return ok && dir == "clients" && fileNameRegex.MatchString(name)
+}
+
+// AddCores includes every core under root (root/<name>/...) in the bundle.
+// A missing root means no cores are installed.
+func (b *Bundle) AddCores(root string) error {
+	entries, err := os.ReadDir(root)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if !e.IsDir() || !coreNameRegex.MatchString(e.Name()) {
+			continue
+		}
+		dir := filepath.Join(root, e.Name())
+		files := make(map[string]File)
+		for _, rel := range []string{"meta", "server.json"} {
+			f, err := readFile(filepath.Join(dir, rel))
+			if err != nil {
+				return fmt.Errorf("core %s: %w", e.Name(), err)
+			}
+			files[rel] = f
+		}
+		clients, err := os.ReadDir(filepath.Join(dir, "clients"))
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("core %s: %w", e.Name(), err)
+		}
+		for _, c := range clients {
+			if !c.Type().IsRegular() || !fileNameRegex.MatchString(c.Name()) {
+				continue
+			}
+			f, err := readFile(filepath.Join(dir, "clients", c.Name()))
+			if err != nil {
+				return fmt.Errorf("core %s: %w", e.Name(), err)
+			}
+			files["clients/"+c.Name()] = f
+		}
+		if b.Cores == nil {
+			b.Cores = make(map[string]map[string]File)
+		}
+		b.Cores[e.Name()] = files
+	}
+	return nil
+}
+
+// RestoreCores writes the bundle's cores under root and returns their names.
+// Files are always written owner-only: they hold private keys.
+func (b *Bundle) RestoreCores(root string) ([]string, error) {
+	names := make([]string, 0, len(b.Cores))
+	for name := range b.Cores {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		dir := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Join(dir, "clients"), 0700); err != nil {
+			return nil, err
+		}
+		for rel, f := range b.Cores[name] {
+			path := filepath.Join(dir, filepath.FromSlash(rel))
+			if err := os.WriteFile(path, f.Data, 0600); err != nil {
+				return nil, err
+			}
+			if err := os.Chmod(path, 0600); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return names, nil
 }
