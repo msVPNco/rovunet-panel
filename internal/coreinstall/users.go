@@ -68,6 +68,7 @@ func loadUserCore(name string) (o coreplan.Options, st coreplan.State, ok bool, 
 	if err = readJSON(filepath.Join(dir, stateFile), &st); err != nil {
 		return o, st, false, err
 	}
+	coreplan.Normalize(&o) // repairs a hostname stored as a pasted markdown link
 	return o, st, true, nil
 }
 

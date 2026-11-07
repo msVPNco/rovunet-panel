@@ -13,8 +13,10 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 type Options struct {
@@ -164,10 +166,43 @@ func Generate(o Options) (Bundle, error) {
 	return GenerateFor(o, &st, clients)
 }
 
-// Validate checks the options a core is generated from.
+var (
+	// markdownLink matches [text](url), which chat apps and browsers paste in
+	// place of a bare domain name.
+	markdownLink = regexp.MustCompile(`\[([^\]]*)\]\([^)]*\)`)
+	hostName     = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$`)
+)
+
+// cleanHost turns a pasted [name](link) into name and trims spaces and quotes.
+func cleanHost(s string) string {
+	s = strings.TrimSpace(markdownLink.ReplaceAllString(s, "$1"))
+	return strings.Trim(s, "\"'`<> ")
+}
+
+// Normalize repairs hostnames in o that were pasted as markdown links.
+func Normalize(o *Options) {
+	o.Host = cleanHost(o.Host)
+	o.SNI = cleanHost(o.SNI)
+	o.RealityTarget = cleanHost(o.RealityTarget)
+}
+
+// validHost reports whether s is an IP address or a dotted domain name.
+func validHost(s string) bool {
+	return net.ParseIP(s) != nil || hostName.MatchString(s)
+}
+
+// Validate checks the options a core is generated from. It first repairs
+// hostnames pasted as markdown links.
 func Validate(o *Options) error {
+	Normalize(o)
 	if o.Port < 1 || o.Port > 65535 || o.Host == "" {
 		return fmt.Errorf("host, port 1..65535 and devices 1..1000 required")
+	}
+	if !validHost(o.Host) {
+		return fmt.Errorf("invalid host %q: use the server's public IP address or its domain name", o.Host)
+	}
+	if o.SNI != "" && !validHost(o.SNI) {
+		return fmt.Errorf("invalid server name %q: use a domain name such as www.example.com", o.SNI)
 	}
 	if _, err := url.ParseRequestURI("https://" + net.JoinHostPort(o.Host, strconv.Itoa(o.Port))); err != nil {
 		return fmt.Errorf("invalid host")
@@ -184,8 +219,12 @@ func Validate(o *Options) error {
 		return fmt.Errorf("TLS certificate and key paths required")
 	}
 	if o.Protocol == "reality" {
-		if _, _, err := net.SplitHostPort(o.RealityTarget); err != nil {
-			return fmt.Errorf("REALITY target must be host:port")
+		th, tp, err := net.SplitHostPort(o.RealityTarget)
+		if err != nil || !validHost(th) {
+			return fmt.Errorf("REALITY target %q must be a domain and port such as www.example.com:443", o.RealityTarget)
+		}
+		if n, err := strconv.Atoi(tp); err != nil || n < 1 || n > 65535 {
+			return fmt.Errorf("REALITY target %q has an invalid port", o.RealityTarget)
 		}
 	}
 	return nil

@@ -1,4 +1,4 @@
-VERSION ?= 1.9.0
+VERSION ?= 1.9.1
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 LDFLAGS  = -X github.com/msVPNco/rovunet-panel/internal/version.Version=$(VERSION) \
            -X github.com/msVPNco/rovunet-panel/internal/version.Commit=$(COMMIT) \

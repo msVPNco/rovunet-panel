@@ -2,6 +2,13 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.9.1
+
+### Core installs no longer accept pasted or placeholder addresses
+
+- `core-install` turns a hostname pasted as a Markdown link, such as `[www.example.com](https://www.example.com)` (chat apps and browsers paste these), back into the plain name, and cores already stored that way are repaired the next time the panel updates them.
+- It rejects a host, server name or REALITY target that is not an IP address or a domain name, such as the placeholder `SERVER_IP`, and names the offending value. Before, such a core installed without complaint and its clients pointed at an address that does not exist.
+
 ## v1.9.0
 
 ### Xray cores for every user
