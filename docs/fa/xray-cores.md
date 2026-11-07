@@ -4,7 +4,7 @@
 
 [مستندات](README.md) › هسته‌های Xray
 
-هستهٔ Xray یک سرور Xray جداست که پنل کنار تونل‌ها نصب و مدیریت می‌کند. چهار پروتکلی را می‌دهد که سرورهای داخلی پنل ندارند.
+هستهٔ Xray یک سرور Xray جداست که پنل کنار تونل‌ها نصب و مدیریت می‌کند و چهار پروتکلی را می‌دهد که سرورهای داخلی پنل ندارند. هر کاربر پنل روی هر هسته یک کانفیگ دارد؛ ⁦`users configs`⁩ آن را کنار تونل‌های همان کاربر چاپ می‌کند و در اپ Rovunet هم در گروه همان کاربر قرار می‌گیرد.
 
 | پروتکل | انتقال | گواهی | مناسب برای |
 |---|---|---|---|
@@ -16,23 +16,25 @@
 <a id="installing-a-core"></a>
 ## نصب یک هسته
 
+نصب‌کننده (⁦`sudo rovunet install`⁩) گزینه‌های **VLESS + REALITY** و **WireGuard** را کنار بقیهٔ پروتکل‌ها نشان می‌دهد و آن‌ها را بعد از ساخت اولین کاربر، روی اولین پورت آزاد از پورت‌های پیش‌فرض راه می‌اندازد (REALITY: 9443، 2096 یا ⁦8880/tcp⁩؛ WireGuard: 51820 تا ⁦51822/udp⁩). هر هسته‌ای را بعداً هم می‌شود اضافه کرد:
+
 </div>
 
 ```bash
 # VLESS + REALITY
 sudo rovunet core-install --name r1 --protocol reality --host SERVER_IP \
-  --target www.microsoft.com:443 --sni www.microsoft.com --port 8443 --devices 5
+  --target www.microsoft.com:443 --sni www.microsoft.com --port 9443
 
 # VLESS + XHTTP
 sudo rovunet core-install --name x1 --protocol xhttp --host vpn.example.com --sni vpn.example.com \
-  --cert /path/fullchain.pem --key /path/privkey.pem --port 2096 --devices 5
+  --cert /path/fullchain.pem --key /path/privkey.pem --port 2096
 
 # Hysteria 2
 sudo rovunet core-install --name h1 --protocol hysteria2 --host vpn.example.com --sni vpn.example.com \
-  --cert /path/fullchain.pem --key /path/privkey.pem --port 8443 --devices 5
+  --cert /path/fullchain.pem --key /path/privkey.pem --port 8443
 
 # WireGuard
-sudo rovunet core-install --name w1 --protocol wireguard --host SERVER_IP --port 51820 --devices 5
+sudo rovunet core-install --name w1 --protocol wireguard --host SERVER_IP --port 51820
 ```
 
 <div dir="rtl">
@@ -45,16 +47,16 @@ sudo rovunet core-install --name w1 --protocol wireguard --host SERVER_IP --port
 | ⁦`--sni`⁩ | نام گواهی، یا نام سروری که REALITY نشان می‌دهد (پیش‌فرض: ⁦`--host`⁩) |
 | ⁦`--target`⁩ | فقط REALITY: سایت TLS واقعی که تقلید می‌شود، به شکل ⁦`host:port`⁩ |
 | ⁦`--port`⁩ | پورت شنود (پیش‌فرض 8443)؛ باید آزاد باشد |
-| ⁦`--devices`⁩ | تعداد اطلاعات ورود جدا برای کلاینت‌ها، ۱ تا ۱۰۰۰ |
+| ⁦`--devices`⁩ | حالت «هر دستگاه» به‌جای «هر کاربر»: این تعداد اطلاعات ورود مستقل (۱ تا ۱۰۰۰)، فقط به‌صورت فایل |
 | ⁦`--cert`⁩، ⁦`--key`⁩ | XHTTP و Hysteria 2: مسیر گواهی و کلید خصوصی |
 
 ## نصب چه می‌کند
 
 ۱. آزاد بودن پورت را روی پروتکل درست بررسی می‌کند (TCP برای REALITY و XHTTP، UDP برای Hysteria 2 و WireGuard).  
-۲. نسخهٔ پین‌شدهٔ Xray را که همراه همین release منتشر شده نصب می‌کند و آن را با SHA256SUMS همان release تأیید می‌کند. اگر ⁦`/usr/local/bin/xray`⁩ از قبل باشد، دست نمی‌خورد.  
+۲. نسخهٔ پین‌شدهٔ Xray را که همراه همین release منتشر شده نصب می‌کند و با SHA256SUMS همان release تأییدش می‌کند. اگر ⁦`/usr/local/bin/xray`⁩ از قبل باشد، دست نمی‌خورد.  
 ۳. کانفیگ سرور را می‌نویسد و پیش از فعال شدن، Xray خودش آن را آزمایش می‌کند (⁦`xray run -test`⁩).  
 ۴. سرویس ⁦`rovunet-core-<name>`⁩ را می‌سازد و اجرا می‌کند و پورت را در فایروال باز می‌کند.  
-۵. برای هر دستگاه یک فایل کلاینت در ⁦`/etc/rovunet/core/<name>/clients/`⁩ می‌نویسد.
+۵. برای هر کاربر یک فایل کلاینت در ⁦`/etc/rovunet/core/<name>/clients/`⁩ می‌نویسد.
 
 اگر هر مرحله‌ای شکست بخورد، هرچه ساخته شده بود پاک می‌شود.
 
@@ -72,9 +74,14 @@ sudo rovunet core-remove r1       # stop and delete
 
 ⁦`core-plan`⁩ همین گزینه‌ها را به‌علاوهٔ ⁦`--output <پوشهٔ جدید>`⁩ می‌گیرد و فقط فایل‌ها را برای استقرار دستی می‌نویسد.
 
-## فایل‌های کلاینت
+## کاربران و کانفیگ‌ها
 
-هر دستگاه اطلاعات ورود جدا می‌گیرد: یک لینک ⁦`vless://`⁩ یا ⁦`hysteria2://`⁩، یا یک فایل ⁦`.conf`⁩ وایرگارد. این‌ها در اپ Rovunet و در کلاینت‌های استاندارد مبتنی بر Xray و WireGuard وارد می‌شوند. یک فایل WireGuard را هرگز هم‌زمان روی دو دستگاه استفاده نکنید.
+اطلاعات ورود هر کاربر از کلید مخفی خود هسته، نام کاربری و رمز ساخته می‌شود:
+
+- ⁦`users add`⁩ به کاربر جدید روی همهٔ هسته‌ها کانفیگ می‌دهد؛ کانفیگ کاربران فعلی عوض نمی‌شود.
+- ⁦`users remove`⁩ و ⁦`passwd`⁩ کانفیگ قبلی را ظرف چند ثانیه باطل می‌کنند. Xray هر تغییر را اول آزمایش می‌کند؛ اگر ردش کند، کانفیگ قبلی سر جایش می‌ماند.
+- ⁦`users configs`⁩ و ⁦`export-clients --format rovunet`⁩ کانفیگ‌های هسته‌ای هر کاربر را به‌صورت پروفایل بومی ⁦`rovunet://`⁩ در گروه همان کاربر چاپ می‌کنند. ⁦`export-clients --format standard`⁩ لینک‌های سادهٔ ⁦`vless://`⁩ و ⁦`hysteria2://`⁩ را برای کلاینت‌های دیگر چاپ می‌کند.
+- کانفیگ سادهٔ هر کاربر در ⁦`/etc/rovunet/core/<name>/clients/<user>.txt`⁩ هم هست (برای WireGuard پسوند ⁦`.conf`⁩). یک کانفیگ WireGuard را هرگز هم‌زمان روی دو دستگاه استفاده نکنید.
 
 ## بکاپ
 
@@ -82,8 +89,8 @@ sudo rovunet core-remove r1       # stop and delete
 
 ## محدودیت‌ها
 
-- پروفایل‌های هسته به‌صورت پروفایل‌های جدا وارد می‌شوند، نه داخل مجموعهٔ کاربر.
-- هسته‌ها مستقل از کاربران پنل‌اند: حذف کاربر، اطلاعات ورود هسته را باطل نمی‌کند؛ هسته را حذف یا دوباره نصب کنید.
+- XHTTP و Hysteria 2 گواهی را هنگام اجرا می‌خوانند. بعد از تمدید گواهی، هسته را دوباره راه‌اندازی کنید (⁦`systemctl restart rovunet-core-<name>`⁩).
+- هسته‌هایی که پیش از v1.9.0 (به‌صورت «هر دستگاه») نصب شده‌اند همان‌طور کار می‌کنند؛ برای وصل شدن به کاربران پنل، دوباره نصبشان کنید.
 
 بعدی: [عملیات و نگهداری](operations.md)
 

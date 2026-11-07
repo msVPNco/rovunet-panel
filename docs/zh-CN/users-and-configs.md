@@ -38,12 +38,12 @@ sudo rovunet users remove                           # remove a user
 |---|---|---|
 | 原生 | `rovunet://` | Rovunet 应用。携带完整配置、用户所属集合（分组），自 v33 起无损携带凭据，包括 `\|` 等字符 |
 | 标准 VLESS | `vless://` | 任意 VLESS 客户端（v2rayNG、Hiddify、NekoBox 等），在每个 VLESS 配置旁输出 |
-| Xray 内核 | `vless://`、`hysteria2://`、WireGuard `.conf` | 每台设备一个文件；参见 [Xray 内核](xray-cores.md) |
+| Xray 内核 | `rovunet://`（类型 `xray`），或 `vless://`、`hysteria2://`、WireGuard `.conf` | 每个内核上每个用户一份；参见 [Xray 内核](xray-cores.md) |
 | 旧版 | `slipnet://` | 旧版应用；仍可导入 |
 
 ### 应用中的集合
 
-应用按服务器和用户对导入的配置分组，因此一个用户的所有路径构成一个集合。direct 后端的 Soar 无需登录，但会为每个用户单独输出，从而加入各自的集合。Xray 内核文件按设备分发，作为独立配置导入。
+应用按服务器和用户对导入的配置分组，因此一个用户的所有路径构成一个集合。direct 后端的 Soar 无需登录，但会为每个用户单独输出，从而加入各自的集合。Xray 内核配置也按用户输出到同一集合中。
 
 ## 服务器地址
 

@@ -38,12 +38,12 @@ A configuration contains the user's credentials. Send it over a private channel,
 |---|---|---|
 | Native | `rovunet://` | The Rovunet app. Carries the full profile, the user's collection (group) and, since v33, credentials losslessly, including characters such as `\|` |
 | Standard VLESS | `vless://` | Any VLESS client (v2rayNG, Hiddify, NekoBox…), printed next to every VLESS configuration |
-| Xray core | `vless://`, `hysteria2://`, WireGuard `.conf` | One file per device; see [Xray cores](xray-cores.md) |
+| Xray core | `rovunet://` (type `xray`), or `vless://`, `hysteria2://`, WireGuard `.conf` | One per user on every core; see [Xray cores](xray-cores.md) |
 | Legacy | `slipnet://` | Older app versions; still accepted |
 
 ### Collections in the app
 
-The app groups imported configurations by server and user, so all of one user's paths form one collection. Soar with the direct backend needs no login but is printed once per user, so it joins each user's collection. Xray core files are per device and are imported as separate profiles.
+The app groups imported configurations by server and user, so all of one user's paths form one collection. Soar with the direct backend needs no login but is printed once per user, so it joins each user's collection. Xray core profiles are printed per user in the same collection.
 
 ## Server address
 

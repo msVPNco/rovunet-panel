@@ -19,7 +19,7 @@ sudo rovunet update
 
 ### مهاجرت از نام قبلی
 
-سروری که با نام قبلی پنل (دستور ⁦`slipgate`⁩ و ⁦`/etc/slipgate`⁩) نصب شده، یک بار با دستور قدیمی آپدیت می‌شود و خودکار مهاجرت می‌کند:
+سروری که با نام قبلی پنل (دستور ⁦`slipgate⁦`⁩ و ⁦`⁩/etc/slipgate`⁩) نصب شده، یک بار با دستور قدیمی آپدیت می‌شود و خودکار مهاجرت می‌کند:
 
 </div>
 
@@ -31,7 +31,7 @@ sudo rovunet tunnel status
 
 <div dir="rtl">
 
-مهاجرت سرویس‌های قدیمی را متوقف می‌کند، ⁦`/etc/slipgate`⁩ را به ⁦`/etc/rovunet`⁩ منتقل می‌کند، مسیرهای ذخیره‌شده را بدون دست زدن به هیچ رمزی بازنویسی می‌کند، کاربران و گروه‌های سیستمی را با همان UID و GID تغییرنام می‌دهد، سرویس‌ها را به نام ⁦`rovunet-*`⁩ دوباره می‌سازد، تنظیمات sshd را فقط بعد از تأیید ⁦`sshd -t`⁩ عوض می‌کند، دسترسی ⁦`config.json`⁩ را فقط برای مالک می‌گذارد و دستور را در ⁦`/usr/local/bin/rovunet`⁩ نصب می‌کند. سروری که SlipGate اصلی را اجرا می‌کند هم همین‌طور جابه‌جا می‌شود:
+مهاجرت سرویس‌های قدیمی را متوقف می‌کند، ⁦`/etc/slipgate⁦`⁩ را به ⁦`⁩/etc/rovunet⁦`⁩ منتقل می‌کند، مسیرهای ذخیره‌شده را بدون دست زدن به هیچ رمزی بازنویسی می‌کند، کاربران و گروه‌های سیستمی را با همان UID و GID تغییرنام می‌دهد، سرویس‌ها را به نام ⁦`⁩rovunet-*⁦`⁩ دوباره می‌سازد، تنظیمات sshd را فقط بعد از تأیید ⁦`⁩sshd -t⁦`⁩ عوض می‌کند، دسترسی ⁦`⁩config.json⁦`⁩ را فقط برای مالک می‌گذارد و دستور را در ⁦`⁩/usr/local/bin/rovunet`⁩ نصب می‌کند. سروری که SlipGate اصلی را اجرا می‌کند هم همین‌طور جابه‌جا می‌شود:
 
 </div>
 
@@ -58,7 +58,7 @@ ssh root@old rovunet backup - | ssh root@new rovunet restore - --yes   # server 
 
 <div dir="rtl">
 
-بکاپ یک بلوک متن بین ⁦`-----BEGIN ROVUNET BACKUP-----`⁩ و ⁦`-----END ROVUNET BACKUP-----`⁩ است. همهٔ کلیدهای خصوصی و رمزها در آن است: خصوصی نگهش دارید. بکاپ‌های ساخته‌شده با نام قبلی هم بازیابی می‌شوند.
+بکاپ یک بلوک متن بین ⁦`-----BEGIN ROVUNET BACKUP-----⁦`⁩ و ⁦`⁩-----END ROVUNET BACKUP-----`⁩ است. همهٔ کلیدهای خصوصی و رمزها در آن است: خصوصی نگهش دارید. بکاپ‌های ساخته‌شده با نام قبلی هم بازیابی می‌شوند.
 
 بازیابی روی سرور جدید:
 
@@ -68,7 +68,7 @@ ssh root@old rovunet backup - | ssh root@new rovunet restore - --yes   # server 
 
 بازیابی باینری‌های ترنسپورت را نصب می‌کند، کلیدها و کانفیگ را می‌نویسد، کاربران را می‌سازد، پورت‌های فایروال را باز می‌کند، اگر WARP روشن بوده دوباره راه‌اندازی‌اش می‌کند، همهٔ سرویس‌ها را اجرا می‌کند و هسته‌های Xray را دوباره بالا می‌آورد. هرچه از قبل روی سرور باشد جایگزین می‌شود، ولی پیش از آن در ⁦`/root/rovunet-pre-restore-<date>.txt`⁩ ذخیره می‌شود.
 
-⁦`rovunet config export`⁩ فقط ⁦`config.json`⁩ را بدون کلیدها چاپ می‌کند: برای جابه‌جایی سرور از ⁦`backup`⁩ استفاده کنید.
+⁦`rovunet config export⁦`⁩ فقط ⁦`⁩config.json⁦`⁩ را بدون کلیدها چاپ می‌کند: برای جابه‌جایی سرور از ⁦`⁩backup`⁩ استفاده کنید.
 
 ## پایش
 
@@ -97,10 +97,10 @@ Cloudflare WARP می‌تواند ترافیک خروجی سرور را ببرد
 | ⁦`/etc/rovunet/config.json`⁩ | کانفیگ اصلی: تونل‌ها، کاربران، مسیریابی (فقط مالک) |
 | ⁦`/etc/rovunet/tunnels/<tag>/`⁩ | کلیدها، گواهی‌ها و کانفیگ یک تونل |
 | ⁦`/etc/rovunet/vless.secret`⁩ | کلید مخفی سرور که UUID و مسیر VLESS از آن ساخته می‌شود |
-| ⁦`/etc/rovunet/core/<name>/`⁩ | یک هستهٔ Xray: ⁦`server.json`⁩، ⁦`meta`⁩ و ⁦`clients/`⁩ هر دستگاه |
+| ⁦`/etc/rovunet/core/<name>/⁦`⁩ | یک هستهٔ Xray: ⁦`⁩server.json⁦`⁩، ⁦`⁩meta⁦`⁩ و ⁦`⁩clients/`⁩ هر دستگاه |
 | ⁦`/usr/local/bin/rovunet`⁩ | پنل، همراه سرورهای داخلی SOCKS5، Soar، SSH over TLS و VLESS |
-| ⁦`/usr/local/bin/dnstt-server`⁩، ⁦`slipstream-server`⁩، ⁦`vaydns-server`⁩، ⁦`caddy-naive`⁩ | باینری‌های ترنسپورت |
-| ⁦`/usr/local/bin/xray`⁩ | هستهٔ پین‌شدهٔ Xray برای ⁦`core-install`⁩ |
+| ⁦`/usr/local/bin/dnstt-server⁦`⁩، ⁦`⁩slipstream-server⁦`⁩، ⁦`⁩vaydns-server⁦`⁩، ⁦`⁩caddy-naive`⁩ | باینری‌های ترنسپورت |
+| ⁦`/usr/local/bin/xray⁦`⁩ | هستهٔ پین‌شدهٔ Xray برای ⁦`⁩core-install`⁩ |
 | ⁦`/etc/iptables/rovunet-ports`⁩ | پورت‌هایی که پنل در iptables باز کرده |
 
 | یونیت systemd | نقش |

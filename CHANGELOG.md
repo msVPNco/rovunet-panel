@@ -2,6 +2,16 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.9.0
+
+### Xray cores for every user
+
+- **One install delivers every protocol.** The installer offers VLESS + REALITY and WireGuard next to the other protocols and sets them up after the first user, on the first free default port.
+- **Cores serve the panel's users.** Every user gets a configuration on every Xray core. `users add`, `remove` and `passwd` keep the cores in step: Xray validates each change, a rejected change keeps the previous configuration, and a changed password revokes the old configuration. Adding a user never changes an existing user's configuration.
+- **One group per user in the app.** `users configs`, the install summary and `export-clients` print each user's core profiles as native `rovunet://` profiles in the user's collection, next to their tunnels. `export-clients --format standard` prints the plain `vless://` and `hysteria2://` links.
+- `core-install` serves the panel's users by default; `--devices` keeps the per-device mode. Cores installed by v1.8 keep working as they are.
+- Backups carry the cores' new state, so restored cores keep their keys and every user's configuration.
+
 ## v1.8.2
 
 ### Fixes

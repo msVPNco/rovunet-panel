@@ -73,7 +73,7 @@
 
 | 命令 | 说明 |
 |---|---|
-| `rovunet core-install --name N --protocol P --host H [options]` | 安装内核；参见 [Xray 内核](xray-cores.md#installing-a-core) |
+| `rovunet core-install --name N --protocol P --host H [options]` | 安装服务所有用户的内核；参见 [Xray 内核](xray-cores.md#installing-a-core) |
 | `rovunet core-list` | 已安装的内核 |
 | `rovunet core-remove N` | 删除内核 |
 | `rovunet core-plan --protocol P --host H --output DIR [options]` | 仅写出内核文件 |

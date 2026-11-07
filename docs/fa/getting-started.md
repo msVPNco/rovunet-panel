@@ -53,9 +53,9 @@ A   example.com      → SERVER_IP          NaïveProxy, and VLESS / SSH over TL
 نمونه‌های حداقلی:
 
 - **فقط NaïveProxy:** ⁦`A example.com → SERVER_IP`⁩.
-- **فقط DNSTT:** ⁦`A ns.example.com → SERVER_IP`⁩ و ⁦`NS t.example.com → ns.example.com`⁩.
+- **فقط DNSTT:** ⁦`A ns.example.com → SERVER_IP⁦`⁩ و ⁦`⁩NS t.example.com → ns.example.com`⁩.
 
-رکورد ⁦`NS`⁩ یک زیردامنه را به سرور شما واگذار می‌کند: پرسش‌های ⁦`t.example.com`⁩ به ⁦`ns.example.com`⁩، یعنی سرور شما، می‌رسند و تونل روی پورت ۵۳ پاسخ می‌دهد. اعمال تغییرات از چند دقیقه تا چند ساعت طول می‌کشد. بررسی:
+رکورد ⁦`NS⁦`⁩ یک زیردامنه را به سرور شما واگذار می‌کند: پرسش‌های ⁦`⁩t.example.com⁦`⁩ به ⁦`⁩ns.example.com`⁩، یعنی سرور شما، می‌رسند و تونل روی پورت ۵۳ پاسخ می‌دهد. اعمال تغییرات از چند دقیقه تا چند ساعت طول می‌کشد. بررسی:
 
 </div>
 
@@ -110,7 +110,7 @@ sudo rovunet install --bin-dir /tmp/rovunet
 
 <div dir="rtl">
 
-روی سرورهای ARM به‌جای ⁦`amd64`⁩ بنویسید ⁦`arm64`⁩.
+روی سرورهای ARM به‌جای ⁦`amd64⁦`⁩ بنویسید ⁦`⁩arm64`⁩.
 
 ### از سورس
 
@@ -127,7 +127,7 @@ sudo ./rovunet install
 
 ### جابه‌جایی از SlipGate یا نسخهٔ قدیمی پنل
 
-سروری که با نام قبلی پنل (⁦`slipgate`⁩ و ⁦`/etc/slipgate`⁩) نصب شده، در جای خود مهاجرت می‌کند؛ [عملیات › به‌روزرسانی](operations.md#updating) را ببینید.
+سروری که با نام قبلی پنل (⁦`slipgate⁦`⁩ و ⁦`⁩/etc/slipgate`⁩) نصب شده، در جای خود مهاجرت می‌کند؛ [عملیات › به‌روزرسانی](operations.md#updating) را ببینید.
 
 ## ۵. منوی تعاملی و خط فرمان
 
@@ -147,7 +147,7 @@ sudo rovunet tunnel status
 
 <div dir="rtl">
 
-⁦`tunnel add`⁩ کلیدهای تونل را می‌سازد، سرویس ⁦`rovunet-mytunnel`⁩ را ایجاد می‌کند (همین حالا و هنگام بوت اجرا می‌شود) و دامنه را در روتر DNS ثبت می‌کند. ⁦`users configs`⁩ همهٔ کانفیگ‌های همهٔ کاربران را چاپ می‌کند. اگر تونلی ⁦`active`⁩ نبود، ⁦`sudo rovunet diag`⁩ را اجرا کنید.
+⁦`tunnel add⁦`⁩ کلیدهای تونل را می‌سازد، سرویس ⁦`⁩rovunet-mytunnel⁦`⁩ را ایجاد می‌کند (همین حالا و هنگام بوت اجرا می‌شود) و دامنه را در روتر DNS ثبت می‌کند. ⁦`⁩users configs⁦`⁩ همهٔ کانفیگ‌های همهٔ کاربران را چاپ می‌کند. اگر تونلی ⁦`⁩active⁦`⁩ نبود، ⁦`⁩sudo rovunet diag`⁩ را اجرا کنید.
 
 بعدی: [پروتکل‌ها](protocols.md)
 

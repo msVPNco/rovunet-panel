@@ -46,13 +46,13 @@
 |---|---|
 | ⁦`socks`⁩ | پروکسی SOCKS5 داخلی پنل؛ ساده و سریع |
 | ⁦`ssh`⁩ | OpenSSH خود سرور ترافیک را می‌رساند، پس هر کاربر لاگین SSH می‌خواهد |
-| ⁦`both`⁩ | دو تونل می‌سازد، ⁦`<tag>-socks`⁩ و ⁦`<tag>-ssh`⁩؛ زیردامنهٔ نسخهٔ SSH یک ⁦`s`⁩ اضافه می‌گیرد |
+| ⁦`both⁦`⁩ | دو تونل می‌سازد، ⁦`⁩<tag>-socks⁦`⁩ و ⁦`⁩<tag>-ssh⁦`⁩؛ زیردامنهٔ نسخهٔ SSH یک ⁦`⁩s`⁩ اضافه می‌گیرد |
 | ⁦`direct`⁩ | فقط Soar: سرور خودش به مقصد هر جریان وصل می‌شود |
 
 <a id="vless-over-websocket"></a>
 ## VLESS روی WebSocket
 
-پنل خودش VLESS روی WebSocket را سرو می‌کند. هر کاربر یک UUID می‌گیرد که از نام کاربری، رمز و یک کلید مخفی سرور (⁦`/etc/rovunet/vless.secret`⁩) ساخته می‌شود: حذف کاربر یا تغییر رمز آن را ظرف چند ثانیه باطل می‌کند و کانفیگ اشتراکی هرگز رمز را در خود ندارد. جریان‌ها فقط به آدرس‌های عمومی می‌رسند و پورت ۲۵ به‌طور پیش‌فرض بسته است (⁦`--block-ports`⁩). TCP و UDP ساده پشتیبانی می‌شوند، Mux و XUDP نه.
+پنل خودش VLESS روی WebSocket را سرو می‌کند. هر کاربر یک UUID می‌گیرد که از نام کاربری، رمز و یک کلید مخفی سرور (⁦`/etc/rovunet/vless.secret⁦`⁩) ساخته می‌شود: حذف کاربر یا تغییر رمز آن را ظرف چند ثانیه باطل می‌کند و کانفیگ اشتراکی هرگز رمز را در خود ندارد. جریان‌ها فقط به آدرس‌های عمومی می‌رسند و پورت ۲۵ به‌طور پیش‌فرض بسته است (⁦`⁩--block-ports`⁩). TCP و UDP ساده پشتیبانی می‌شوند، Mux و XUDP نه.
 
 سه راه رسیدن به آن:
 
@@ -83,12 +83,12 @@ sudo rovunet tunnel edit --tag myvless-cf --cdn-address 104.16.0.1   # clean Clo
 ۳. Network: گزینهٔ **WebSockets** روشن باشد.  
 ۴. پورت: Cloudflare فقط روی 443، 2053، 2083، 2087، 2096 و 8443 پروکسی HTTPS می‌کند؛ وقتی NaïveProxy روی ۴۴۳ است، 2053 را بگیرید.
 
-کانفیگ‌ها برای هر کاربر جدا هستند: ⁦`sudo rovunet tunnel share myvless --user alice`⁩ یک لینک ⁦`rovunet://`⁩ برای اپ Rovunet و یک لینک استاندارد ⁦`vless://`⁩ برای v2rayNG، Hiddify، NekoBox و کلاینت‌های مشابه چاپ می‌کند. لینک‌های پشت Naïve به ⁦`allowInsecure`⁩ نیازی ندارند؛ کلاینت‌های Xray از اوت ۲۰۲۶ این گزینه را نمی‌پذیرند. فرگمنت SNI در هر دو نوع لینک خاموش است و در اپ قابل روشن کردن است.
+کانفیگ‌ها برای هر کاربر جدا هستند: ⁦`sudo rovunet tunnel share myvless --user alice⁦`⁩ یک لینک ⁦`⁩rovunet://⁦`⁩ برای اپ Rovunet و یک لینک استاندارد ⁦`⁩vless://⁦`⁩ برای v2rayNG، Hiddify، NekoBox و کلاینت‌های مشابه چاپ می‌کند. لینک‌های پشت Naïve به ⁦`⁩allowInsecure`⁩ نیازی ندارند؛ کلاینت‌های Xray از اوت ۲۰۲۶ این گزینه را نمی‌پذیرند. فرگمنت SNI در هر دو نوع لینک خاموش است و در اپ قابل روشن کردن است.
 
 <a id="naiveproxy"></a>
 ## NaïveProxy
 
-Caddy با پلاگین forwardproxy. Caddy گواهی Let's Encrypt را می‌گیرد و تمدید می‌کند (پورت ۸۰ و ۴۴۳ باید باز باشند) و به هر درخواستی که پروکسی احرازشده نباشد، یک سایت پوششی نشان می‌دهد. همهٔ کاربران پنل می‌توانند وارد شوند؛ ⁦`users add`⁩، ⁦`remove`⁩ و ⁦`passwd`⁩ در لحظه Caddy را به‌روز می‌کنند. تونل Naïve بدون هیچ لاگینی یک لاگین تصادفی می‌گیرد و بسته می‌ماند.
+Caddy با پلاگین forwardproxy. Caddy گواهی Let's Encrypt را می‌گیرد و تمدید می‌کند (پورت ۸۰ و ۴۴۳ باید باز باشند) و به هر درخواستی که پروکسی احرازشده نباشد، یک سایت پوششی نشان می‌دهد. همهٔ کاربران پنل می‌توانند وارد شوند؛ ⁦`users add⁦`⁩، ⁦`⁩remove⁦`⁩ و ⁦`⁩passwd`⁩ در لحظه Caddy را به‌روز می‌کنند. تونل Naïve بدون هیچ لاگینی یک لاگین تصادفی می‌گیرد و بسته می‌ماند.
 
 </div>
 
@@ -164,7 +164,7 @@ sudo rovunet tunnel add --transport soar --backend ssh    --tag mysoar-ssh --dom
 
 <div dir="rtl">
 
-DNSTT و VayDNS کلید موجود را با ⁦`--private-key`⁩ (و ⁦`--public-key`⁩ اختیاری) می‌پذیرند؛ Soar یک seed از نوع Ed25519 به base64 را با ⁦`--private-key`⁩ می‌پذیرد. ⁦`sudo rovunet mtu 1200`⁩ مقدار MTU همهٔ تونل‌های DNSTT، NoizDNS و VayDNS را یک‌جا تنظیم می‌کند (پیش‌فرض 1232).
+DNSTT و VayDNS کلید موجود را با ⁦`--private-key⁦`⁩ (و ⁦`⁩--public-key⁦`⁩ اختیاری) می‌پذیرند؛ Soar یک seed از نوع Ed25519 به base64 را با ⁦`⁩--private-key⁦`⁩ می‌پذیرد. ⁦`⁩sudo rovunet mtu 1200`⁩ مقدار MTU همهٔ تونل‌های DNSTT، NoizDNS و VayDNS را یک‌جا تنظیم می‌کند (پیش‌فرض 1232).
 
 <a id="external-dns-route"></a>
 ## مسیر DNS خارجی
@@ -183,10 +183,10 @@ sudo rovunet tunnel add --transport external --tag my-proto --domain j.example.c
 
 | تونل | دامنه | بک‌اند |
 |---|---|---|
-| dnstt-socks / dnstt-ssh | ⁦`t.example.com`⁩ / ⁦`ts.example.com`⁩ | SOCKS5 / SSH |
-| vaydns-socks / vaydns-ssh | ⁦`v.example.com`⁩ / ⁦`vs.example.com`⁩ | SOCKS5 / SSH |
-| slipstream-socks / slipstream-ssh | ⁦`s.example.com`⁩ / ⁦`ss.example.com`⁩ | SOCKS5 / SSH |
-| soar-direct / soar-ssh | ⁦`r.example.com`⁩ / ⁦`rs.example.com`⁩ | direct / SSH |
+| dnstt-socks / dnstt-ssh | ⁦`t.example.com⁦`⁩ / ⁦`⁩ts.example.com`⁩ | SOCKS5 / SSH |
+| vaydns-socks / vaydns-ssh | ⁦`v.example.com⁦`⁩ / ⁦`⁩vs.example.com`⁩ | SOCKS5 / SSH |
+| slipstream-socks / slipstream-ssh | ⁦`s.example.com⁦`⁩ / ⁦`⁩ss.example.com`⁩ | SOCKS5 / SSH |
+| soar-direct / soar-ssh | ⁦`r.example.com⁦`⁩ / ⁦`⁩rs.example.com`⁩ | direct / SSH |
 | naive-socks / naive-ssh | ⁦`example.com`⁩ (مشترک) | SOCKS5 / SSH |
 | vless، stuntls | ⁦`example.com`⁩ از طریق NaïveProxy | UUID هر کاربر / SSH |
 

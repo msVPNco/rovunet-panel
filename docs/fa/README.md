@@ -21,7 +21,7 @@
 ## قراردادها
 
 - دستورها روی سرور و با دسترسی root اجرا می‌شوند، پس با ⁦`sudo`⁩ نوشته شده‌اند.
-- ⁦`example.com`⁩ یعنی دامنهٔ شما و ⁦`SERVER_IP`⁩ یعنی IP عمومی سرور.
+- ⁦`example.com⁦`⁩ یعنی دامنهٔ شما و ⁦`⁩SERVER_IP`⁩ یعنی IP عمومی سرور.
 - نام پروتکل‌ها همان نام رسمی پروژه‌هایشان است: VLESS، REALITY و XHTTP (پروژهٔ Project X)، Hysteria 2، WireGuard، NaïveProxy، SSH و SOCKS5. DNSTT، NoizDNS، VayDNS، Slipstream و Soar تونل‌های DNS هستند.
 - در پنل، **تونل** یعنی یک نمونهٔ پیکربندی‌شده از یک پروتکل با یک تگ (نام)، و **هسته** یعنی یک سرور Xray که با ⁦`core-install`⁩ نصب شده است.
 
