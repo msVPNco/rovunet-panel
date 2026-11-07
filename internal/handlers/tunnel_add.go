@@ -618,6 +618,15 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 		}
 	}
 
+	// StunTLS listens on its own TLS port; without this rule it works only
+	// where the firewall happens to be open (openTunnelPorts covers it on
+	// restore/update, but not at creation time).
+	if tunnel.StunTLS != nil && tunnel.StunTLS.Port > 0 {
+		if err := network.AllowPort(tunnel.StunTLS.Port, "tcp"); err != nil {
+			out.Warning(fmt.Sprintf("Failed to open port %d/tcp: %v", tunnel.StunTLS.Port, err))
+		}
+	}
+
 	if transport_ == config.TransportExternal {
 		out.Success(fmt.Sprintf("Tunnel %q created — DNS queries for %s will route to 127.0.0.1:%d", tag, domain, tunnel.Port))
 	} else {

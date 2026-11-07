@@ -145,6 +145,15 @@ func removeSingleTunnel(ctx *actions.Context, cfg *config.Config, tag string) {
 			cfg.Route.Active = cfg.Tunnels[0].Tag
 		}
 	}
+	if cfg.Route.Default == tag {
+		// Clear rather than reassign: unlike Active (which single-tunnel
+		// mode always needs pointed at something to route at all), an
+		// empty Default is a safe, valid state — unmatched queries are
+		// just left unanswered. Left unset here, a later tunnel reusing
+		// this tag (tags are freely reassignable) would otherwise silently
+		// inherit "default" status the admin never gave it.
+		cfg.Route.Default = ""
+	}
 
 	// Auto-switch to single mode when only one DNS tunnel remains
 	if cfg.Route.Mode == "multi" {
