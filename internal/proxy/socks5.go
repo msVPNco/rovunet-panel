@@ -122,6 +122,13 @@ func (s *Server) noteLogin(conn net.Conn, user, pass string) {
 }
 
 // hasAuth reports whether auth is currently required.
+// loginUser is the username a connection logged in with, or "".
+func (s *Server) loginUser(conn net.Conn) string {
+	s.connsMu.Lock()
+	defer s.connsMu.Unlock()
+	return s.logins[conn][0]
+}
+
 func (s *Server) hasAuth() bool {
 	s.credsMu.RLock()
 	defer s.credsMu.RUnlock()
@@ -296,19 +303,20 @@ func (s *Server) handleConn(conn net.Conn) {
 	// Success reply
 	s.sendReply(conn, 0x00, remote.LocalAddr().(*net.TCPAddr))
 
-	// Bidirectional relay
+	// Bidirectional relay, counted per user (see Meter)
+	user := s.loginUser(conn)
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		io.Copy(remote, conn)
+		io.Copy(&countWriter{w: remote, user: user}, conn)
 		if tc, ok := remote.(*net.TCPConn); ok {
 			tc.CloseWrite()
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		io.Copy(conn, remote)
+		io.Copy(&countWriter{w: conn, user: user}, remote)
 		if tc, ok := conn.(*net.TCPConn); ok {
 			tc.CloseWrite()
 		}

@@ -2,6 +2,15 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.14.0
+
+### Traffic limits, and stopped users can be renewed
+
+- **The GB limit is now enforced, for VLESS (WebSocket) traffic.** The panel's own VLESS and SOCKS5 servers count each user's bytes (both directions, saved every 15 seconds in `/var/lib/rovunet/usage`). A timer checks every 5 minutes (it was hourly), so a little more than the limit can pass. 1 GB is 1024³ bytes.
+- **A user with a traffic limit is given only the VLESS config**, in `users configs`, the install summary and the subscription feed, and no shared Soar config. Traffic over SSH, NaïveProxy, the DNS tunnels and the Xray cores is not counted, and the user is not handed their credentials, so the limit is real rather than an easy-to-bypass number. The panel says so when you set one, and warns if there is no VLESS tunnel yet. Counting the Xray cores is not done.
+- **Expired or used-up users are stopped, not lost.** They are removed from every service exactly as before (open sessions end), but a record keeps the password and the subscription link. `users --action renew` brings the user back with new limits counted from now and **the same password and link**, so nothing has to be re-sent. `users list` shows stopped users and each limited user's usage; `users remove <name>` on a stopped user forgets the record.
+- Only the VLESS and SOCKS5 servers count: VLESS needs `rovunet update` (the servers restart once to start counting).
+
 ## v1.13.1
 
 - **The subscription link now appears everywhere configs are shown.** v1.13.0 printed it only for a single user's configs (`users` > list > a user, and after adding a user). The "Show all configs" action and the install summary, which print `[soar] <user>, no login needed` and the rest, left it out. They now print each user's link, and a user created before links existed gets theirs on the spot. No new user is needed.

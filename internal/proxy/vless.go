@@ -521,16 +521,18 @@ func (s *VLESSServer) handleSession(ws *wsConn, early []byte, remote string) {
 	defer close(stop)
 	go ws.keepAlive(stop)
 
+	// Traffic is counted per user in both directions (see Meter).
+	r = &countReader{r: r, user: req.user}
 	if req.command == vlessCmdUDP {
-		relayVLESSUDP(ws, r, up)
+		relayVLESSUDP(ws, r, up, req.user)
 	} else {
-		relayVLESSTCP(ws, r, up)
+		relayVLESSTCP(ws, r, up, req.user)
 	}
 }
 
 // relayVLESSTCP copies both ways until either side finishes, then tears
 // both down: a WebSocket close ends the stream in both directions.
-func relayVLESSTCP(ws *wsConn, client io.Reader, up net.Conn) {
+func relayVLESSTCP(ws *wsConn, client io.Reader, up net.Conn, user string) {
 	done := make(chan struct{}, 2)
 	go func() {
 		_, _ = io.Copy(up, client)
@@ -544,6 +546,7 @@ func relayVLESSTCP(ws *wsConn, client io.Reader, up net.Conn) {
 				if werr := ws.writeMessage(buf[:n]); werr != nil {
 					break
 				}
+				meterAdd(user, int64(n))
 			}
 			if err != nil {
 				break
@@ -559,7 +562,7 @@ func relayVLESSTCP(ws *wsConn, client io.Reader, up net.Conn) {
 }
 
 // relayVLESSUDP carries length-prefixed packets to and from one destination.
-func relayVLESSUDP(ws *wsConn, client io.Reader, up net.Conn) {
+func relayVLESSUDP(ws *wsConn, client io.Reader, up net.Conn, user string) {
 	done := make(chan struct{}, 2)
 	go func() {
 		var lenBuf [2]byte
@@ -590,6 +593,7 @@ func relayVLESSUDP(ws *wsConn, client io.Reader, up net.Conn) {
 			if err := ws.writeMessage(buf[:2+n]); err != nil {
 				break
 			}
+			meterAdd(user, int64(n))
 		}
 		done <- struct{}{}
 	}()

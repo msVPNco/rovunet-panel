@@ -9,6 +9,7 @@ import (
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
+	"github.com/msVPNco/rovunet-panel/internal/usage"
 	"github.com/spf13/cobra"
 )
 
@@ -68,6 +69,9 @@ func init() {
 				}
 			}()
 
+			meter := usage.NewCounter("vless")
+			proxy.Meter = meter
+			go meter.Run(ctx)
 			return srv.ListenAndServe(ctx)
 		},
 		SilenceUsage:  true,
