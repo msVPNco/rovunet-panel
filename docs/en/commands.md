@@ -25,7 +25,9 @@ Run every command as root (`sudo rovunet …`). A required option that is not gi
 | Command | Description |
 |---|---|
 | `rovunet users` | User menu |
-| `rovunet users add` | Add a user |
+| `rovunet users add` | Add a user (asks unlimited or limited, then days and GB) |
+| `rovunet users renew` | Bring back a stopped (expired or over-quota) user, usage reset |
+| `rovunet expire-users` | Stop expired or over-quota users and refresh subscription links (runs every 5 minutes on a timer) |
 | `rovunet users bulk_add --count N --prefix P` | Add up to 500 users with random passwords |
 | `rovunet users remove` | Remove a user |
 | `rovunet users list` | Users and their configurations |
@@ -92,7 +94,7 @@ Run every command as root (`sudo rovunet …`). A required option that is not gi
 |---|---|
 | `rovunet config export` | Print `config.json` without keys |
 | `rovunet config import PATH` | Replace `config.json` (no keys) |
-| `rovunet config address IP \| auto` | Public address for SSH, SOCKS5 and SSH over TLS configurations |
+| `rovunet config address IP \| auto` | Public address for SSH, SOCKS5 and SSH over TLS configurations; add more of this server's addresses after commas, e.g. `auto,198.51.100.9` |
 
 ## Internal
 

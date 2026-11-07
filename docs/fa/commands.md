@@ -27,7 +27,9 @@
 | دستور | توضیح |
 |---|---|
 | ⁦`rovunet users`⁩ | منوی کاربران |
-| ⁦`rovunet users add`⁩ | افزودن کاربر |
+| ⁦`rovunet users add`⁩ | افزودن کاربر (می‌پرسد آزاد یا سهمیه‌ای، بعد روز و گیگابایت) |
+| ⁦`rovunet users renew`⁩ | برگرداندن کاربر متوقف‌شده (منقضی یا بیش از سهمیه)، مصرف از صفر |
+| ⁦`rovunet expire-users`⁩ | متوقف کردن کاربران منقضی یا بیش از سهمیه و به‌روز کردن لینک‌های اشتراک (با تایمر هر ۵ دقیقه) |
 | ⁦`rovunet users bulk_add --count N --prefix P`⁩ | افزودن تا ۵۰۰ کاربر با رمز تصادفی |
 | ⁦`rovunet users remove`⁩ | حذف کاربر |
 | ⁦`rovunet users list`⁩ | کاربران و کانفیگ‌هایشان |
@@ -94,7 +96,7 @@
 |---|---|
 | ⁦`rovunet config export⁦`⁩ | چاپ ⁦`⁩config.json`⁩ بدون کلیدها |
 | ⁦`rovunet config import PATH⁦`⁩ | جایگزینی ⁦`⁩config.json`⁩ (بدون کلیدها) |
-| ⁦`rovunet config address IP \| auto`⁩ | آدرس عمومی برای کانفیگ‌های SSH، SOCKS5 و SSH over TLS |
+| ⁦`rovunet config address IP \| auto`⁩ | آدرس عمومی برای کانفیگ‌های SSH، SOCKS5 و SSH over TLS؛ بعد از ویرگول می‌توان آدرس‌های دیگر همین سرور را اضافه کرد، مثلاً ⁦`auto,198.51.100.9`⁩ |
 
 ## داخلی
 
