@@ -150,6 +150,19 @@ func handleSystemDiag(ctx *actions.Context) error {
 				checkFileExists(check, tag, "certificate", t.Slipstream.Cert)
 				checkFileExists(check, tag, "key", t.Slipstream.Key)
 			}
+		case config.TransportNaive:
+			if t.Naive != nil && t.Naive.Port > 0 {
+				portOK := isPortListening(t.Naive.Port, "tcp")
+				check(fmt.Sprintf("[%s] port %d/tcp", tag, t.Naive.Port), portOK,
+					boolStr(portOK, "listening"+portOwnerNote(t.Naive.Port, "tcp"), "not listening — Caddy is up but holds no port"))
+			}
+		case config.TransportStunTLS:
+			// A fronted tunnel rides the NaiveProxy Caddy and has no port of its own.
+			if sc := t.StunTLS; sc != nil && !sc.Fronted() && sc.Port > 0 {
+				portOK := isPortListening(sc.Port, "tcp")
+				check(fmt.Sprintf("[%s] port %d/tcp", tag, sc.Port), portOK,
+					boolStr(portOK, "listening"+portOwnerNote(sc.Port, "tcp"), "not listening"))
+			}
 		case config.TransportVLESS:
 			if v := t.VLESS; v != nil {
 				checkFileExists(check, tag, "uuid secret", v.SecretFile)
@@ -175,7 +188,7 @@ func handleSystemDiag(ctx *actions.Context) error {
 				}
 			} else {
 				check(fmt.Sprintf("[%s] port %d/udp", tag, t.Port), portOK,
-					boolStr(portOK, "listening", "not listening"))
+					boolStr(portOK, "listening"+portOwnerNote(t.Port, "udp"), "not listening"))
 			}
 		}
 	}
@@ -334,7 +347,7 @@ func handleSystemDiag(ctx *actions.Context) error {
 				check(fmt.Sprintf("[%s] enabled at boot", c.Name), en, boolStr(en, "yes", "no — will not start after reboot"))
 			}
 			listening := isPortListening(c.Port, c.Proto)
-			check(fmt.Sprintf("[%s] listening on %s/%d", c.Name, c.Proto, c.Port), listening, boolStr(listening, "yes", "nothing listens"))
+			check(fmt.Sprintf("[%s] listening on %s/%d", c.Name, c.Proto, c.Port), listening, boolStr(listening, "yes"+portOwnerNote(c.Port, c.Proto), "nothing listens"))
 
 			exp, has, err := coreinstall.CertExpiry(c.Name)
 			if !has {
@@ -563,4 +576,35 @@ func lookupSystemUID(username string) int {
 		return -1
 	}
 	return uid
+}
+
+// portOwnerNote names the process that holds a local port, e.g. " (xray)",
+// from `ss`. A UDP port is "listening" to isPortListening when anything holds
+// it, so naming the holder shows whether it is the service we expect. It
+// returns "" when ss is missing or the holder is hidden.
+func portOwnerNote(port int, proto string) string {
+	flag := "-ltnpH"
+	if proto == "udp" {
+		flag = "-lunpH"
+	}
+	out, err := exec.Command("ss", flag, fmt.Sprintf("sport = :%d", port)).Output()
+	if err != nil {
+		return ""
+	}
+	return ownerFromSS(string(out))
+}
+
+// ownerFromSS extracts the first process name from `ss -p` output.
+func ownerFromSS(out string) string {
+	const marker = `users:(("`
+	i := strings.Index(out, marker)
+	if i < 0 {
+		return ""
+	}
+	rest := out[i+len(marker):]
+	j := strings.Index(rest, `"`)
+	if j <= 0 {
+		return ""
+	}
+	return " (" + rest[:j] + ")"
 }

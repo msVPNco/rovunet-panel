@@ -2,6 +2,11 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.11.2
+
+- **`rovunet diag` checks the NaïveProxy and TLS-SSH ports.** Until now a Caddy that was running but held no port still showed green. A TLS-SSH tunnel carried by NaïveProxy has no port of its own and is skipped.
+- **Listening ports name the process that holds them**, e.g. `listening (xray)`, so a port taken by the wrong program stands out. This is a local check only: it does not show whether the port is reachable from the internet.
+
 ## v1.11.1
 
 - **`rovunet diag` now checks the Xray cores.** For each installed core (REALITY, XHTTP, Hysteria 2, WireGuard) it reports whether the service is active and enabled at boot, whether the port is listening, how many days its TLS certificate has left, and whether the renewal timer is on. A certificate with under 7 days left is a failure.
