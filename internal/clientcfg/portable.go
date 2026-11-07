@@ -3,6 +3,7 @@ package clientcfg
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -66,5 +67,41 @@ func GeneratePortableURI(t *config.TunnelConfig, b *config.BackendConfig, cfg *c
 		label = string(chars[:120])
 	}
 	fields[FCollectionName] = b64(label)
+
+	// v33: carry SOCKS/SSH credentials losslessly in one more field instead
+	// of relying solely on the plain fields below, which the "|" join a few
+	// lines down can't let a credential contain without desynchronizing
+	// every field after it (see FCredentialsV33). Build this from the
+	// fields' current values before sanitizing them in place.
+	credentials, err := json.Marshal(map[string]string{
+		"socksUser": fields[FSOCKSUser],
+		"socksPass": fields[FSOCKSPass],
+		"sshUser":   fields[FSSHUser],
+		"sshPass":   fields[FSSHPass],
+	})
+	if err != nil {
+		return "", err
+	}
+	for len(fields) < TotalFieldsV33 {
+		fields = append(fields, "")
+	}
+	fields[FCredentialsV33] = base64.StdEncoding.EncodeToString(credentials)
+	// The app's v33 importer overwrites these four from FCredentialsV33
+	// above, so their only remaining job is to keep the "|"-delimited wire
+	// string itself parseable — strip "|" the same way the app's own
+	// exporter's sanitize() does, rather than leave it to corrupt the split.
+	fields[FSOCKSUser] = stripFieldDelimiter(fields[FSOCKSUser])
+	fields[FSOCKSPass] = stripFieldDelimiter(fields[FSOCKSPass])
+	fields[FSSHUser] = stripFieldDelimiter(fields[FSSHUser])
+	fields[FSSHPass] = stripFieldDelimiter(fields[FSSHPass])
+	fields[0] = "33"
+
 	return "rovunet://" + base64.StdEncoding.EncodeToString([]byte(strings.Join(fields, "|"))), nil
+}
+
+// stripFieldDelimiter removes "|" from v, matching the app's own exporter
+// (ConfigExporter.kt's sanitize()) so a plain, non-lossless copy of a field
+// can sit safely inside the "|"-joined wire string.
+func stripFieldDelimiter(v string) string {
+	return strings.ReplaceAll(v, "|", "")
 }
