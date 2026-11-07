@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/transport"
 )
@@ -149,6 +151,23 @@ func TestAllConfigsPrintSubscriptionLinks(t *testing.T) {
 	}
 	if cfg.Users[1].SubToken == "" {
 		t.Fatal("the missing token must have been created")
+	}
+}
+
+// Links that differ only in their group name are the same link.
+func TestLinkIdentityIgnoresGroupFields(t *testing.T) {
+	mk := func(host, group string) string {
+		f := make([]string, clientcfg.FCollectionName+1)
+		f[3] = host
+		f[clientcfg.FCollectionID] = group
+		f[clientcfg.FCollectionName] = group
+		return "rovunet://" + base64.StdEncoding.EncodeToString([]byte(strings.Join(f, "|")))
+	}
+	if linkIdentity(mk("h", "a")) != linkIdentity(mk("h", "b")) {
+		t.Fatal("group fields should not matter")
+	}
+	if linkIdentity(mk("h", "a")) == linkIdentity(mk("other", "a")) {
+		t.Fatal("a different host should matter")
 	}
 }
 

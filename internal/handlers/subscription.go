@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/transport"
 )
@@ -185,7 +187,7 @@ func addExtraAddressItems(cfg *config.Config, u config.UserConfig, items []subIt
 	have := map[string]bool{}
 	ids := map[string]bool{}
 	for _, it := range items {
-		have[it.Link] = true
+		have[linkIdentity(it.Link)] = true
 		ids[it.ID] = true
 	}
 	main := cfg.PublicAddress
@@ -197,10 +199,10 @@ func addExtraAddressItems(cfg *config.Config, u config.UserConfig, items []subIt
 		c := &captureOutput{}
 		printUserConfigs(cfg, u.Username, u.Password, c)
 		for _, it := range subscriptionItems(c.lines) {
-			if have[it.Link] {
+			if have[linkIdentity(it.Link)] {
 				continue
 			}
-			have[it.Link] = true
+			have[linkIdentity(it.Link)] = true
 			id := fmt.Sprintf("%s-ip%d", it.ID, n+2)
 			for ids[id] {
 				id += "x"
@@ -210,4 +212,21 @@ func addExtraAddressItems(cfg *config.Config, u config.UserConfig, items []subIt
 		}
 	}
 	return items
+}
+
+// linkIdentity is a link without the fields that only name its group (the
+// collection id and name, which are made from the server address). Two links
+// with the same identity connect to the same place the same way.
+func linkIdentity(link string) string {
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(link, "rovunet://"))
+	if err != nil {
+		return link
+	}
+	fields := strings.Split(string(raw), "|")
+	for _, i := range []int{clientcfg.FCollectionID, clientcfg.FCollectionName} {
+		if i < len(fields) {
+			fields[i] = ""
+		}
+	}
+	return strings.Join(fields, "|")
 }
