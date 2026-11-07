@@ -2,6 +2,10 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.13.1
+
+- **The subscription link now appears everywhere configs are shown.** v1.13.0 printed it only for a single user's configs (`users` > list > a user, and after adding a user). The "Show all configs" action and the install summary, which print `[soar] <user>, no login needed` and the rest, left it out. They now print each user's link, and a user created before links existed gets theirs on the spot. No new user is needed.
+
 ## v1.13.0
 
 ### Subscription link for every user

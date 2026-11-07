@@ -127,3 +127,27 @@ func TestWriteSubscriptionsWithoutNaiveDoesNothing(t *testing.T) {
 		t.Fatal("no directory should be created without a NaïveProxy tunnel")
 	}
 }
+
+// `users configs` for everyone (the install summary uses the same printer)
+// shows each user's link; a user from before links existed gets one.
+func TestAllConfigsPrintSubscriptionLinks(t *testing.T) {
+	transport.SubscriptionDir = filepath.Join(t.TempDir(), "subs")
+	cfg := subTestConfig()
+	cfg.Users[1].SubToken = "" // made before links existed
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := cfg.SaveTo(path); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.LoadFrom(path) // a config with a save path, as in real use
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := &printOutput{}
+	printClientConfigs(cfg, out, cfg.Tunnels)
+	if out.count("https://n.example.com/sub/") != 2 {
+		t.Fatalf("want a link per user:\n%s", strings.Join(out.lines, "\n"))
+	}
+	if cfg.Users[1].SubToken == "" {
+		t.Fatal("the missing token must have been created")
+	}
+}
