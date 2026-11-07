@@ -2,11 +2,15 @@ package coreplan
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 )
 
 func TestDistinctProfiles(t *testing.T) {
@@ -84,6 +88,24 @@ func TestWriteAppFixture(t *testing.T) {
 		records = append(records, strings.TrimSpace(b.Clients[0]))
 	}
 	if err := os.WriteFile(path, []byte(strings.Join(records, "\n%%\n")+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	// The same profiles as users configs prints them: wrapped as native
+	// "xray" profiles in one user's collection.
+	native := os.Getenv("ROVUNET_CORE_NATIVE_FIXTURE")
+	if native == "" {
+		return
+	}
+	cfg := &config.Config{PublicAddress: "192.0.2.1", Backends: config.DefaultBackends()}
+	var wrapped []string
+	for i, r := range records {
+		uri, err := clientcfg.GenerateCoreURI(fmt.Sprintf("core%d", i+1), r, cfg, clientcfg.URIOptions{Username: "alice"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		wrapped = append(wrapped, uri)
+	}
+	if err := os.WriteFile(native, []byte(strings.Join(wrapped, "\n")+"\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 }
