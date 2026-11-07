@@ -159,11 +159,23 @@ func (r *Router) findBackend(domain string) string {
 		return dst
 	}
 
-	// Try suffix match (for subdomains)
+	// Suffix match for subdomains: pick the most specific (longest) matching
+	// route domain, not whichever one a map iteration happens to visit
+	// first. Map iteration order is randomized per run, so with two
+	// registered domains that share a suffix (e.g. t.example.com and
+	// sub.t.example.com both configured as tunnels), a query for
+	// sub.t.example.com could previously be routed to either tunnel's
+	// backend nondeterministically from one run to the next.
+	best, bestDst := "", ""
 	for routeDomain, dst := range r.routes {
-		if strings.HasSuffix(domain, "."+routeDomain) || domain == routeDomain {
-			return dst
+		if routeDomain == domain || strings.HasSuffix(domain, "."+routeDomain) {
+			if len(routeDomain) > len(best) {
+				best, bestDst = routeDomain, dst
+			}
 		}
+	}
+	if best != "" {
+		return bestDst
 	}
 
 	return r.defaultDst
