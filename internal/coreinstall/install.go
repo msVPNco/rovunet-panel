@@ -220,6 +220,36 @@ func Install(name string, o coreplan.Options) (dir string, err error) {
 	return dir, nil
 }
 
+// Activate (re)starts an already-written core, e.g. one restored from a
+// backup: it validates the config, writes the unit, starts it and opens its
+// port. A running unit is restarted so it picks up the restored config.
+func Activate(name string) error {
+	m, err := ReadMeta(name)
+	if err != nil {
+		return err
+	}
+	if err := EnsureXray(); err != nil {
+		return err
+	}
+	dir := filepath.Join(Root, name)
+	if err := TestConfig(filepath.Join(dir, "server.json")); err != nil {
+		return err
+	}
+	unitName := ServiceName(name)
+	if err := service.Create(Unit(name, dir)); err != nil {
+		return err
+	}
+	if _, err := service.Status(unitName); err == nil {
+		err = service.Restart(unitName)
+		if err != nil {
+			return err
+		}
+	} else if err := service.Start(unitName); err != nil {
+		return err
+	}
+	return network.AllowPort(m.Port, m.Proto)
+}
+
 // Remove stops a core and deletes its unit and files. The firewall rule is
 // left in place on purpose: another service may share the port number.
 func Remove(name string) error {
