@@ -1026,15 +1026,34 @@ func printSoarLinks(cfg *config.Config, out actions.OutputWriter, tunnels []conf
 		if t.Transport != config.TransportSoar || t.Backend != config.BackendDirect || t.Soar == nil {
 			continue
 		}
-		out.Print(fmt.Sprintf("    [%s] (no login)", t.Tag))
-		if uri, err := clientcfg.GeneratePortableURI(t, nil, cfg, clientcfg.URIOptions{}, "rovunet"); err == nil {
-			out.Print(fmt.Sprintf("    %s", uri))
-			printed++
+		// The config needs no login, but the app groups configs by server
+		// and user: one made without a user lands in a group of its own,
+		// apart from everything else that user imported. With users, give
+		// each one a copy in their own group, as 'users configs' does.
+		for _, u := range soarRecipients(cfg) {
+			label := "(no login)"
+			if u.Username != "" {
+				label = u.Username + ", no login needed"
+			}
+			out.Print(fmt.Sprintf("    [%s] %s", t.Tag, label))
+			if uri, err := clientcfg.GeneratePortableURI(t, nil, cfg, clientcfg.URIOptions{Username: u.Username, Password: u.Password}, "rovunet"); err == nil {
+				out.Print(fmt.Sprintf("    %s", uri))
+				printed++
+			}
 		}
 		out.Print(fmt.Sprintf("    Other Soar clients: zone %s, server key %s", t.Domain, t.Soar.PublicKey))
 		out.Print("")
 	}
 	return printed
+}
+
+// soarRecipients is who a login-free Soar config is printed for: every user,
+// or a single user-less copy when there are none.
+func soarRecipients(cfg *config.Config) []config.UserConfig {
+	if len(cfg.Users) == 0 {
+		return []config.UserConfig{{}}
+	}
+	return cfg.Users
 }
 
 // baseDomain extracts the parent domain from a subdomain.

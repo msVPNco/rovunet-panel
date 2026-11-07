@@ -66,3 +66,24 @@ func TestGeneratedConfigWithXray(t *testing.T) {
 		})
 	}
 }
+
+// TestWriteAppFixture writes one real client profile per protocol for the
+// Android app's CI, which feeds them to its own importer (CoreTest). Records
+// are separated by a line holding only "%%" (WireGuard files span lines).
+func TestWriteAppFixture(t *testing.T) {
+	path := os.Getenv("ROVUNET_CORE_FIXTURE")
+	if path == "" {
+		t.Skip("set ROVUNET_CORE_FIXTURE to write the app fixture")
+	}
+	var records []string
+	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard"} {
+		b, err := Generate(Options{Protocol: protocol, Host: "example.org", SNI: "example.org", RealityTarget: "example.org:443", Port: 8443, Devices: 1, Cert: "cert.pem", Key: "key.pem"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		records = append(records, strings.TrimSpace(b.Clients[0]))
+	}
+	if err := os.WriteFile(path, []byte(strings.Join(records, "\n%%\n")+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+}
