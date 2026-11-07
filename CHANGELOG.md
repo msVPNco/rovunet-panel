@@ -2,6 +2,10 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.17.0
+
+- **Extra addresses for the same server, for resistance to blocking.** `sudo rovunet config address` now takes several addresses separated by commas: the first is the main one (or `auto`), the rest are other IPs or hostnames of this same server, for example `auto,198.51.100.9,198.51.100.10`. Each user's subscription link then carries every address-based config (VLESS, REALITY, XHTTP, Hysteria2, WireGuard, StunTLS and so on) once per address, so when one address is blocked the app can use the next. Domain-based configs (NaïveProxy, DNS tunnels) are not repeated. Every extra address must reach this server with the same ports open (an IP added to its network interface, or a hostname pointing at it); this does not change where the server listens, and it does not add another location.
+
 ## v1.16.0
 
 - **Backups now include each user's traffic used so far, and restore brings it back.** Before, restoring onto a new server (or after a reinstall) started every traffic-limited user's counter from zero, giving them their whole quota again. Restore adds only what the server is missing, so restoring twice, or onto a server that already counted traffic, never counts it twice. Older backups restore as before (their users start from zero, as they did).

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/transport"
 )
@@ -103,6 +105,7 @@ func buildFeed(cfg *config.Config, u config.UserConfig) ([]byte, error) {
 	if len(items) == 0 {
 		return nil, nil
 	}
+	items = addExtraAddressItems(cfg, u, items)
 	return json.MarshalIndent(subFeed{Version: 1, Name: u.Username, Items: items}, "", "  ")
 }
 
@@ -174,4 +177,56 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 		}
 	}
 	return firstErr
+}
+
+// addExtraAddressItems repeats the configs that connect by the server's
+// address once per extra address. Configs that don't (domain-based ones such
+// as NaïveProxy) come out identical and are skipped, so only the address-based
+// ones are added, with the address number in their id.
+func addExtraAddressItems(cfg *config.Config, u config.UserConfig, items []subItem) []subItem {
+	have := map[string]bool{}
+	ids := map[string]bool{}
+	for _, it := range items {
+		have[linkIdentity(it.Link)] = true
+		ids[it.ID] = true
+	}
+	main := cfg.PublicAddress
+	defer func() { cfg.PublicAddress = main }()
+	for n, addr := range cfg.ExtraAddresses {
+		// A Config holds a lock and can't be copied, so the address is
+		// swapped for the print and put back.
+		cfg.PublicAddress = addr
+		c := &captureOutput{}
+		printUserConfigs(cfg, u.Username, u.Password, c)
+		for _, it := range subscriptionItems(c.lines) {
+			if have[linkIdentity(it.Link)] {
+				continue
+			}
+			have[linkIdentity(it.Link)] = true
+			id := fmt.Sprintf("%s-ip%d", it.ID, n+2)
+			for ids[id] {
+				id += "x"
+			}
+			ids[id] = true
+			items = append(items, subItem{ID: id, Link: it.Link})
+		}
+	}
+	return items
+}
+
+// linkIdentity is a link without the fields that only name its group (the
+// collection id and name, which are made from the server address). Two links
+// with the same identity connect to the same place the same way.
+func linkIdentity(link string) string {
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(link, "rovunet://"))
+	if err != nil {
+		return link
+	}
+	fields := strings.Split(string(raw), "|")
+	for _, i := range []int{clientcfg.FCollectionID, clientcfg.FCollectionName} {
+		if i < len(fields) {
+			fields[i] = ""
+		}
+	}
+	return strings.Join(fields, "|")
 }

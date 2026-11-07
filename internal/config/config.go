@@ -42,6 +42,10 @@ type Config struct {
 	// PublicAddress is the IP or hostname client configs use to reach this
 	// server; empty means detect it (see clientcfg.ServerAddress).
 	PublicAddress string `json:"public_address,omitempty"`
+	// ExtraAddresses are more IPs or hostnames that reach this same server.
+	// Subscription feeds repeat every address-based config once per extra
+	// address, so when one address is blocked the app tries the next.
+	ExtraAddresses []string `json:"extra_addresses,omitempty"`
 }
 
 // UserConfig tracks a managed user (same credentials for SSH + SOCKS).

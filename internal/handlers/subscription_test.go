@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/transport"
 )
@@ -149,5 +151,68 @@ func TestAllConfigsPrintSubscriptionLinks(t *testing.T) {
 	}
 	if cfg.Users[1].SubToken == "" {
 		t.Fatal("the missing token must have been created")
+	}
+}
+
+// Links that differ only in their group name are the same link.
+func TestLinkIdentityIgnoresGroupFields(t *testing.T) {
+	mk := func(host, group string) string {
+		f := make([]string, clientcfg.FCollectionName+1)
+		f[3] = host
+		f[clientcfg.FCollectionID] = group
+		f[clientcfg.FCollectionName] = group
+		return "rovunet://" + base64.StdEncoding.EncodeToString([]byte(strings.Join(f, "|")))
+	}
+	if linkIdentity(mk("h", "a")) != linkIdentity(mk("h", "b")) {
+		t.Fatal("group fields should not matter")
+	}
+	if linkIdentity(mk("h", "a")) == linkIdentity(mk("other", "a")) {
+		t.Fatal("a different host should matter")
+	}
+}
+
+// Address-based configs are repeated for each extra address; domain-based
+// ones (NaïveProxy) are not, since they would be identical.
+func TestFeedRepeatsAddressConfigsPerExtraAddress(t *testing.T) {
+	cfg := subTestConfig()
+	cfg.Tunnels = append(cfg.Tunnels, config.TunnelConfig{
+		Tag: "ssh", Transport: config.TransportSSH, Backend: config.BackendSSH, Enabled: true,
+	})
+	base, err := buildFeed(cfg, cfg.Users[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var before subFeed
+	if err := json.Unmarshal(base, &before); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg.ExtraAddresses = []string{"198.51.100.9"}
+	raw, err := buildFeed(cfg, cfg.Users[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var after subFeed
+	if err := json.Unmarshal(raw, &after); err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]bool{}
+	for _, it := range after.Items {
+		if ids[it.ID] {
+			t.Fatalf("duplicate id %q", it.ID)
+		}
+		ids[it.ID] = true
+	}
+	extra := 0
+	for id := range ids {
+		if strings.HasSuffix(id, "-ip2") {
+			extra++
+			if strings.HasPrefix(id, "naive") {
+				t.Fatalf("a domain-based config was repeated: %s", id)
+			}
+		}
+	}
+	if extra == 0 || len(after.Items) != len(before.Items)+extra {
+		t.Fatalf("before %d items, after %d, %d extra", len(before.Items), len(after.Items), extra)
 	}
 }

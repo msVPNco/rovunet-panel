@@ -185,6 +185,11 @@ func (c *Config) ValidateImported() error {
 			return fmt.Errorf("public address: %w", err)
 		}
 	}
+	for _, a := range c.ExtraAddresses {
+		if err := ValidatePublicAddress(a); err != nil {
+			return fmt.Errorf("extra address: %w", err)
+		}
+	}
 	for _, b := range c.Backends {
 		if err := validateTag(b.Tag); err != nil {
 			return fmt.Errorf("backend %q: %w", b.Tag, err)

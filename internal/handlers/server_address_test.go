@@ -47,3 +47,32 @@ func TestEnsureServerAddressQuiet(t *testing.T) {
 		t.Errorf("printed %q", out.lines)
 	}
 }
+
+func TestSetPublicAddressWithExtras(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := config.Default().SaveTo(path); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.LoadFrom(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := setPublicAddress(cfg, "auto,198.51.100.9, 198.51.100.9 ,198.51.100.10"); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.PublicAddress != "" || len(cfg.ExtraAddresses) != 2 {
+		t.Fatalf("got %q %v", cfg.PublicAddress, cfg.ExtraAddresses)
+	}
+	if got := addressList(cfg); got != "auto,198.51.100.9,198.51.100.10" {
+		t.Fatalf("list %q", got)
+	}
+	if saved, _ := config.LoadFrom(path); len(saved.ExtraAddresses) != 2 {
+		t.Fatalf("saved %v", saved.ExtraAddresses)
+	}
+	if err := setPublicAddress(cfg, "198.51.100.9,bad address"); err == nil || len(cfg.ExtraAddresses) != 2 {
+		t.Fatalf("invalid extra accepted: %v %v", err, cfg.ExtraAddresses)
+	}
+	if err := setPublicAddress(cfg, "auto"); err != nil || len(cfg.ExtraAddresses) != 0 {
+		t.Fatalf("auto should clear extras: %v %v", err, cfg.ExtraAddresses)
+	}
+}
