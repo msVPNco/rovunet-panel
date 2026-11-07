@@ -42,6 +42,8 @@ func init() {
 			{Key: "password", Label: "New password (leave blank to generate)", DependsOn: "action", DependsOnValues: []string{"edit_password"}},
 			{Key: "count", Label: "How many users", DependsOn: "action", DependsOnValues: []string{"bulk_add"}},
 			{Key: "prefix", Label: "Username prefix", DependsOn: "action", DependsOnValues: []string{"bulk_add"}},
+			{Key: "days", Label: "Days until the user expires (blank or 0 = unlimited)", DependsOn: "action", DependsOnValues: []string{"add", "bulk_add"}},
+			{Key: "gb", Label: "Traffic limit in GB (blank or 0 = unlimited)", DependsOn: "action", DependsOnValues: []string{"add", "bulk_add"}},
 		},
 	})
 

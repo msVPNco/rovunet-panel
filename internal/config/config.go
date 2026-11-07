@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -43,6 +44,22 @@ type Config struct {
 type UserConfig struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	// ExpiresAt is when the user is removed (RFC 3339, UTC); "" means never.
+	ExpiresAt string `json:"expires_at,omitempty"`
+	// QuotaGB is the traffic limit in GB; 0 means unlimited.
+	QuotaGB int `json:"quota_gb,omitempty"`
+}
+
+// Expired reports whether the user has an expiry that has passed.
+func (u UserConfig) Expired(now time.Time) bool {
+	if u.ExpiresAt == "" {
+		return false
+	}
+	t, err := time.Parse(time.RFC3339, u.ExpiresAt)
+	if err != nil {
+		return false // an unreadable date never deletes anyone
+	}
+	return !now.Before(t)
 }
 
 // ListenConfig defines the DNS listen address.
