@@ -126,19 +126,19 @@ The script:
 - Detects your distro.
 - Installs system packages it needs.
 - Downloads the Rovunet Panel binary plus `dnstt-server`, `slipstream-server`, `vaydns-server`, and `caddy-naive`.
-- Installs systemd services (`slipgate-dnsrouter`, `slipgate-socks5`).
+- Installs systemd services (`rovunet-dnsrouter`, `rovunet-socks5`).
 - Sets up the firewall rules where applicable.
 
 **Offline install** (when your VPS can't reach GitHub directly):
 
-1. On your laptop, download the `slipgate-linux-<arch>` binary from https://github.com/msVPNco/rovunet-panel/releases and the transport binaries (`dnstt-server`, `slipstream-server`, `vaydns-server`, `caddy-naive`) from https://github.com/anonvector/slipgate/releases.
-2. SCP the binaries to the server: `scp slipgate-* dnstt-server-* slipstream-server-* vaydns-server-* caddy-naive-* user@server:/tmp/slipgate/`
-3. On the server: `sudo slipgate install --bin-dir /tmp/slipgate`
+1. On your laptop, download the `rovunet-linux-<arch>` binary from https://github.com/msVPNco/rovunet-panel/releases and the transport binaries (`dnstt-server`, `slipstream-server`, `vaydns-server`, `caddy-naive`) from https://github.com/anonvector/slipgate/releases.
+2. SCP the binaries to the server: `scp rovunet-* dnstt-server-* slipstream-server-* vaydns-server-* caddy-naive-* user@server:/tmp/rovunet/`
+3. On the server: `sudo rovunet install --bin-dir /tmp/rovunet`
 
 After install, launch the interactive menu:
 
 ```bash
-sudo slipgate
+sudo rovunet
 ```
 
 ---
@@ -147,41 +147,41 @@ sudo slipgate
 
 Rovunet Panel has two interfaces:
 
-**Interactive TUI** — `sudo slipgate` with no arguments. A friendly menu that walks you through tunnels, users, stats, diagnostics, etc. Best for first-time setup and exploration.
+**Interactive TUI** — `sudo rovunet` with no arguments. A friendly menu that walks you through tunnels, users, stats, diagnostics, etc. Best for first-time setup and exploration.
 
 **CLI subcommands** — for scripting and automation. Every interactive option has a CLI equivalent:
 
 ```
-slipgate install                Install dependencies, set up server
-slipgate uninstall              Remove everything
-slipgate update                 Self-update + restart services
-slipgate restart                Restart all services
-slipgate backup [file]          Back up config, keys and users (file or copy-paste text)
-slipgate restore [file]         Restore a backup on this server
-slipgate users                  Add / list / remove users (interactive)
-slipgate users add              Add one user
-slipgate users bulk_add         Add many users with random passwords
-slipgate users list             List users + per-tunnel configs
-slipgate stats                  Live dashboard
-slipgate diag                   Run diagnostic checks
-slipgate mtu [value]            Set MTU on all DNS tunnels at once
+rovunet install                Install dependencies, set up server
+rovunet uninstall              Remove everything
+rovunet update                 Self-update + restart services
+rovunet restart                Restart all services
+rovunet backup [file]          Back up config, keys and users (file or copy-paste text)
+rovunet restore [file]         Restore a backup on this server
+rovunet users                  Add / list / remove users (interactive)
+rovunet users add              Add one user
+rovunet users bulk_add         Add many users with random passwords
+rovunet users list             List users + per-tunnel configs
+rovunet stats                  Live dashboard
+rovunet diag                   Run diagnostic checks
+rovunet mtu [value]            Set MTU on all DNS tunnels at once
 
-slipgate tunnel add             Add a tunnel
-slipgate tunnel edit [tag]      Edit settings (rename, MTU, keys)
-slipgate tunnel remove [tag]    Remove one tunnel
-slipgate tunnel remove --all    Remove all tunnels
-slipgate tunnel start [tag]     Start a tunnel
-slipgate tunnel stop [tag]      Stop a tunnel
-slipgate tunnel status [tag]    Show status / details
-slipgate tunnel share [tag]     Print rovunet:// URI + QR
-slipgate tunnel logs [tag]      Show systemd logs
+rovunet tunnel add             Add a tunnel
+rovunet tunnel edit [tag]      Edit settings (rename, MTU, keys)
+rovunet tunnel remove [tag]    Remove one tunnel
+rovunet tunnel remove --all    Remove all tunnels
+rovunet tunnel start [tag]     Start a tunnel
+rovunet tunnel stop [tag]      Stop a tunnel
+rovunet tunnel status [tag]    Show status / details
+rovunet tunnel share [tag]     Print rovunet:// URI + QR
+rovunet tunnel logs [tag]      Show systemd logs
 
-slipgate router status          DNS routing config
-slipgate router mode            Switch single ↔ multi mode
-slipgate router switch          Change active tunnel (single mode)
+rovunet router status          DNS routing config
+rovunet router mode            Switch single ↔ multi mode
+rovunet router switch          Change active tunnel (single mode)
 
-slipgate config export          Print config.json (no keys; use backup to move a server)
-slipgate config import [path]   Replace config.json (no keys)
+rovunet config export          Print config.json (no keys; use backup to move a server)
+rovunet config import [path]   Replace config.json (no keys)
 ```
 
 ---
@@ -191,7 +191,7 @@ slipgate config import [path]   Replace config.json (no keys)
 The simplest possible setup — a DNSTT tunnel with the built-in SOCKS5 backend:
 
 ```bash
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport dnstt \
   --backend socks \
   --tag mytunnel \
@@ -202,18 +202,18 @@ What this does:
 1. Generates a fresh Curve25519 keypair.
 2. Spins up `dnstt-server` listening on UDP/53 for `t.example.com`.
 3. Forwards decrypted traffic into the built-in SOCKS5 proxy on `127.0.0.1:1080`.
-4. Creates a systemd service `slipgate-mytunnel` that starts on boot.
+4. Creates a systemd service `rovunet-mytunnel` that starts on boot.
 
 **Confirm it's running:**
 
 ```bash
-sudo slipgate tunnel status
+sudo rovunet tunnel status
 ```
 
 You should see your tunnel listed as **active**. If anything looks off, run:
 
 ```bash
-sudo slipgate diag
+sudo rovunet diag
 ```
 
 ---
@@ -240,33 +240,33 @@ Rovunet Panel manages six transports. Pick based on the network your users have 
 
 ```bash
 # VayDNS — newer DNS tunnel, optimized
-sudo slipgate tunnel add --transport vaydns --backend socks \
+sudo rovunet tunnel add --transport vaydns --backend socks \
   --tag myvaydns --domain v.example.com
 
 # VayDNS with all tuning knobs
-sudo slipgate tunnel add --transport vaydns --backend both \
+sudo rovunet tunnel add --transport vaydns --backend both \
   --tag myvaydns --domain v.example.com \
   --record-type txt --idle-timeout 10s --keep-alive 2s \
   --clientid-size 2 --queue-size 512
 
 # Slipstream over QUIC
-sudo slipgate tunnel add --transport slipstream --backend ssh \
+sudo rovunet tunnel add --transport slipstream --backend ssh \
   --tag myslip --domain s.example.com
 
 # NaiveProxy — auto Let's Encrypt cert
-sudo slipgate tunnel add --transport naive --backend socks \
+sudo rovunet tunnel add --transport naive --backend socks \
   --tag myproxy --domain example.com \
   --email admin@example.com --decoy-url https://www.wikipedia.org
 
 # StunTLS — SSH over TLS + WebSocket, no domain needed
-sudo slipgate tunnel add --transport stuntls --tag mytls
+sudo rovunet tunnel add --transport stuntls --tag mytls
 
 # Direct SSH or SOCKS5 (no tunnel transport)
-sudo slipgate tunnel add --transport direct-ssh --tag myssh
-sudo slipgate tunnel add --transport direct-socks5 --tag mysocks
+sudo rovunet tunnel add --transport direct-ssh --tag myssh
+sudo rovunet tunnel add --transport direct-socks5 --tag mysocks
 
 # External: forward DNS for a domain to a custom UDP port (BYO protocol)
-sudo slipgate tunnel add --transport external --tag my-proto \
+sudo rovunet tunnel add --transport external --tag my-proto \
   --domain j.example.com --port 5301
 ```
 
@@ -276,12 +276,12 @@ sudo slipgate tunnel add --transport external --tag my-proto \
 
 Users in Rovunet Panel are **global**. The same `username:password` authenticates against every tunnel, regardless of transport. The protocol is a property of the **tunnel**, not the user.
 
-> ⚠️ **Never hand out the server's `root` (or any sudoer / shell login) account as a VPN credential.** Rovunet Panel users are isolated SOCKS/SSH-forwarding accounts with no shell access — losing one only loses tunnel access. A leaked `root` account loses the whole server: your keys, your other users' credentials, and any other service running on the box. Always create dedicated Rovunet Panel users with `slipgate users add` (or `bulk_add`) for everyone you give a config to, including yourself.
+> ⚠️ **Never hand out the server's `root` (or any sudoer / shell login) account as a VPN credential.** Rovunet Panel users are isolated SOCKS/SSH-forwarding accounts with no shell access — losing one only loses tunnel access. A leaked `root` account loses the whole server: your keys, your other users' credentials, and any other service running on the box. Always create dedicated Rovunet Panel users with `rovunet users add` (or `bulk_add`) for everyone you give a config to, including yourself.
 
 **Add one user (interactive):**
 
 ```bash
-sudo slipgate users add
+sudo rovunet users add
 ```
 
 You'll be prompted for username and password.
@@ -289,14 +289,14 @@ You'll be prompted for username and password.
 **Bulk-create users (random passwords, up to 500 in one go):**
 
 ```bash
-sudo slipgate users bulk_add --count=50 --prefix=user
+sudo rovunet users bulk_add --count=50 --prefix=user
 # Creates user001..user050
 ```
 
 **List all users with their per-tunnel configs:**
 
 ```bash
-sudo slipgate users list
+sudo rovunet users list
 ```
 
 This prints one config block per (user × tunnel) pair, including the `rovunet://` URI for each.
@@ -304,7 +304,7 @@ This prints one config block per (user × tunnel) pair, including the `rovunet:/
 **Remove a user:**
 
 ```bash
-sudo slipgate users remove
+sudo rovunet users remove
 ```
 
 > Tip: if you're running a small group, give each person a unique username so you can revoke just theirs later if a phone is lost.
@@ -316,7 +316,7 @@ sudo slipgate users remove
 After creating a tunnel, generate a `rovunet://` URI for one-tap import in the Rovunet app:
 
 ```bash
-sudo slipgate tunnel share mytunnel
+sudo rovunet tunnel share mytunnel
 ```
 
 This prints:
@@ -340,18 +340,18 @@ You can run as many tunnels as you want. Rovunet Panel auto-switches into **mult
 Example: DNSTT + VayDNS + NaiveProxy at the same time:
 
 ```bash
-sudo slipgate tunnel add --transport dnstt   --backend socks --tag dnstt1   --domain t.example.com
-sudo slipgate tunnel add --transport vaydns  --backend socks --tag vaydns1  --domain v.example.com
-sudo slipgate tunnel add --transport naive   --backend socks --tag naive1   --domain example.com --email you@example.com
+sudo rovunet tunnel add --transport dnstt   --backend socks --tag dnstt1   --domain t.example.com
+sudo rovunet tunnel add --transport vaydns  --backend socks --tag vaydns1  --domain v.example.com
+sudo rovunet tunnel add --transport naive   --backend socks --tag naive1   --domain example.com --email you@example.com
 ```
 
-Each tunnel becomes its own systemd service (`slipgate-dnstt1`, etc.). Manage them like any service:
+Each tunnel becomes its own systemd service (`rovunet-dnstt1`, etc.). Manage them like any service:
 
 ```bash
-sudo slipgate tunnel status
-sudo slipgate tunnel start vaydns1
-sudo slipgate tunnel stop vaydns1
-sudo slipgate tunnel logs naive1
+sudo rovunet tunnel status
+sudo rovunet tunnel start vaydns1
+sudo rovunet tunnel stop vaydns1
+sudo rovunet tunnel logs naive1
 ```
 
 **Routing modes**
@@ -359,9 +359,9 @@ sudo slipgate tunnel logs naive1
 - **Multi mode** — all DNS tunnels run on local ports; port 53 dispatches by domain.
 
 ```bash
-sudo slipgate router status      # see current mode
-sudo slipgate router mode        # switch between single and multi
-sudo slipgate router switch      # change active tunnel (single mode only)
+sudo rovunet router status      # see current mode
+sudo rovunet router mode        # switch between single and multi
+sudo rovunet router switch      # change active tunnel (single mode only)
 ```
 
 ---
@@ -383,40 +383,40 @@ Enable it from the interactive menu (**WARP** option). Rovunet Panel sets up a `
 **Live dashboard** — CPU, RAM, traffic sparklines, per-protocol connection counts, tunnel status:
 
 ```bash
-sudo slipgate stats
+sudo rovunet stats
 ```
 
 **Diagnostics** — checks services, ports, keys, DNS resolution, boot persistence:
 
 ```bash
-sudo slipgate diag
+sudo rovunet diag
 ```
 
 **Logs for a specific tunnel:**
 
 ```bash
-sudo slipgate tunnel logs mytunnel
+sudo rovunet tunnel logs mytunnel
 ```
 
 **Restart everything** (DNS router, SOCKS, all tunnels):
 
 ```bash
-sudo slipgate restart
+sudo rovunet restart
 ```
 
 **Tune MTU on all DNS tunnels at once** — useful if links are flaky:
 
 ```bash
-sudo slipgate mtu 1200
+sudo rovunet mtu 1200
 # Common values: 1232 (default), 1200 (cautious), 1100 (very flaky links)
 ```
 
 **Tweak one tunnel:**
 
 ```bash
-sudo slipgate tunnel edit --tag mydnstt --new-tag my-tunnel  # rename
-sudo slipgate tunnel edit --tag mydnstt --mtu 1232           # change MTU
-sudo slipgate tunnel status --tag mydnstt                    # keys, port, MTU
+sudo rovunet tunnel edit --tag mydnstt --new-tag my-tunnel  # rename
+sudo rovunet tunnel edit --tag mydnstt --mtu 1232           # change MTU
+sudo rovunet tunnel status --tag mydnstt                    # keys, port, MTU
 ```
 
 ---
@@ -426,7 +426,7 @@ sudo slipgate tunnel status --tag mydnstt                    # keys, port, MTU
 Pulls the latest binary from GitHub releases and restarts services:
 
 ```bash
-sudo slipgate update
+sudo rovunet update
 ```
 
 The update is in-place — your tunnels, users, and keys are untouched. Existing client links (`rovunet://`, and older `slipnet://` ones) keep working.
@@ -440,8 +440,8 @@ A backup holds everything needed to run your setup on another server: the config
 **Make a backup** (menu → 10 Backup / Restore, or):
 
 ```bash
-sudo slipgate backup                              # asks: save to a file, or print as text to copy
-sudo slipgate backup /root/slipgate-backup.txt
+sudo rovunet backup                              # asks: save to a file, or print as text to copy
+sudo rovunet backup /root/rovunet-backup.txt
 ```
 
 The backup is one block of text between a `-----BEGIN SLIPGATE BACKUP-----` and an `-----END SLIPGATE BACKUP-----` line, so you can keep it as a file or copy-paste it. It contains every private key and password: keep it private.
@@ -449,20 +449,20 @@ The backup is one block of text between a `-----BEGIN SLIPGATE BACKUP-----` and 
 **Restore on a new server:**
 
 1. Install Rovunet Panel (`curl ... | sudo bash`). When the install wizard asks which transports to install, press Ctrl-C: the restore sets them up.
-2. Run `sudo slipgate restore` and paste the text, or give the file: `sudo slipgate restore /root/slipgate-backup.txt`.
+2. Run `sudo rovunet restore` and paste the text, or give the file: `sudo rovunet restore /root/rovunet-backup.txt`.
 3. Point the DNS records at the new server's IP. Restore lists the ones to change (`ns.<your domain>`, and the domain of any NaiveProxy tunnel).
 
-Restore installs the transport binaries, writes the keys and config, creates the users, opens the firewall ports, sets up WARP if it was on (with a new WARP account), and starts every service. If the server already has tunnels or users, they are replaced; the current setup is first saved to `/root/slipgate-pre-restore-<date>.txt`, which can be restored the same way.
+Restore installs the transport binaries, writes the keys and config, creates the users, opens the firewall ports, sets up WARP if it was on (with a new WARP account), and starts every service. If the server already has tunnels or users, they are replaced; the current setup is first saved to `/root/rovunet-pre-restore-<date>.txt`, which can be restored the same way.
 
 Straight from one server to another:
 
 ```bash
-ssh root@old-server slipgate backup - | ssh root@new-server slipgate restore - --yes
+ssh root@old-server rovunet backup - | ssh root@new-server rovunet restore - --yes
 ```
 
 `-` writes the backup to stdout or reads it from stdin; `--yes` skips the confirmation question, which needs a terminal.
 
-`slipgate config export` prints only `config.json`, without keys. Use `backup` to move a server.
+`rovunet config export` prints only `config.json`, without keys. Use `backup` to move a server.
 
 ---
 
@@ -483,22 +483,22 @@ VLESS support may land in Rovunet Panel in the future. Track the channel for upd
 
 | Symptom | Try this |
 |---------|----------|
-| Tunnel won't start | `sudo slipgate diag` — checks ports, keys, DNS records |
-| Client connects but no traffic | `sudo slipgate tunnel logs <tag>` for handshake / auth errors |
+| Tunnel won't start | `sudo rovunet diag` — checks ports, keys, DNS records |
+| Client connects but no traffic | `sudo rovunet tunnel logs <tag>` for handshake / auth errors |
 | Port 53 already in use | `sudo systemctl disable --now systemd-resolved` (then add `nameserver 1.1.1.1` to `/etc/resolv.conf`) |
-| Let's Encrypt fails (NaiveProxy) | A record may not have propagated, or port 80 is blocked. Wait, then `sudo slipgate restart` |
+| Let's Encrypt fails (NaiveProxy) | A record may not have propagated, or port 80 is blocked. Wait, then `sudo rovunet restart` |
 | `dig` against your server times out | VPS provider blocks UDP/53 inbound. Switch provider or stick to NaiveProxy/StunTLS on 443 |
-| User can't authenticate | `sudo slipgate users list` — confirm credentials present; check tunnel has matching backend |
-| Slow DNS tunnel | Lower MTU: `sudo slipgate mtu 1200` |
-| Multiple tunnels but only one works | `sudo slipgate router status` — confirm multi-mode is active |
-| Need to reset a key | `sudo slipgate tunnel edit --tag <tag>` and regenerate; clients will need a fresh URI |
+| User can't authenticate | `sudo rovunet users list` — confirm credentials present; check tunnel has matching backend |
+| Slow DNS tunnel | Lower MTU: `sudo rovunet mtu 1200` |
+| Multiple tunnels but only one works | `sudo rovunet router status` — confirm multi-mode is active |
+| Need to reset a key | `sudo rovunet tunnel edit --tag <tag>` and regenerate; clients will need a fresh URI |
 
 For deeper inspection, every tunnel is a regular systemd service:
 
 ```bash
-journalctl -u slipgate-mytunnel -n 200 --no-pager
-journalctl -u slipgate-dnsrouter -n 200 --no-pager
-journalctl -u slipgate-socks5 -n 200 --no-pager
+journalctl -u rovunet-mytunnel -n 200 --no-pager
+journalctl -u rovunet-dnsrouter -n 200 --no-pager
+journalctl -u rovunet-socks5 -n 200 --no-pager
 ```
 
 ---
@@ -507,9 +507,9 @@ journalctl -u slipgate-socks5 -n 200 --no-pager
 
 | Path | Description |
 |------|-------------|
-| `/etc/slipgate/config.json` | Main configuration (tunnels, users, routing mode) |
-| `/etc/slipgate/tunnels/` | Per-tunnel keys, certs, configs |
-| `/usr/local/bin/slipgate` | Rovunet Panel binary |
+| `/etc/rovunet/config.json` | Main configuration (tunnels, users, routing mode) |
+| `/etc/rovunet/tunnels/` | Per-tunnel keys, certs, configs |
+| `/usr/local/bin/rovunet` | Rovunet Panel binary |
 | `/usr/local/bin/dnstt-server` | DNSTT/NoizDNS transport |
 | `/usr/local/bin/slipstream-server` | Slipstream transport |
 | `/usr/local/bin/vaydns-server` | VayDNS transport |
@@ -517,16 +517,16 @@ journalctl -u slipgate-socks5 -n 200 --no-pager
 | `/etc/caddy/Caddyfile` | Caddy config (managed by Rovunet Panel) |
 
 **systemd units:**
-- `slipgate-dnsrouter` — port 53 DNS dispatcher
-- `slipgate-socks5` — built-in SOCKS5 proxy
-- `slipgate-<tag>` — one per tunnel you create
+- `rovunet-dnsrouter` — port 53 DNS dispatcher
+- `rovunet-socks5` — built-in SOCKS5 proxy
+- `rovunet-<tag>` — one per tunnel you create
 
 ---
 
 ## 19. Uninstalling
 
 ```bash
-sudo slipgate uninstall
+sudo rovunet uninstall
 ```
 
 Removes all services, configs, and binaries. Your DNS records are untouched — delete them manually in your DNS provider's panel if you want.
@@ -668,19 +668,19 @@ curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.
 - توزیع شما را تشخیص می‌دهد.
 - پکیج‌های لازم سیستم را نصب می‌کند.
 - باینری Rovunet Panel و `dnstt-server`، `slipstream-server`، `vaydns-server` و `caddy-naive` را دانلود می‌کند.
-- سرویس‌های systemd (`slipgate-dnsrouter`، `slipgate-socks5`) را نصب می‌کند.
+- سرویس‌های systemd (`rovunet-dnsrouter`، `rovunet-socks5`) را نصب می‌کند.
 - در صورت نیاز قواعد فایروال را تنظیم می‌کند.
 
 **نصب آفلاین** (اگر VPS به گیت‌هاب دسترسی ندارد):
 
-۱. روی لپ‌تاپ باینری `slipgate-linux-<arch>` را از https://github.com/msVPNco/rovunet-panel/releases و باینری‌های ترنسپورت (`dnstt-server`، `slipstream-server`، `vaydns-server`، `caddy-naive`) را از https://github.com/anonvector/slipgate/releases دانلود کنید.
-۲. باینری‌ها را با SCP به سرور بفرستید: `scp slipgate-* dnstt-server-* slipstream-server-* vaydns-server-* caddy-naive-* user@server:/tmp/slipgate/`
-۳. روی سرور: `sudo slipgate install --bin-dir /tmp/slipgate`
+۱. روی لپ‌تاپ باینری `rovunet-linux-<arch>` را از https://github.com/msVPNco/rovunet-panel/releases و باینری‌های ترنسپورت (`dnstt-server`، `slipstream-server`، `vaydns-server`، `caddy-naive`) را از https://github.com/anonvector/slipgate/releases دانلود کنید.
+۲. باینری‌ها را با SCP به سرور بفرستید: `scp rovunet-* dnstt-server-* slipstream-server-* vaydns-server-* caddy-naive-* user@server:/tmp/rovunet/`
+۳. روی سرور: `sudo rovunet install --bin-dir /tmp/rovunet`
 
 پس از نصب، منوی تعاملی را باز کنید:
 
 ```bash
-sudo slipgate
+sudo rovunet
 ```
 
 ---
@@ -689,41 +689,41 @@ sudo slipgate
 
 Rovunet Panel دو رابط دارد:
 
-**TUI تعاملی** — `sudo slipgate` بدون پارامتر. منوی دوستانه‌ای که شما را در ساخت تونل، کاربر، آمار و عیب‌یابی راه می‌برد. برای نصب اولیه و کاوش بهترین انتخاب است.
+**TUI تعاملی** — `sudo rovunet` بدون پارامتر. منوی دوستانه‌ای که شما را در ساخت تونل، کاربر، آمار و عیب‌یابی راه می‌برد. برای نصب اولیه و کاوش بهترین انتخاب است.
 
 **زیردستورهای CLI** — برای اسکریپت و اتوماسیون. هر گزینه‌ی منو یک معادل CLI دارد:
 
 ```
-slipgate install                نصب وابستگی‌ها و راه‌اندازی سرور
-slipgate uninstall              حذف همه‌چیز
-slipgate update                 خود-آپدیت + ری‌استارت سرویس‌ها
-slipgate restart                ری‌استارت همه سرویس‌ها
-slipgate backup [file]          بکاپ کانفیگ، کلیدها و کاربران (فایل یا متن برای کپی‌پیست)
-slipgate restore [file]         ریستور بکاپ روی این سرور
-slipgate users                  افزودن / لیست / حذف کاربر (تعاملی)
-slipgate users add              افزودن یک کاربر
-slipgate users bulk_add         افزودن گروهی با پسورد تصادفی
-slipgate users list             لیست کاربران + کانفیگ تونل‌ها
-slipgate stats                  داشبورد زنده
-slipgate diag                   اجرای بررسی‌های تشخیصی
-slipgate mtu [value]            تنظیم MTU روی همه‌ی تونل‌های DNS
+rovunet install                نصب وابستگی‌ها و راه‌اندازی سرور
+rovunet uninstall              حذف همه‌چیز
+rovunet update                 خود-آپدیت + ری‌استارت سرویس‌ها
+rovunet restart                ری‌استارت همه سرویس‌ها
+rovunet backup [file]          بکاپ کانفیگ، کلیدها و کاربران (فایل یا متن برای کپی‌پیست)
+rovunet restore [file]         ریستور بکاپ روی این سرور
+rovunet users                  افزودن / لیست / حذف کاربر (تعاملی)
+rovunet users add              افزودن یک کاربر
+rovunet users bulk_add         افزودن گروهی با پسورد تصادفی
+rovunet users list             لیست کاربران + کانفیگ تونل‌ها
+rovunet stats                  داشبورد زنده
+rovunet diag                   اجرای بررسی‌های تشخیصی
+rovunet mtu [value]            تنظیم MTU روی همه‌ی تونل‌های DNS
 
-slipgate tunnel add             افزودن یک تونل
-slipgate tunnel edit [tag]      ویرایش (نام، MTU، کلید)
-slipgate tunnel remove [tag]    حذف یک تونل
-slipgate tunnel remove --all    حذف همه‌ی تونل‌ها
-slipgate tunnel start [tag]     استارت تونل
-slipgate tunnel stop [tag]      استاپ تونل
-slipgate tunnel status [tag]    وضعیت / جزئیات
-slipgate tunnel share [tag]     چاپ rovunet:// URI + QR
-slipgate tunnel logs [tag]      دیدن لاگ‌های systemd
+rovunet tunnel add             افزودن یک تونل
+rovunet tunnel edit [tag]      ویرایش (نام، MTU، کلید)
+rovunet tunnel remove [tag]    حذف یک تونل
+rovunet tunnel remove --all    حذف همه‌ی تونل‌ها
+rovunet tunnel start [tag]     استارت تونل
+rovunet tunnel stop [tag]      استاپ تونل
+rovunet tunnel status [tag]    وضعیت / جزئیات
+rovunet tunnel share [tag]     چاپ rovunet:// URI + QR
+rovunet tunnel logs [tag]      دیدن لاگ‌های systemd
 
-slipgate router status          وضعیت روتر DNS
-slipgate router mode            تعویض single ↔ multi
-slipgate router switch          تغییر تونل فعال (single mode)
+rovunet router status          وضعیت روتر DNS
+rovunet router mode            تعویض single ↔ multi
+rovunet router switch          تغییر تونل فعال (single mode)
 
-slipgate config export          چاپ config.json (بدون کلیدها؛ برای انتقال سرور از backup استفاده کنید)
-slipgate config import [path]   جایگزینی config.json (بدون کلیدها)
+rovunet config export          چاپ config.json (بدون کلیدها؛ برای انتقال سرور از backup استفاده کنید)
+rovunet config import [path]   جایگزینی config.json (بدون کلیدها)
 ```
 
 ---
@@ -733,7 +733,7 @@ slipgate config import [path]   جایگزینی config.json (بدون کلید�
 ساده‌ترین راه‌اندازی ممکن — یک تونل DNSTT با backend SOCKS5 داخلی:
 
 ```bash
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport dnstt \
   --backend socks \
   --tag mytunnel \
@@ -744,18 +744,18 @@ sudo slipgate tunnel add \
 ۱. یک کلید Curve25519 جدید می‌سازد.
 ۲. `dnstt-server` را روی UDP/53 برای `t.example.com` اجرا می‌کند.
 ۳. ترافیک رمزگشایی‌شده را به پراکسی SOCKS5 داخلی (`127.0.0.1:1080`) می‌فرستد.
-۴. سرویس systemd `slipgate-mytunnel` می‌سازد که در بوت اجرا می‌شود.
+۴. سرویس systemd `rovunet-mytunnel` می‌سازد که در بوت اجرا می‌شود.
 
 **تأیید اجرا:**
 
 ```bash
-sudo slipgate tunnel status
+sudo rovunet tunnel status
 ```
 
 تونل باید **active** نشان داده شود. اگر مشکلی هست:
 
 ```bash
-sudo slipgate diag
+sudo rovunet diag
 ```
 
 ---
@@ -782,33 +782,33 @@ Rovunet Panel شش transport را مدیریت می‌کند. بر اساس شب
 
 ```bash
 # VayDNS — تونل DNS جدیدتر و بهینه
-sudo slipgate tunnel add --transport vaydns --backend socks \
+sudo rovunet tunnel add --transport vaydns --backend socks \
   --tag myvaydns --domain v.example.com
 
 # VayDNS با تمام پارامترها
-sudo slipgate tunnel add --transport vaydns --backend both \
+sudo rovunet tunnel add --transport vaydns --backend both \
   --tag myvaydns --domain v.example.com \
   --record-type txt --idle-timeout 10s --keep-alive 2s \
   --clientid-size 2 --queue-size 512
 
 # Slipstream روی QUIC
-sudo slipgate tunnel add --transport slipstream --backend ssh \
+sudo rovunet tunnel add --transport slipstream --backend ssh \
   --tag myslip --domain s.example.com
 
 # NaiveProxy — گواهی Let's Encrypt خودکار
-sudo slipgate tunnel add --transport naive --backend socks \
+sudo rovunet tunnel add --transport naive --backend socks \
   --tag myproxy --domain example.com \
   --email admin@example.com --decoy-url https://www.wikipedia.org
 
 # StunTLS — SSH روی TLS + WebSocket، نیاز به دامنه ندارد
-sudo slipgate tunnel add --transport stuntls --tag mytls
+sudo rovunet tunnel add --transport stuntls --tag mytls
 
 # SSH یا SOCKS5 مستقیم (بدون transport تونل)
-sudo slipgate tunnel add --transport direct-ssh --tag myssh
-sudo slipgate tunnel add --transport direct-socks5 --tag mysocks
+sudo rovunet tunnel add --transport direct-ssh --tag myssh
+sudo rovunet tunnel add --transport direct-socks5 --tag mysocks
 
 # External: کوئری DNS یک دامنه را به پورت UDP خاص هدایت کن (پروتکل دلخواه)
-sudo slipgate tunnel add --transport external --tag my-proto \
+sudo rovunet tunnel add --transport external --tag my-proto \
   --domain j.example.com --port 5301
 ```
 
@@ -818,12 +818,12 @@ sudo slipgate tunnel add --transport external --tag my-proto \
 
 کاربر در Rovunet Panel **سراسری** است. همان `username:password` روی همه‌ی تونل‌ها معتبر است، فارغ از transport. پروتکل ویژگی **تونل** است نه کاربر.
 
-> ⚠️ **هیچ‌وقت اکانت `root` سرور (یا هر اکانت sudoer / لاگین shell) را به‌عنوان credential VPN در اختیار کاربران نگذارید.** کاربر Rovunet Panel یک اکانت ایزوله‌ی SOCKS/SSH-forwarding است که دسترسی shell ندارد — اگر یکی لو برود، فقط دسترسی به تونل از دست می‌رود. اما لو رفتن `root` یعنی از دست رفتن کل سرور: کلیدها، credential سایر کاربران و هر سرویس دیگری که روی سرور است. همیشه برای هر کسی که کانفیگ می‌دهید (حتی خودتان) با `slipgate users add` (یا `bulk_add`) یک کاربر مخصوص بسازید.
+> ⚠️ **هیچ‌وقت اکانت `root` سرور (یا هر اکانت sudoer / لاگین shell) را به‌عنوان credential VPN در اختیار کاربران نگذارید.** کاربر Rovunet Panel یک اکانت ایزوله‌ی SOCKS/SSH-forwarding است که دسترسی shell ندارد — اگر یکی لو برود، فقط دسترسی به تونل از دست می‌رود. اما لو رفتن `root` یعنی از دست رفتن کل سرور: کلیدها، credential سایر کاربران و هر سرویس دیگری که روی سرور است. همیشه برای هر کسی که کانفیگ می‌دهید (حتی خودتان) با `rovunet users add` (یا `bulk_add`) یک کاربر مخصوص بسازید.
 
 **افزودن یک کاربر (تعاملی):**
 
 ```bash
-sudo slipgate users add
+sudo rovunet users add
 ```
 
 نام کاربری و رمز را خواهد پرسید.
@@ -831,14 +831,14 @@ sudo slipgate users add
 **ساخت گروهی با پسورد تصادفی (تا ۵۰۰ نفر در یک مرحله):**
 
 ```bash
-sudo slipgate users bulk_add --count=50 --prefix=user
+sudo rovunet users bulk_add --count=50 --prefix=user
 # می‌سازد user001 تا user050
 ```
 
 **لیست کاربران به همراه کانفیگ هر تونل:**
 
 ```bash
-sudo slipgate users list
+sudo rovunet users list
 ```
 
 برای هر زوج (کاربر × تونل) یک بلوک کانفیگ چاپ می‌شود، شامل URI به فرمت `rovunet://`.
@@ -846,7 +846,7 @@ sudo slipgate users list
 **حذف کاربر:**
 
 ```bash
-sudo slipgate users remove
+sudo rovunet users remove
 ```
 
 > پیشنهاد: اگر گروه کوچک دارید، به هر نفر یک نام کاربری منحصربه‌فرد بدهید تا در صورت گم شدن گوشی فقط همان را revoke کنید.
@@ -858,7 +858,7 @@ sudo slipgate users remove
 پس از ساخت تونل، یک URI به فرمت `rovunet://` بسازید:
 
 ```bash
-sudo slipgate tunnel share mytunnel
+sudo rovunet tunnel share mytunnel
 ```
 
 این چاپ می‌کند:
@@ -882,18 +882,18 @@ URI را به کاربر بدهید. در Rovunet **+ → Import from URI** را
 مثال: DNSTT + VayDNS + NaiveProxy هم‌زمان:
 
 ```bash
-sudo slipgate tunnel add --transport dnstt   --backend socks --tag dnstt1   --domain t.example.com
-sudo slipgate tunnel add --transport vaydns  --backend socks --tag vaydns1  --domain v.example.com
-sudo slipgate tunnel add --transport naive   --backend socks --tag naive1   --domain example.com --email you@example.com
+sudo rovunet tunnel add --transport dnstt   --backend socks --tag dnstt1   --domain t.example.com
+sudo rovunet tunnel add --transport vaydns  --backend socks --tag vaydns1  --domain v.example.com
+sudo rovunet tunnel add --transport naive   --backend socks --tag naive1   --domain example.com --email you@example.com
 ```
 
-هر تونل سرویس systemd خودش را دارد (`slipgate-dnstt1` و…). مثل هر سرویس مدیریتش کنید:
+هر تونل سرویس systemd خودش را دارد (`rovunet-dnstt1` و…). مثل هر سرویس مدیریتش کنید:
 
 ```bash
-sudo slipgate tunnel status
-sudo slipgate tunnel start vaydns1
-sudo slipgate tunnel stop vaydns1
-sudo slipgate tunnel logs naive1
+sudo rovunet tunnel status
+sudo rovunet tunnel start vaydns1
+sudo rovunet tunnel stop vaydns1
+sudo rovunet tunnel logs naive1
 ```
 
 **حالت‌های روتر**
@@ -901,9 +901,9 @@ sudo slipgate tunnel logs naive1
 - **Multi mode** — همه‌ی تونل‌های DNS روی پورت‌های local؛ پورت ۵۳ بر اساس دامنه دیسپچ می‌کند.
 
 ```bash
-sudo slipgate router status      # حالت فعلی
-sudo slipgate router mode        # تغییر بین single و multi
-sudo slipgate router switch      # تغییر تونل فعال (فقط در single mode)
+sudo rovunet router status      # حالت فعلی
+sudo rovunet router mode        # تغییر بین single و multi
+sudo rovunet router switch      # تغییر تونل فعال (فقط در single mode)
 ```
 
 ---
@@ -925,40 +925,40 @@ sudo slipgate router switch      # تغییر تونل فعال (فقط در sin
 **داشبورد زنده** — CPU، RAM، اسپارک‌لاین ترافیک، تعداد کانکشن هر پروتکل، وضعیت تونل‌ها:
 
 ```bash
-sudo slipgate stats
+sudo rovunet stats
 ```
 
 **تشخیص** — بررسی سرویس‌ها، پورت‌ها، کلیدها، DNS و پایداری بعد از بوت:
 
 ```bash
-sudo slipgate diag
+sudo rovunet diag
 ```
 
 **لاگ یک تونل خاص:**
 
 ```bash
-sudo slipgate tunnel logs mytunnel
+sudo rovunet tunnel logs mytunnel
 ```
 
 **ری‌استارت همه چیز** (روتر DNS، SOCKS، تمام تونل‌ها):
 
 ```bash
-sudo slipgate restart
+sudo rovunet restart
 ```
 
 **تنظیم MTU برای همه‌ی تونل‌های DNS** — وقتی شبکه ناپایدار است:
 
 ```bash
-sudo slipgate mtu 1200
+sudo rovunet mtu 1200
 # مقادیر معمول: 1232 (پیش‌فرض)، 1200 (محتاط)، 1100 (شبکه خیلی ناپایدار)
 ```
 
 **ویرایش یک تونل:**
 
 ```bash
-sudo slipgate tunnel edit --tag mydnstt --new-tag my-tunnel  # تغییر نام
-sudo slipgate tunnel edit --tag mydnstt --mtu 1232           # تغییر MTU
-sudo slipgate tunnel status --tag mydnstt                    # کلید، پورت، MTU
+sudo rovunet tunnel edit --tag mydnstt --new-tag my-tunnel  # تغییر نام
+sudo rovunet tunnel edit --tag mydnstt --mtu 1232           # تغییر MTU
+sudo rovunet tunnel status --tag mydnstt                    # کلید، پورت، MTU
 ```
 
 ---
@@ -968,7 +968,7 @@ sudo slipgate tunnel status --tag mydnstt                    # کلید، پور
 آخرین باینری از Releases گیت‌هاب را می‌گیرد و سرویس‌ها را ری‌استارت می‌کند:
 
 ```bash
-sudo slipgate update
+sudo rovunet update
 ```
 
 به‌روزرسانی in-place است — تونل‌ها، کاربران و کلیدها دست‌نخورده می‌مانند. URIهای کلاینت موجود کار می‌کنند.
@@ -982,8 +982,8 @@ sudo slipgate update
 **گرفتن بکاپ** (منو ← ۱۰ Backup / Restore، یا):
 
 ```bash
-sudo slipgate backup                              # می‌پرسد: ذخیره در فایل یا چاپ به‌صورت متن برای کپی
-sudo slipgate backup /root/slipgate-backup.txt
+sudo rovunet backup                              # می‌پرسد: ذخیره در فایل یا چاپ به‌صورت متن برای کپی
+sudo rovunet backup /root/rovunet-backup.txt
 ```
 
 بکاپ یک بلوک متن بین خط `-----BEGIN SLIPGATE BACKUP-----` و خط `-----END SLIPGATE BACKUP-----` است؛ می‌توانید آن را به‌صورت فایل نگه دارید یا کپی‌پیست کنید. این متن شامل همه‌ی کلیدهای خصوصی و رمزهاست: آن را خصوصی نگه دارید.
@@ -991,20 +991,20 @@ sudo slipgate backup /root/slipgate-backup.txt
 **ریستور روی سرور جدید:**
 
 ۱. Rovunet Panel را نصب کنید (`curl ... | sudo bash`). وقتی ویزارد نصب پرسید کدام ترنسپورت‌ها نصب شوند، Ctrl-C بزنید؛ ریستور آن‌ها را راه‌اندازی می‌کند.
-۲. `sudo slipgate restore` را اجرا کنید و متن را پیست کنید، یا فایل را بدهید: `sudo slipgate restore /root/slipgate-backup.txt`
+۲. `sudo rovunet restore` را اجرا کنید و متن را پیست کنید، یا فایل را بدهید: `sudo rovunet restore /root/rovunet-backup.txt`
 ۳. رکوردهای DNS را به IP سرور جدید تغییر دهید. ریستور رکوردهایی را که باید عوض شوند نشان می‌دهد (`ns.<دامنه‌ی شما>` و دامنه‌ی تونل‌های NaiveProxy).
 
-ریستور باینری‌های ترنسپورت را نصب می‌کند، کلیدها و کانفیگ را می‌نویسد، کاربران را می‌سازد، پورت‌های فایروال را باز می‌کند، اگر WARP روشن بوده آن را (با یک اکانت WARP جدید) راه‌اندازی می‌کند و همه‌ی سرویس‌ها را اجرا می‌کند. اگر روی سرور از قبل تونل یا کاربری باشد، جایگزین می‌شود؛ تنظیمات فعلی پیش از آن در `/root/slipgate-pre-restore-<تاریخ>.txt` ذخیره می‌شود و به همین روش قابل ریستور است.
+ریستور باینری‌های ترنسپورت را نصب می‌کند، کلیدها و کانفیگ را می‌نویسد، کاربران را می‌سازد، پورت‌های فایروال را باز می‌کند، اگر WARP روشن بوده آن را (با یک اکانت WARP جدید) راه‌اندازی می‌کند و همه‌ی سرویس‌ها را اجرا می‌کند. اگر روی سرور از قبل تونل یا کاربری باشد، جایگزین می‌شود؛ تنظیمات فعلی پیش از آن در `/root/rovunet-pre-restore-<تاریخ>.txt` ذخیره می‌شود و به همین روش قابل ریستور است.
 
 مستقیم از یک سرور به سرور دیگر:
 
 ```bash
-ssh root@old-server slipgate backup - | ssh root@new-server slipgate restore - --yes
+ssh root@old-server rovunet backup - | ssh root@new-server rovunet restore - --yes
 ```
 
 `-` بکاپ را در stdout می‌نویسد یا از stdin می‌خواند؛ `--yes` سؤال تأیید را رد می‌کند، چون آن سؤال به ترمینال نیاز دارد.
 
-`slipgate config export` فقط `config.json` را بدون کلیدها چاپ می‌کند. برای انتقال سرور از `backup` استفاده کنید.
+`rovunet config export` فقط `config.json` را بدون کلیدها چاپ می‌کند. برای انتقال سرور از `backup` استفاده کنید.
 
 ---
 
@@ -1025,22 +1025,22 @@ ssh root@old-server slipgate backup - | ssh root@new-server slipgate restore - -
 
 | نشانه | راه‌حل |
 |-------|------|
-| تونل بالا نمی‌آید | `sudo slipgate diag` — پورت‌ها، کلیدها و رکوردهای DNS را بررسی می‌کند |
-| کلاینت وصل می‌شود ولی ترافیک نمی‌رود | `sudo slipgate tunnel logs <tag>` برای دیدن خطای handshake / احراز هویت |
+| تونل بالا نمی‌آید | `sudo rovunet diag` — پورت‌ها، کلیدها و رکوردهای DNS را بررسی می‌کند |
+| کلاینت وصل می‌شود ولی ترافیک نمی‌رود | `sudo rovunet tunnel logs <tag>` برای دیدن خطای handshake / احراز هویت |
 | پورت ۵۳ از قبل اشغال است | `sudo systemctl disable --now systemd-resolved` (سپس `nameserver 1.1.1.1` به `/etc/resolv.conf` اضافه کنید) |
-| Let's Encrypt در NaiveProxy fail می‌شود | احتمالاً رکورد A پراپاگیت نشده یا پورت ۸۰ بسته است. صبر کنید و `sudo slipgate restart` |
+| Let's Encrypt در NaiveProxy fail می‌شود | احتمالاً رکورد A پراپاگیت نشده یا پورت ۸۰ بسته است. صبر کنید و `sudo rovunet restart` |
 | `dig` به سرور تایم‌اوت می‌شود | سرویس‌دهنده UDP/53 ورودی را می‌بندد. سرویس‌دهنده عوض کنید یا به NaiveProxy/StunTLS روی ۴۴۳ بسنده کنید |
-| کاربر احراز نمی‌شود | `sudo slipgate users list` — وجود credential را بررسی کنید؛ مطمئن شوید تونل backend متناظر دارد |
-| تونل DNS کند است | MTU را پایین بیاورید: `sudo slipgate mtu 1200` |
-| چند تونل ساخته‌ام ولی فقط یکی کار می‌کند | `sudo slipgate router status` — تأیید کنید multi-mode فعال است |
-| نیاز به ریست کلید دارم | `sudo slipgate tunnel edit --tag <tag>` و کلید جدید بسازید؛ کلاینت‌ها به URI جدید نیاز دارند |
+| کاربر احراز نمی‌شود | `sudo rovunet users list` — وجود credential را بررسی کنید؛ مطمئن شوید تونل backend متناظر دارد |
+| تونل DNS کند است | MTU را پایین بیاورید: `sudo rovunet mtu 1200` |
+| چند تونل ساخته‌ام ولی فقط یکی کار می‌کند | `sudo rovunet router status` — تأیید کنید multi-mode فعال است |
+| نیاز به ریست کلید دارم | `sudo rovunet tunnel edit --tag <tag>` و کلید جدید بسازید؛ کلاینت‌ها به URI جدید نیاز دارند |
 
 برای بررسی عمیق‌تر، هر تونل یک سرویس systemd معمولی است:
 
 ```bash
-journalctl -u slipgate-mytunnel -n 200 --no-pager
-journalctl -u slipgate-dnsrouter -n 200 --no-pager
-journalctl -u slipgate-socks5 -n 200 --no-pager
+journalctl -u rovunet-mytunnel -n 200 --no-pager
+journalctl -u rovunet-dnsrouter -n 200 --no-pager
+journalctl -u rovunet-socks5 -n 200 --no-pager
 ```
 
 ---
@@ -1049,9 +1049,9 @@ journalctl -u slipgate-socks5 -n 200 --no-pager
 
 | مسیر | توضیح |
 |------|------|
-| `/etc/slipgate/config.json` | کانفیگ اصلی (تونل، کاربر، حالت روتینگ) |
-| `/etc/slipgate/tunnels/` | کلید، گواهی و کانفیگ هر تونل |
-| `/usr/local/bin/slipgate` | باینری Rovunet Panel |
+| `/etc/rovunet/config.json` | کانفیگ اصلی (تونل، کاربر، حالت روتینگ) |
+| `/etc/rovunet/tunnels/` | کلید، گواهی و کانفیگ هر تونل |
+| `/usr/local/bin/rovunet` | باینری Rovunet Panel |
 | `/usr/local/bin/dnstt-server` | باینری DNSTT/NoizDNS |
 | `/usr/local/bin/slipstream-server` | باینری Slipstream |
 | `/usr/local/bin/vaydns-server` | باینری VayDNS |
@@ -1059,16 +1059,16 @@ journalctl -u slipgate-socks5 -n 200 --no-pager
 | `/etc/caddy/Caddyfile` | کانفیگ Caddy (مدیریت‌شده توسط Rovunet Panel) |
 
 **یونیت‌های systemd:**
-- `slipgate-dnsrouter` — دیسپچر DNS روی پورت ۵۳
-- `slipgate-socks5` — پراکسی SOCKS5 داخلی
-- `slipgate-<tag>` — یکی به ازای هر تونل
+- `rovunet-dnsrouter` — دیسپچر DNS روی پورت ۵۳
+- `rovunet-socks5` — پراکسی SOCKS5 داخلی
+- `rovunet-<tag>` — یکی به ازای هر تونل
 
 ---
 
 ## ۱۹. حذف نصب
 
 ```bash
-sudo slipgate uninstall
+sudo rovunet uninstall
 ```
 
 تمام سرویس‌ها، کانفیگ‌ها و باینری‌ها حذف می‌شوند. رکوردهای DNS دست‌نخورده می‌مانند — اگر می‌خواهید، در پنل DNS خودتان دستی پاک کنید.

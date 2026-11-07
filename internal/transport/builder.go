@@ -3,8 +3,8 @@ package transport
 import (
 	"fmt"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
 // CreateService creates and starts a systemd service for a tunnel.

@@ -15,11 +15,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/binary"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/coreplan"
-	"github.com/anonvector/slipgate/internal/network"
-	"github.com/anonvector/slipgate/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/binary"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/coreplan"
+	"github.com/msVPNco/rovunet-panel/internal/network"
+	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
 // Root holds one directory per installed core. Variable for tests.
@@ -39,7 +39,7 @@ func ValidateName(name string) error {
 }
 
 // ServiceName is the systemd unit (without .service) for a core.
-func ServiceName(name string) string { return "slipgate-core-" + name }
+func ServiceName(name string) string { return "rovunet-core-" + name }
 
 // Proto is the transport-layer protocol a core listens on.
 func Proto(protocol string) string {

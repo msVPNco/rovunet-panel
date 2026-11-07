@@ -34,7 +34,7 @@ curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.
 
 <div dir="rtl">
 
-**اجرای دوباره‌ی نصب** روی سروری که از قبل تنظیم شده، تونل‌های موجود را دست نمی‌زند و نسخه‌ی تکراری نمی‌سازد؛ فقط پروتکل‌های تازه را اضافه می‌کند و در پایان کانفیگ همه‌ی تونل‌ها را چاپ می‌کند. برای ساختن تونل دوم از یک نوع، از `sudo slipgate tunnel add` استفاده کنید.
+**اجرای دوباره‌ی نصب** روی سروری که از قبل تنظیم شده، تونل‌های موجود را دست نمی‌زند و نسخه‌ی تکراری نمی‌سازد؛ فقط پروتکل‌های تازه را اضافه می‌کند و در پایان کانفیگ همه‌ی تونل‌ها را چاپ می‌کند. برای ساختن تونل دوم از یک نوع، از `sudo rovunet tunnel add` استفاده کنید.
 
 اگر هنگام نصب **NaiveProxy** و **VLESS** را با هم انتخاب کنید، VLESS (و StunTLS اگر انتخاب شده باشد) خودکار پشت NaiveProxy روی ۴۴۳ قرار می‌گیرد و به کلودفلر نیازی نیست.
 
@@ -43,15 +43,15 @@ curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.
 </div>
 
 ```bash
-curl -fsSL -o /tmp/slipgate https://github.com/msVPNco/rovunet-panel/releases/latest/download/slipgate-linux-amd64
-sudo install -m 755 /tmp/slipgate /usr/local/bin/slipgate
-sudo slipgate post-update
-slipgate --version
+curl -fsSL -o /tmp/rovunet https://github.com/msVPNco/rovunet-panel/releases/latest/download/rovunet-linux-amd64
+sudo install -m 755 /tmp/rovunet /usr/local/bin/rovunet
+sudo rovunet post-update
+rovunet --version
 ```
 
 <div dir="rtl">
 
-اگر سرورتان ARM است، به‌جای `amd64` بنویسید `arm64`. از این به بعد `sudo slipgate update` از همین نسخه به‌روزرسانی می‌گیرد.
+اگر سرورتان ARM است، به‌جای `amd64` بنویسید `arm64`. از این به بعد `sudo rovunet update` از همین نسخه به‌روزرسانی می‌گیرد.
 
 ## ۲. رکوردهای DNS
 
@@ -66,8 +66,8 @@ slipgate --version
 </div>
 
 ```bash
-sudo slipgate tunnel edit --tag vless --front naive
-sudo slipgate users configs
+sudo rovunet tunnel edit --tag vless --front naive
+sudo rovunet users configs
 ```
 
 <div dir="rtl">
@@ -85,8 +85,8 @@ sudo slipgate users configs
 </div>
 
 ```bash
-sudo slipgate tunnel edit --tag stuntls --front naive
-sudo slipgate users configs
+sudo rovunet tunnel edit --tag stuntls --front naive
+sudo rovunet users configs
 ```
 
 <div dir="rtl">
@@ -105,7 +105,7 @@ sudo slipgate users configs
 </div>
 
 ```bash
-sudo slipgate tunnel add --transport vless --tag vless --domain cdn.example.com --cdn yes --listen-port 2053
+sudo rovunet tunnel add --transport vless --tag vless --domain cdn.example.com --cdn yes --listen-port 2053
 ```
 
 <div dir="rtl">
@@ -115,7 +115,7 @@ sudo slipgate tunnel add --transport vless --tag vless --domain cdn.example.com 
 </div>
 
 ```bash
-sudo slipgate tunnel edit --tag vless --cdn-address 104.16.0.1
+sudo rovunet tunnel edit --tag vless --cdn-address 104.16.0.1
 ```
 
 <div dir="rtl">
@@ -124,21 +124,21 @@ sudo slipgate tunnel edit --tag vless --cdn-address 104.16.0.1
 
 ## ۶. گرفتن کانفیگ‌ها
 
-- **همه‌ی کاربرها و همه‌ی تونل‌ها:** `sudo slipgate users configs`. کانفیگ Soar بدون ورود هم با برچسب «no login» در همین لیست است.
-- **یک کاربر در VLESS:** `sudo slipgate tunnel share vless --user alice`. دو لینک می‌دهد: `rovunet://` برای Rovunet و `vless://` برای بقیه‌ی کلاینت‌ها.
-- **Soar:** `sudo slipgate tunnel share --tag soar`. به نسخه‌ی جدید Rovunet نیاز دارد.
+- **همه‌ی کاربرها و همه‌ی تونل‌ها:** `sudo rovunet users configs`. کانفیگ Soar بدون ورود هم با برچسب «no login» در همین لیست است.
+- **یک کاربر در VLESS:** `sudo rovunet tunnel share vless --user alice`. دو لینک می‌دهد: `rovunet://` برای Rovunet و `vless://` برای بقیه‌ی کلاینت‌ها.
+- **Soar:** `sudo rovunet tunnel share --tag soar`. به نسخه‌ی جدید Rovunet نیاز دارد.
 
 **ویژگی‌های VLESS:**
 
 - **شناسه‌ی جدا برای هر کاربر:** از نام کاربری، رمز و یک کلید مخفی سرور ساخته می‌شود و رمز هیچ‌وقت داخل لینک نیست.
 - **لغو فوری:** حذف کاربر یا تغییر رمزش، UUID قبلی را ظرف چند ثانیه از کار می‌اندازد.
-- **لینک‌های ثابت:** کلید مخفی یک بار برای کل سرور در `/etc/slipgate/vless.secret` ساخته می‌شود؛ پاک کردن و ساختن دوباره‌ی تونل همان لینک‌ها را برمی‌گرداند.
+- **لینک‌های ثابت:** کلید مخفی یک بار برای کل سرور در `/etc/rovunet/vless.secret` ساخته می‌شود؛ پاک کردن و ساختن دوباره‌ی تونل همان لینک‌ها را برمی‌گرداند.
 - **امنیت سرور:** کاربران فقط به آدرس‌های عمومی اینترنت دسترسی دارند و پورت ۲۵ (ایمیل) بسته است.
 
 ## عیب‌یابی
 
-- **وضعیت کلی:** `sudo slipgate diag`
-- **لاگ یک تونل:** `sudo slipgate tunnel logs vless`
+- **وضعیت کلی:** `sudo rovunet diag`
+- **لاگ یک تونل:** `sudo rovunet tunnel logs vless`
 - **اتصال برقرار می‌شود ولی داده رد نمی‌شود:** اول از خود سرور تست کنید. اگر از سرور کار کرد (`curl -x socks5h://USER:PASS@IP:1080 https://api.ipify.org`)، ایراد از مسیر شبکه یا کلاینت است، نه از سرور.
 - **`Connection was reset` در اپ:** معمولاً فیلترینگ وسط راه اتصال را قطع می‌کند. با `tcpdump -ni any tcp port 8443` ببینید اصلاً بسته‌ای به سرور می‌رسد یا نه؛ اگر نه، آن تونل را پشت NaiveProxy ببرید.
 - **کلودفلر ۵۲۱ یا ۵۲۲:** کلودفلر به سرور نمی‌رسد؛ پورت را در فایروال ارائه‌دهنده باز کنید.

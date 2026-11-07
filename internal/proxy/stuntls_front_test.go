@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/certs"
+	"github.com/msVPNco/rovunet-panel/internal/certs"
 )
 
 // TestStunTLSBehindTLSReverseProxy stands in for Caddy reaching StunTLS

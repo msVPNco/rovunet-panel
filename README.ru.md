@@ -17,12 +17,12 @@ curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.
 Нужны собственный сервер, домен с управляемым DNS и открытые порты выбранных служб. Установщик спрашивает протоколы, настраивает их, создаёт пользователя и печатает конфигурации. Для существующего SlipGate сначала прочитайте руководство миграции и сделайте копию; не экспериментируйте без возможности восстановления сервера.
 
 ```bash
-sudo slipgate
-sudo slipgate users add
-sudo slipgate users configs
-sudo slipgate diag
-sudo slipgate backup
-sudo slipgate export-clients --user USER --format rovunet
+sudo rovunet
+sudo rovunet users add
+sudo rovunet users configs
+sudo rovunet diag
+sudo rovunet backup
+sudo rovunet export-clients --user USER --format rovunet
 ```
 
 ## Клиенты и диагностика
@@ -33,10 +33,10 @@ sudo slipgate export-clients --user USER --format rovunet
 
 ## Документация и поддержка
 
-[Полное руководство](docs/GUIDE.md) · [Пользователю](docs/USER_GUIDE.md) · [Изменения](CHANGELOG.md) · [Telegram](https://t.me/RovunetVPN). До применения проверьте нужные протоколы и выполните slipgate backup; нагрузку, ресурсы и восстановление проверяйте в своей среде.
+[Полное руководство](docs/GUIDE.md) · [Пользователю](docs/USER_GUIDE.md) · [Изменения](CHANGELOG.md) · [Telegram](https://t.me/RovunetVPN). До применения проверьте нужные протоколы и выполните rovunet backup; нагрузку, ресурсы и восстановление проверяйте в своей среде.
 
 Добровольная помощь разработке: **USDT, только Tron/TRC20**, `TG3Mhou3pdq9KaFgJSHjDiDx2ahhJuHvbJ`. Пожертвование не требуется для использования.
 
 ## Лицензия
 
-AGPL-3.0, [NOTICE](NOTICE.md). На основе [SlipGate](https://github.com/anonvector/slipgate) автора Anonvector; независимый проект без официальной связи. Команда slipgate сохранена для совместимости.
+AGPL-3.0, [NOTICE](NOTICE.md). На основе [SlipGate](https://github.com/anonvector/slipgate) автора Anonvector; независимый проект без официальной связи. Команда rovunet сохранена для совместимости.

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anonvector/slipgate/internal/certs"
+	"github.com/msVPNco/rovunet-panel/internal/certs"
 )
 
 // TestVLESSBehindTLSReverseProxy stands in for Caddy: a TLS-terminating

@@ -1,4 +1,4 @@
-// Package backup packs a slipgate server's setup (config, users and every
+// Package backup packs a rovunet server's setup (config, users and every
 // tunnel's key and certificate files) into one block of text that can be
 // saved to a file or copy-pasted, and unpacks it on another server.
 package backup
@@ -18,18 +18,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 )
 
 // The first and last lines of a backup.
 const (
-	BeginMarker = "-----BEGIN SLIPGATE BACKUP-----"
-	EndMarker   = "-----END SLIPGATE BACKUP-----"
+	BeginMarker = "-----BEGIN ROVUNET BACKUP-----"
+	EndMarker   = "-----END ROVUNET BACKUP-----"
+
+	// Backups made before the rename use these; Decode still reads them.
+	LegacyBeginMarker = "-----BEGIN SLIP" + "GATE BACKUP-----"
+	LegacyEndMarker   = "-----END SLIP" + "GATE BACKUP-----"
 )
 
 const (
 	// formatVersion is bumped when a backup can no longer be read by older
-	// slipgate versions.
+	// rovunet versions.
 	formatVersion = 1
 	lineWidth     = 76
 
@@ -46,7 +50,7 @@ var fileNameRegex = regexp.MustCompile(`^[A-Za-z0-9_-][A-Za-z0-9._-]*$`)
 type Bundle struct {
 	Format  int            `json:"format"`
 	Created time.Time      `json:"created"`
-	Version string         `json:"version"` // slipgate version that made it
+	Version string         `json:"version"` // rovunet version that made it
 	Config  *config.Config `json:"config"`
 	// Files holds each tunnel's files by tag and file name. The config's key
 	// and certificate paths are stored as names in this map.
@@ -235,10 +239,11 @@ func (b *Bundle) Encode() (string, error) {
 // ignored, as are spaces and line breaks between them, which copy-paste
 // tends to change.
 func Decode(text string) (*Bundle, error) {
+	text = strings.NewReplacer(LegacyBeginMarker, BeginMarker, LegacyEndMarker, EndMarker).Replace(text)
 	start := strings.Index(text, BeginMarker)
 	end := strings.Index(text, EndMarker)
 	if start < 0 || end < start {
-		return nil, errors.New("no slipgate backup found: the text must include the BEGIN and END lines")
+		return nil, errors.New("no rovunet backup found: the text must include the BEGIN and END lines")
 	}
 	body := strings.Join(strings.Fields(text[start+len(BeginMarker):end]), "")
 
@@ -265,7 +270,7 @@ func Decode(text string) (*Bundle, error) {
 		return nil, fmt.Errorf("invalid backup: %w", err)
 	}
 	if b.Format > formatVersion {
-		return nil, fmt.Errorf("backup was made by a newer slipgate (%s); update slipgate on this server first", b.Version)
+		return nil, fmt.Errorf("backup was made by a newer rovunet (%s); update rovunet on this server first", b.Version)
 	}
 	if b.Format < 1 || b.Config == nil {
 		return nil, errors.New("invalid backup: missing format or config")

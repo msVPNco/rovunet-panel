@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/certs"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/coreinstall"
-	"github.com/anonvector/slipgate/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/certs"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
+	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
 func handleTunnelStart(ctx *actions.Context) error {
@@ -87,7 +87,7 @@ func handleTunnelStatus(ctx *actions.Context) error {
 			c.Name, "xray-"+c.Protocol, "core", fmt.Sprintf("%d/%s", c.Port, c.Proto), status))
 	}
 	if len(cfg.Tunnels) == 0 && len(cores) == 0 {
-		ctx.Output.Info("No tunnels configured. Run 'slipgate tunnel add' to create one.")
+		ctx.Output.Info("No tunnels configured. Run 'rovunet tunnel add' to create one.")
 	}
 	return nil
 }

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/anonvector/slipgate/internal/coreplan"
+	"github.com/msVPNco/rovunet-panel/internal/coreplan"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"

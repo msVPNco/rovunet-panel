@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/clientcfg"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
 )
 
 // serverAddressAsked records that this run already asked for the server's
@@ -47,7 +47,7 @@ func ensureServerAddress(cfg *config.Config, out actions.OutputWriter, tunnels [
 			}
 		}
 	}
-	out.Warning(fmt.Sprintf("StunTLS, SSH and SOCKS5 configs use the private IP %s. Set the public one with: sudo slipgate config address <ip>", addr))
+	out.Warning(fmt.Sprintf("StunTLS, SSH and SOCKS5 configs use the private IP %s. Set the public one with: sudo rovunet config address <ip>", addr))
 }
 
 // setPublicAddress validates and saves the address client configs use;
@@ -101,6 +101,6 @@ func handleConfigAddress(ctx *actions.Context) error {
 	} else {
 		out.Warning(fmt.Sprintf("Client configs now use the detected private IP %s, which clients can't reach", now))
 	}
-	out.Info("Configs handed out before keep the old address; show the new ones with: sudo slipgate users configs")
+	out.Info("Configs handed out before keep the old address; show the new ones with: sudo rovunet users configs")
 	return nil
 }

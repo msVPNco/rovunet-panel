@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/keys"
 	"github.com/getlantern/soar"
+	"github.com/msVPNco/rovunet-panel/internal/keys"
 )
 
 // startEcho runs a TCP echo server on loopback and returns its address.

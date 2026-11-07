@@ -6,11 +6,11 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/keys"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/keys"
 )
 
-// VLESSUserUUID returns the VLESS UUID of a SlipGate user on a VLESS tunnel.
+// VLESSUserUUID returns the VLESS UUID of a Rovunet user on a VLESS tunnel.
 // It is derived from the user's credentials and the tunnel's secret, the same
 // way the server checks it, so it changes when the password does.
 func VLESSUserUUID(tunnel *config.TunnelConfig, username, password string) (string, error) {
@@ -18,7 +18,7 @@ func VLESSUserUUID(tunnel *config.TunnelConfig, username, password string) (stri
 		return "", fmt.Errorf("vless config is nil")
 	}
 	if username == "" {
-		return "", fmt.Errorf("vless configs are per user: choose a user (create one with: slipgate users add)")
+		return "", fmt.Errorf("vless configs are per user: choose a user (create one with: rovunet users add)")
 	}
 	secret, err := keys.LoadVLESSSecret(tunnel.VLESS.SecretFile)
 	if err != nil {

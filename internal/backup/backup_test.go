@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/keys"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/keys"
 )
 
 // testServer builds a tunnel directory tree and a config like a real server's.
@@ -171,7 +171,7 @@ func TestDecodeToleratesCopyPaste(t *testing.T) {
 
 	lines := strings.Split(strings.TrimSpace(text), "\n")
 	var mangled strings.Builder
-	mangled.WriteString("root@old:~# slipgate backup\nsome output\n")
+	mangled.WriteString("root@old:~# rovunet backup\nsome output\n")
 	for _, l := range lines {
 		mangled.WriteString("    " + l + "  \r\n") // indented, CRLF, trailing spaces
 	}

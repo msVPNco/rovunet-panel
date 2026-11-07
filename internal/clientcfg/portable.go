@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 )
 
 // GeneratePortableURI uses a standard link where the installed app engine can

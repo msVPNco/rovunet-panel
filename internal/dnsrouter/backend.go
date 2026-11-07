@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/network"
+	"github.com/msVPNco/rovunet-panel/internal/network"
 )
 
 const (

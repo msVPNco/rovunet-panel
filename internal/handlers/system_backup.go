@@ -12,20 +12,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/backup"
-	"github.com/anonvector/slipgate/internal/binary"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/coreinstall"
-	"github.com/anonvector/slipgate/internal/dnsrouter"
-	"github.com/anonvector/slipgate/internal/network"
-	"github.com/anonvector/slipgate/internal/prompt"
-	"github.com/anonvector/slipgate/internal/proxy"
-	"github.com/anonvector/slipgate/internal/service"
-	"github.com/anonvector/slipgate/internal/system"
-	"github.com/anonvector/slipgate/internal/transport"
-	"github.com/anonvector/slipgate/internal/version"
-	"github.com/anonvector/slipgate/internal/warp"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/backup"
+	"github.com/msVPNco/rovunet-panel/internal/binary"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
+	"github.com/msVPNco/rovunet-panel/internal/dnsrouter"
+	"github.com/msVPNco/rovunet-panel/internal/network"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/proxy"
+	"github.com/msVPNco/rovunet-panel/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/system"
+	"github.com/msVPNco/rovunet-panel/internal/transport"
+	"github.com/msVPNco/rovunet-panel/internal/version"
+	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
 
 func handleSystemBackup(ctx *actions.Context) error {
@@ -34,7 +34,7 @@ func handleSystemBackup(ctx *actions.Context) error {
 	dest := ctx.GetArg("file")
 
 	if _, err := os.Stat(config.DefaultConfigFile); err != nil {
-		return actions.NewError(actions.SystemBackup, "no slipgate configuration on this server", err)
+		return actions.NewError(actions.SystemBackup, "no rovunet configuration on this server", err)
 	}
 	text, skipped, err := encodeBackup(cfg)
 	if err != nil {
@@ -45,7 +45,7 @@ func handleSystemBackup(ctx *actions.Context) error {
 	}
 
 	// "-" writes nothing but the backup to stdout, for piping:
-	//   ssh old-server slipgate backup - | ssh new-server slipgate restore -
+	//   ssh old-server rovunet backup - | ssh new-server rovunet restore -
 	if dest == "-" {
 		fmt.Print(text)
 		return nil
@@ -60,7 +60,7 @@ func handleSystemBackup(ctx *actions.Context) error {
 			return err
 		}
 		if how == "file" {
-			if dest, err = prompt.String("File", defaultBackupPath("slipgate-backup")); err != nil {
+			if dest, err = prompt.String("File", defaultBackupPath("rovunet-backup")); err != nil {
 				return err
 			}
 		}
@@ -72,13 +72,13 @@ func handleSystemBackup(ctx *actions.Context) error {
 		out.Print(strings.TrimSuffix(text, "\n"))
 		out.Print("")
 		out.Success("Backup of " + summary + " printed above")
-		out.Info("Copy everything from the BEGIN line to the END line, then run 'slipgate restore' on the new server and paste it")
+		out.Info("Copy everything from the BEGIN line to the END line, then run 'rovunet restore' on the new server and paste it")
 	} else {
 		if err := writePrivateFile(dest, text); err != nil {
 			return actions.NewError(actions.SystemBackup, "failed to write backup", err)
 		}
 		out.Success(fmt.Sprintf("Backup of %s saved to %s", summary, dest))
-		out.Info(fmt.Sprintf("Copy it to the new server and run: slipgate restore %s", dest))
+		out.Info(fmt.Sprintf("Copy it to the new server and run: rovunet restore %s", dest))
 	}
 	out.Warning("The backup contains every private key and user password. Anyone who has it can run your tunnels and log in as your users, so keep it private.")
 	return nil
@@ -87,7 +87,7 @@ func handleSystemBackup(ctx *actions.Context) error {
 func handleSystemRestore(ctx *actions.Context) error {
 	out := ctx.Output
 	if runtime.GOOS != "linux" {
-		return actions.NewError(actions.SystemRestore, "slipgate only supports Linux servers", nil)
+		return actions.NewError(actions.SystemRestore, "rovunet only supports Linux servers", nil)
 	}
 
 	text, err := readBackupText(ctx.GetArg("file"), out)
@@ -104,7 +104,7 @@ func handleSystemRestore(ctx *actions.Context) error {
 	}
 
 	out.Print("")
-	out.Print(fmt.Sprintf("  Backup from %s (slipgate %s)", b.Created.Local().Format("2006-01-02 15:04"), b.Version))
+	out.Print(fmt.Sprintf("  Backup from %s (rovunet %s)", b.Created.Local().Format("2006-01-02 15:04"), b.Version))
 	for _, t := range incoming.Tunnels {
 		out.Print(fmt.Sprintf("    %-20s %-14s %s", t.Tag, t.Transport, t.Domain))
 	}
@@ -142,7 +142,7 @@ func handleSystemRestore(ctx *actions.Context) error {
 	}
 
 	if replacing {
-		path := defaultBackupPath("slipgate-pre-restore")
+		path := defaultBackupPath("rovunet-pre-restore")
 		text, _, err := encodeBackup(current)
 		if err == nil {
 			err = writePrivateFile(path, text)
@@ -227,7 +227,7 @@ func handleSystemRestore(ctx *actions.Context) error {
 	}
 
 	// Also when the backup needs none: an existing proxy must drop the old users.
-	if needsSOCKS(cfg) || service.Exists("slipgate-socks5") {
+	if needsSOCKS(cfg) || service.Exists("rovunet-socks5") {
 		network.FreePort(1080, "tcp")
 		if err := setupSOCKS(cfg); err != nil {
 			out.Warning("Failed to set up SOCKS5 proxy: " + err.Error())
@@ -247,7 +247,7 @@ func handleSystemRestore(ctx *actions.Context) error {
 		} else {
 			out.Success("DNS router started on port 53")
 		}
-	} else if service.Exists("slipgate-dnsrouter") {
+	} else if service.Exists("rovunet-dnsrouter") {
 		_ = dnsrouter.RestartRouterService()
 	}
 
@@ -270,7 +270,7 @@ func handleSystemRestore(ctx *actions.Context) error {
 		}
 	}
 	if cfg.PublicAddress != "" {
-		out.Info(fmt.Sprintf("Client configs use the backup's public address %s. If this server's differs, change it with: sudo slipgate config address", cfg.PublicAddress))
+		out.Info(fmt.Sprintf("Client configs use the backup's public address %s. If this server's differs, change it with: sudo rovunet config address", cfg.PublicAddress))
 	}
 	return nil
 }
@@ -306,7 +306,7 @@ func readBackupText(arg string, out actions.OutputWriter) (string, error) {
 		}
 		if how == "text" {
 			out.Info("Paste the backup, from the BEGIN line to the END line:")
-			return prompt.Lines(backup.EndMarker)
+			return prompt.Lines(backup.EndMarker, backup.LegacyEndMarker)
 		}
 		if arg, err = prompt.String("Backup file", ""); err != nil {
 			return "", err
@@ -344,7 +344,7 @@ func clearSetup(current, incoming *config.Config, out actions.OutputWriter) {
 }
 
 // restoreUsers creates cfg's users as SSH accounts. A name taken by an
-// account slipgate didn't create (e.g. "ubuntu") is skipped and dropped from
+// account rovunet didn't create (e.g. "ubuntu") is skipped and dropped from
 // cfg: a restore must never change another account's password.
 func restoreUsers(cfg *config.Config, out actions.OutputWriter) {
 	kept := cfg.Users[:0]

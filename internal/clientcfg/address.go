@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 )
 
 // ServerAddress returns the address client configs use to reach this

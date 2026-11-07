@@ -11,14 +11,14 @@
 # Notes:
 #   - Shows public resolver IPs (1.1.1.1, 8.8.8.8, ...), not end-user IPs.
 #     This is a property of DNS tunneling, not a limitation of this script.
-#   - Excludes 127.0.0.0/8 (slipgate-dnsrouter -> local tunnel backends).
+#   - Excludes 127.0.0.0/8 (rovunet-dnsrouter -> local tunnel backends).
 #   - Requires tcpdump. Reverse-DNS lookups use `dig` or `host` if available.
 
 set -eu
 
 IFACE="${IFACE:-any}"
 FILTER='udp dst port 53 and not src net 127.0.0.0/8'
-DEFAULT_LOG="/var/log/slipgate-dns-clients.log"
+DEFAULT_LOG="/var/log/rovunet-dns-clients.log"
 
 need_root() {
     if [ "$(id -u)" -ne 0 ]; then

@@ -3,18 +3,18 @@ package handlers
 import (
 	"os"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/prompt"
-	"github.com/anonvector/slipgate/internal/service"
-	"github.com/anonvector/slipgate/internal/system"
-	"github.com/anonvector/slipgate/internal/warp"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/system"
+	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
 
 func handleSystemUninstall(ctx *actions.Context) error {
 	out := ctx.Output
 
-	ok, err := prompt.Confirm("This will remove ALL tunnels, services, configs, and the slipgate user. Continue?")
+	ok, err := prompt.Confirm("This will remove ALL tunnels, services, configs, and the rovunet user. Continue?")
 	if err != nil {
 		return err
 	}
@@ -23,16 +23,16 @@ func handleSystemUninstall(ctx *actions.Context) error {
 		return nil
 	}
 
-	// Stop and remove ALL slipgate services (config + any orphaned ones)
-	for _, svcName := range service.ListSlipgateServices() {
+	// Stop and remove ALL rovunet services (config + any orphaned ones)
+	for _, svcName := range service.ListRovunetServices() {
 		out.Info("Stopping " + svcName + "...")
 		_ = service.Stop(svcName)
 		_ = service.Remove(svcName)
 	}
 
 	// Also clean up legacy microsocks service
-	_ = service.Stop("slipgate-microsocks")
-	_ = service.Remove("slipgate-microsocks")
+	_ = service.Stop("rovunet-microsocks")
+	_ = service.Remove("rovunet-microsocks")
 
 	// Clean up dnstm if present
 	_, _ = offerDnstmCleanup(out, actions.SystemUninstall)
@@ -43,7 +43,7 @@ func handleSystemUninstall(ctx *actions.Context) error {
 	warp.RemoveUsers()
 
 	// Remove config directory
-	out.Info("Removing /etc/slipgate/...")
+	out.Info("Removing /etc/rovunet/...")
 	if err := os.RemoveAll(config.DefaultConfigDir); err != nil {
 		out.Warning("Failed to remove config dir: " + err.Error())
 	}
@@ -63,7 +63,7 @@ func handleSystemUninstall(ctx *actions.Context) error {
 		os.Remove(config.DefaultBinDir + "/" + bin)
 	}
 
-	// Remove slipgate binary last
+	// Remove rovunet binary last
 	if execPath != "" {
 		os.Remove(execPath)
 	}

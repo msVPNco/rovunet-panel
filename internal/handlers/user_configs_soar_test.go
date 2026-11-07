@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"github.com/anonvector/slipgate/internal/keys"
+	"github.com/msVPNco/rovunet-panel/internal/keys"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/anonvector/slipgate/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 )
 
 func TestUserConfigsIncludeSoarDirect(t *testing.T) {

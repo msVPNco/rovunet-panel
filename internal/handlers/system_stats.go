@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/service"
-	"github.com/anonvector/slipgate/internal/version"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/version"
 	"golang.org/x/term"
 )
 
@@ -272,8 +272,8 @@ func drawDashboard(cpuH, ramH, rxH, txH []float64,
 	b.WriteString(fmt.Sprintf("  %s────────────────────────────────────────────────────────────%s\r\n",
 		cDivider, cReset))
 	for _, svc := range []struct{ name, label string }{
-		{"slipgate-dnsrouter", "DNS Router"},
-		{"slipgate-socks5", "SOCKS5 Proxy"},
+		{"rovunet-dnsrouter", "DNS Router"},
+		{"rovunet-socks5", "SOCKS5 Proxy"},
 	} {
 		if service.Exists(svc.name) {
 			status, _ := service.Status(svc.name)

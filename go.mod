@@ -1,4 +1,4 @@
-module github.com/anonvector/slipgate
+module github.com/msVPNco/rovunet-panel
 
 go 1.25.0
 

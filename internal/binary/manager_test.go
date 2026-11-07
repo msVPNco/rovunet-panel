@@ -65,11 +65,11 @@ func sumsServer(t *testing.T, assetName, content string, wrongDigest bool) *http
 }
 
 // TestDownloadVerifiesChecksum is the regression test for binary downloads
-// (this project's own slipgate binary, used for self-update) installing
+// (this project's own rovunet binary, used for self-update) installing
 // without any checksum verification despite SHA256SUMS being published
 // alongside every release.
 func TestDownloadVerifiesChecksum(t *testing.T) {
-	const asset = "slipgate-linux-amd64"
+	const asset = "rovunet-linux-amd64"
 	const content = "fake binary content"
 	srv := sumsServer(t, asset, content, false)
 	defer srv.Close()
@@ -95,7 +95,7 @@ func TestDownloadVerifiesChecksum(t *testing.T) {
 // warning — the whole point is that Download never hands back an
 // unverified binary.
 func TestDownloadRejectsChecksumMismatch(t *testing.T) {
-	const asset = "slipgate-linux-amd64"
+	const asset = "rovunet-linux-amd64"
 	srv := sumsServer(t, asset, "fake binary content", true)
 	defer srv.Close()
 
@@ -116,7 +116,7 @@ func TestDownloadRejectsChecksumMismatch(t *testing.T) {
 // SHA256SUMS itself can't be fetched, rather than skipping verification.
 func TestDownloadRejectsMissingSHA256Sums(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/slipgate-linux-amd64" {
+		if r.URL.Path == "/rovunet-linux-amd64" {
 			io.WriteString(w, "fake binary content")
 			return
 		}
@@ -125,7 +125,7 @@ func TestDownloadRejectsMissingSHA256Sums(t *testing.T) {
 	defer srv.Close()
 
 	destDir := t.TempDir()
-	if _, err := Download(srv.URL+"/slipgate-linux-amd64", destDir); err == nil {
+	if _, err := Download(srv.URL+"/rovunet-linux-amd64", destDir); err == nil {
 		t.Fatal("expected Download to fail when SHA256SUMS is unavailable, got no error")
 	}
 }

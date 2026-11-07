@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anonvector/slipgate/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 )
 
 const testSoarKey = "tCd7Qm7FolQBkQfQUWLVrLBktDMirri+SlUaAHT1gxM="

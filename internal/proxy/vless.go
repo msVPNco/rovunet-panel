@@ -21,8 +21,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/keys"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/keys"
 )
 
 // VLESS over WebSocket server.
@@ -78,7 +78,7 @@ type VLESSOptions struct {
 	CertFile   string // TLS certificate; empty serves plain HTTP (e.g. behind a CDN on port 80)
 	KeyFile    string
 	SecretFile string // secret that turns user credentials into VLESS UUIDs
-	UsersFile  string // slipgate config.json holding the users
+	UsersFile  string // rovunet config.json holding the users
 	BlockPorts []int  // destination ports refused for every user
 
 	// AllowPrivate lets streams reach loopback, private and other

@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/certs"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/keys"
+	"github.com/msVPNco/rovunet-panel/internal/certs"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/keys"
 )
 
 const testWSPath = "/t3st-path"

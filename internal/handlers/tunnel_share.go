@@ -3,10 +3,10 @@ package handlers
 import (
 	"fmt"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/clientcfg"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
 )
 
 func handleTunnelShare(ctx *actions.Context) error {
@@ -20,7 +20,7 @@ func handleTunnelShare(ctx *actions.Context) error {
 	tunnel := cfg.GetTunnel(tag)
 	if tunnel == nil {
 		return actions.NewErrorWithHint(actions.TunnelShare, "tunnel not found",
-			"Run 'slipgate tunnel status' to see available tunnels", nil)
+			"Run 'rovunet tunnel status' to see available tunnels", nil)
 	}
 
 	// Direct-backend Soar has no login: one config serves everyone

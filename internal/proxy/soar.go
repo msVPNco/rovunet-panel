@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/keys"
-	"github.com/anonvector/slipgate/internal/network"
 	"github.com/getlantern/soar"
+	"github.com/msVPNco/rovunet-panel/internal/keys"
+	"github.com/msVPNco/rovunet-panel/internal/network"
 )
 
 // soarMaxBytesPerPrefix raises soar's per-/24 answer rate limit. Every query

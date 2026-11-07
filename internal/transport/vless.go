@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
 // createVLESSService runs the built-in VLESS over WebSocket server.
@@ -46,7 +46,7 @@ func buildVLESSExecStart(tunnel *config.TunnelConfig, cfg *config.Config) (strin
 		return "", err
 	}
 
-	// slipgate binary itself serves VLESS — no external binary needed
+	// rovunet binary itself serves VLESS — no external binary needed
 	execPath, err := os.Executable()
 	if err != nil {
 		return "", fmt.Errorf("resolve executable: %w", err)

@@ -3,12 +3,12 @@ package handlers
 import (
 	"fmt"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/prompt"
-	"github.com/anonvector/slipgate/internal/proxy"
-	"github.com/anonvector/slipgate/internal/transport"
-	"github.com/anonvector/slipgate/internal/warp"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/proxy"
+	"github.com/msVPNco/rovunet-panel/internal/transport"
+	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
 
 func handleWarp(ctx *actions.Context) error {

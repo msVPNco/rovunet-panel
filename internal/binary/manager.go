@@ -16,15 +16,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/version"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/version"
 )
 
 var httpClient = &http.Client{Timeout: 120 * time.Second}
 
-// The slipgate binary comes from version.Repo's releases; the transport
+// The rovunet binary comes from version.Repo's releases; the transport
 // binaries from upstream SlipGate's, which builds them. A fork therefore only
-// has to publish slipgate itself.
+// has to publish rovunet itself.
 var (
 	releaseBaseURL     = "https://github.com/" + version.Repo + "/releases"
 	stableDownloadBase = releaseBaseURL + "/latest/download"
@@ -37,7 +37,7 @@ const transportDownloadBase = "https://github.com/" + version.UpstreamRepo + "/r
 // directory instead of downloading. Used for SCP/offline installs.
 var OfflineDir string
 
-// DownloadBase returns the base URL for slipgate binary downloads.
+// DownloadBase returns the base URL for rovunet binary downloads.
 // Dev builds prefer the latest dev release; if none exists, fall back
 // to the latest stable release. Production builds always use stable.
 func DownloadBase() string {
@@ -99,7 +99,7 @@ func binaryURLTemplates() map[string]string {
 // EnsureInstalled checks if a binary exists. If not, copies from OfflineDir
 // (if set) or downloads from GitHub releases.
 //
-// Unlike Download (used for this project's own slipgate binary), this does
+// Unlike Download (used for this project's own rovunet binary), this does
 // not verify a checksum: these binaries come from upstream SlipGate's
 // releases, which are not confirmed to publish a SHA256SUMS file in a
 // known format, and failing to verify against a hash that may not exist is
@@ -209,7 +209,7 @@ func CheckUpdate() (newVersion string, downloadURL string, err error) {
 	}
 
 	// Find matching asset
-	target := fmt.Sprintf("slipgate-%s-%s", runtime.GOOS, runtime.GOARCH)
+	target := fmt.Sprintf("rovunet-%s-%s", runtime.GOOS, runtime.GOARCH)
 	for _, asset := range release.Assets {
 		if strings.Contains(asset.Name, target) {
 			return release.TagName, asset.BrowserDownloadURL, nil
@@ -232,7 +232,7 @@ func CheckUpdate() (newVersion string, downloadURL string, err error) {
 // or has no entry matching url's checksum, Download returns an error and
 // removes the temp file rather than handing back an unverified binary.
 func Download(url, destDir string) (string, error) {
-	tmp, err := os.CreateTemp(destDir, "slipgate-update-*")
+	tmp, err := os.CreateTemp(destDir, "rovunet-update-*")
 	if err != nil {
 		return "", err
 	}

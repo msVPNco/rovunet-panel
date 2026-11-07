@@ -3,11 +3,11 @@ package dnsrouter
 import (
 	"os"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
-const serviceName = "slipgate-dnsrouter"
+const serviceName = "rovunet-dnsrouter"
 
 // CreateRouterService creates and enables the systemd service for the DNS router.
 func CreateRouterService() error {

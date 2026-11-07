@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/prompt"
-	"github.com/anonvector/slipgate/internal/router"
-	"github.com/anonvector/slipgate/internal/service"
-	"github.com/anonvector/slipgate/internal/transport"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/router"
+	"github.com/msVPNco/rovunet-panel/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/transport"
 )
 
 func handleTunnelRemove(ctx *actions.Context) error {

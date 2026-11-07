@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/anonvector/slipgate/internal/proxy"
+	"github.com/msVPNco/rovunet-panel/internal/proxy"
 	"github.com/spf13/cobra"
 )
 

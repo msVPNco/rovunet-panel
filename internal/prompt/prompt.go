@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
 )
 
 // String asks for a string value with line editing support.
@@ -34,7 +34,7 @@ func String(label, defaultVal string) (string, error) {
 // Lines reads pasted multi-line text from the terminal up to and including
 // the first line that contains end, or until EOF (Ctrl-D). Unlike String it
 // leaves the terminal in line mode, so a long paste isn't redrawn key by key.
-func Lines(end string) (string, error) {
+func Lines(ends ...string) (string, error) {
 	var in io.Reader = os.Stdin
 	if tty, err := os.Open("/dev/tty"); err == nil {
 		defer tty.Close()
@@ -45,8 +45,13 @@ func Lines(end string) (string, error) {
 	for {
 		line, err := r.ReadString('\n')
 		text.WriteString(line)
-		if strings.Contains(line, end) || err == io.EOF {
+		if err == io.EOF {
 			return text.String(), nil
+		}
+		for _, end := range ends {
+			if strings.Contains(line, end) {
+				return text.String(), nil
+			}
 		}
 		if err != nil {
 			return "", err
