@@ -15,6 +15,7 @@ Rovunet Panel 将一台 Linux 服务器变成多协议接入服务器。它把�
 | 5 | [运维](operations.md) | 更新、备份与恢复、监控、WARP、文件与服务、卸载 |
 | 6 | [命令参考](commands.md) | 所有命令及其选项 |
 | 7 | [故障排查](troubleshooting.md) | 现象、原因与解决方法 |
+| 8 | [流量限额与订阅链接](limits-and-subscriptions.md) | 不限量与限量用户、订阅链接、额外地址 |
 
 ## 约定
 

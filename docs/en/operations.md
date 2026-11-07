@@ -30,7 +30,7 @@ sudo rovunet post-update
 
 ## Backup and restore
 
-A backup holds everything needed to run the setup elsewhere: the configuration, every tunnel's private keys and certificates, all users and their passwords, and the Xray cores. Restored on another server, the same tunnels come back with the same keys, so clients keep working without new links.
+A backup holds everything needed to run the setup elsewhere: the configuration, every tunnel's private keys and certificates, all users and their passwords, and the Xray cores. Restored on another server, the same tunnels come back with the same keys, so clients keep working without new links. It also holds each user's traffic used so far, so restoring does not give limited users their quota again.
 
 ```bash
 sudo rovunet backup                      # asks: save to a file, or print text to copy

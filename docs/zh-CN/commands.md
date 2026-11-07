@@ -25,7 +25,9 @@
 | 命令 | 说明 |
 |---|---|
 | `rovunet users` | 用户菜单 |
-| `rovunet users add` | 添加用户 |
+| `rovunet users add` | 添加用户（询问不限量或限量，再问天数和 GB） |
+| `rovunet users renew` | 恢复已停用（到期或超额）的用户，已用流量清零 |
+| `rovunet expire-users` | 停用到期或超额的用户并刷新订阅链接（由定时器每 5 分钟运行） |
 | `rovunet users bulk_add --count N --prefix P` | 以随机密码添加最多 500 个用户 |
 | `rovunet users remove` | 删除用户 |
 | `rovunet users list` | 用户及其配置 |
@@ -92,7 +94,7 @@
 |---|---|
 | `rovunet config export` | 输出不含密钥的 `config.json` |
 | `rovunet config import PATH` | 替换 `config.json`（不含密钥） |
-| `rovunet config address IP \| auto` | SSH、SOCKS5 和 SSH over TLS 配置使用的公网地址 |
+| `rovunet config address IP \| auto` | SSH、SOCKS5 和 SSH over TLS 配置使用的公网地址；逗号后可添加本服务器的其他地址，如 `auto,198.51.100.9` |
 
 ## 内部命令
 

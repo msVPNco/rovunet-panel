@@ -16,7 +16,7 @@
 
 ## کارهای پیش از استقرار گسترده
 
-- endpoint اشتراک HTTPS و شناسهٔ پایدار سرور/کاربر مستقل از IP و دامنه.
+- (انجام شد در پنل ۱.۱۳) endpoint اشتراک HTTPS برای هر کاربر؛ باقی مانده: شناسهٔ پایدار سرور/کاربر مستقل از IP و دامنه.
 - اتصال کانفیگ‌های هستهٔ Xray به مجموعهٔ همان کاربر (فعلاً هر دستگاه جدا و بدون گروه وارد اپ می‌شود).
 - آزمایش هسته‌های Xray و مهاجرت از نام قبلی روی سرور و دستگاه واقعی.
 - بررسی چندکاربره، منابع، مجوز مقصدهای سرویس‌ها و بازیابی پس از خطا.
@@ -29,4 +29,4 @@
 
 ## English
 
-For the current app version, read the [app status](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md); this document does not repeat it so it cannot drift again. Public releases from alpha14 onward share one managed production signer (explicitly authorized before user deployment) and install over each other without uninstalling. It is a fresh install relative to the historical alpha11 signer; subsequent direct APKs must reuse the pinned identity. Private candidates remain separate from public updates. Read the app's current status and migration notes. Native exports retain collection metadata; explicit connection does not require a ping, and HTTPS tests are separate. Client protocol support does not imply panel-managed deployment. Xray cores are installed and managed with `rovunet core-install`, and the app's CI imports the panel's real exports (all four core protocols, Soar, VLESS, v33 credentials). SOCKS/Soar field diagnosis, stable subscription identity, grouping core profiles into the user's collection, real-server and real-device testing, and multi-user resource/recovery checks remain necessary.
+For the current app version, read the [app status](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md); this document does not repeat it so it cannot drift again. Public releases from alpha14 onward share one managed production signer (explicitly authorized before user deployment) and install over each other without uninstalling. It is a fresh install relative to the historical alpha11 signer; subsequent direct APKs must reuse the pinned identity. Private candidates remain separate from public updates. Read the app's current status and migration notes. Native exports retain collection metadata; explicit connection does not require a ping, and HTTPS tests are separate. Client protocol support does not imply panel-managed deployment. Xray cores are installed and managed with `rovunet core-install`, and the app's CI imports the panel's real exports (all four core protocols, Soar, VLESS, v33 credentials). SOCKS/Soar field diagnosis, a stable server/user identity independent of IP and domain (the per-user subscription link has existed since panel v1.13), grouping core profiles into the user's collection, real-server and real-device testing, and multi-user resource/recovery checks remain necessary.

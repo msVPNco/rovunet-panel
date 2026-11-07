@@ -15,6 +15,7 @@ Rovunet Panel turns a Linux server into a multi-protocol access server. It insta
 | 5 | [Operations](operations.md) | Updating, backup and restore, monitoring, WARP, files and services, uninstalling |
 | 6 | [Command reference](commands.md) | Every command and its options |
 | 7 | [Troubleshooting](troubleshooting.md) | Symptoms, causes and fixes |
+| 8 | [Limits and subscription links](limits-and-subscriptions.md) | Unlimited or limited users, subscription links, extra addresses |
 
 ## Conventions
 

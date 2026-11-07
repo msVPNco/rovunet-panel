@@ -40,7 +40,7 @@ sudo rovunet restore /root/rovunet-backup.txt
 ssh root@old rovunet backup - | ssh root@new rovunet restore - --yes   # server to server
 ```
 
-备份是位于 `-----BEGIN ROVUNET BACKUP-----` 与 `-----END ROVUNET BACKUP-----` 之间的一段文本，包含所有私钥和密码，请妥善保管。旧名称下创建的备份同样可以恢复。
+备份是位于 `-----BEGIN ROVUNET BACKUP-----` 与 `-----END ROVUNET BACKUP-----` 之间的一段文本，包含所有私钥和密码，请妥善保管。旧名称下创建的备份同样可以恢复。备份还包含每个用户已用的流量，因此恢复不会让限量用户重新获得额度。
 
 在新服务器上恢复：
 

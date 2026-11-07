@@ -25,7 +25,9 @@
 | Команда | Описание |
 |---|---|
 | `rovunet users` | Меню пользователей |
-| `rovunet users add` | Добавить пользователя |
+| `rovunet users add` | Добавить пользователя (спрашивает безлимит или лимит, затем дни и ГБ) |
+| `rovunet users renew` | Вернуть остановленного (истёк срок или квота) пользователя, расход обнуляется |
+| `rovunet expire-users` | Остановить пользователей с истёкшим сроком или квотой и обновить ссылки подписки (по таймеру каждые 5 минут) |
 | `rovunet users bulk_add --count N --prefix P` | Добавить до 500 пользователей со случайными паролями |
 | `rovunet users remove` | Удалить пользователя |
 | `rovunet users list` | Пользователи и их конфигурации |
@@ -92,7 +94,7 @@
 |---|---|
 | `rovunet config export` | Показать `config.json` без ключей |
 | `rovunet config import PATH` | Заменить `config.json` (без ключей) |
-| `rovunet config address IP \| auto` | Публичный адрес для конфигураций SSH, SOCKS5 и SSH over TLS |
+| `rovunet config address IP \| auto` | Публичный адрес для конфигураций SSH, SOCKS5 и SSH over TLS; после запятых можно добавить другие адреса этого сервера, например `auto,198.51.100.9` |
 
 ## Внутренние
 

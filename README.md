@@ -27,6 +27,9 @@ Rovunet Panel is an open-source tool that turns a Linux server into a multi-prot
 - **Port 443 fronting**: VLESS and SSH over TLS share NaïveProxy's domain, port and Let's Encrypt certificate behind a decoy website.
 - **Safe operations**: checksum-verified updates with rollback, validated configurations before deployment, full-server backup and restore.
 - **Diagnostics**: live dashboard, health checks, certificate expiry and per-service logs.
+- **Limits and subscription links**: unlimited or limited users (days and/or GB, enforced every 5 minutes), and one `https://…/sub/<token>.json` link per user that carries all their configurations for the app's Subscriptions menu.
+- **Several addresses for one server**: add the server's other IPs and the links carry each address-based configuration once per address, so one blocked IP does not cut users off.
+- **Automatic REALITY target**: the camouflage site is chosen from a bank of high-traffic sites that are rarely blocked.
 
 ## Protocols
 
@@ -75,6 +78,7 @@ Requirements: root access, a domain whose DNS you control, and open ports for th
 | [Getting started](docs/en/getting-started.md) | Requirements, DNS records, installation, first tunnel |
 | [Protocols](docs/en/protocols.md) | Every protocol, ports, domain layout, routing |
 | [Users and configurations](docs/en/users-and-configs.md) | Users, sharing, export formats, client apps |
+| [Limits and subscriptions](docs/en/limits-and-subscriptions.md) | Traffic and time limits, subscription links, extra addresses |
 | [Xray cores](docs/en/xray-cores.md) | VLESS + REALITY, VLESS + XHTTP, Hysteria 2, WireGuard |
 | [Operations](docs/en/operations.md) | Updating, backup and restore, monitoring, files and services |
 | [Command reference](docs/en/commands.md) | Every command and option |

@@ -27,6 +27,9 @@ Rovunet Panel 是一个开源工具，可将 Linux 服务器变成多协议接�
 - **443 端口前置**：VLESS 和 SSH over TLS 与 NaïveProxy 共用域名、端口和 Let's Encrypt 证书，隐藏在伪装网站之后。
 - **安全运维**：带校验和与回滚的更新、部署前验证配置、整机备份与恢复。
 - **诊断**：实时仪表盘、健康检查、证书到期提示和各服务日志。
+- **流量限额与订阅链接**：不限量或限量用户（天数和/或 GB，每 5 分钟检查），每个用户一条订阅链接，包含其全部配置，可导入应用的订阅菜单。
+- **同一服务器的多个地址**：添加服务器的其他 IP，链接会为每个地址各提供一份依赖地址的配置，单个 IP 被封不会让用户断线。
+- **REALITY 目标自动选择**：伪装站点从一批高流量、很少被封锁的网站中选取。
 
 ## 协议
 
@@ -75,6 +78,7 @@ sudo rovunet diag            # check services, ports, keys and DNS
 | [快速开始](docs/zh-CN/getting-started.md) | 要求、DNS 记录、安装、第一个隧道 |
 | [协议](docs/zh-CN/protocols.md) | 所有协议、端口、域名布局、路由 |
 | [用户与配置](docs/zh-CN/users-and-configs.md) | 用户、分享、导出格式、客户端应用 |
+| [限额与订阅](docs/zh-CN/limits-and-subscriptions.md) | 流量与时间限制、订阅链接、额外地址 |
 | [Xray 内核](docs/zh-CN/xray-cores.md) | VLESS + REALITY、VLESS + XHTTP、Hysteria 2、WireGuard |
 | [运维](docs/zh-CN/operations.md) | 更新、备份与恢复、监控、文件与服务 |
 | [命令参考](docs/zh-CN/commands.md) | 所有命令和选项 |
