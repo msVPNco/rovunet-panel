@@ -9,6 +9,7 @@ import (
 
 func init() {
 	var user, format string
+	var annotated bool
 	command := &cobra.Command{
 		Use: "export-clients", Short: "Export client links (contains credentials; keep output private)",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -39,7 +40,11 @@ func init() {
 						fmt.Fprintf(cmd.ErrOrStderr(), "%s: %v\n", t.Tag, err)
 						continue
 					}
-					fmt.Fprintln(cmd.OutOrStdout(), link)
+					if annotated {
+						fmt.Fprintf(cmd.OutOrStdout(), "%s (%s): %s\n", t.Tag, mode, link)
+					} else {
+						fmt.Fprintln(cmd.OutOrStdout(), link)
+					}
 					count++
 				}
 			}
@@ -51,6 +56,7 @@ func init() {
 	}
 	command.Flags().StringVar(&user, "user", "", "Existing managed username")
 	command.Flags().StringVar(&format, "format", "auto", "auto, standard, rovunet, veyra (compatibility), or legacy")
+	command.Flags().BoolVar(&annotated, "annotated", false, "Prefix each line with its tunnel tag and client mode, e.g. \"tag (dnstt): rovunet://...\". Leave off for scripts, which parse one bare link per line")
 	_ = command.MarkFlagRequired("user")
 	rootCmd.AddCommand(command)
 }
