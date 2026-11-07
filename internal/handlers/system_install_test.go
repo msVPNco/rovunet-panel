@@ -38,22 +38,23 @@ func configsTestTunnels() []config.TunnelConfig {
 	}
 }
 
-// TestPrintClientConfigs: tunnels with a login get one config per user,
-// direct Soar gets one for everyone.
+// TestPrintClientConfigs: every tunnel gets one config per user. Direct Soar
+// needs no login but is printed per user too, so the app puts it in that
+// user's group instead of a group of its own.
 func TestPrintClientConfigs(t *testing.T) {
 	cfg := &config.Config{
 		Backends: config.DefaultBackends(),
 		Users:    []config.UserConfig{{Username: "alice", Password: "a"}, {Username: "bob", Password: "b"}},
 	}
 	out := &printOutput{}
-	// soar-ssh and dnstt + noizdns for each of two users, plus direct Soar
-	if n := printClientConfigs(cfg, out, configsTestTunnels()); n != 7 {
-		t.Errorf("printed %d configs, want 7", n)
+	// direct Soar, soar-ssh and dnstt + noizdns for each of two users
+	if n := printClientConfigs(cfg, out, configsTestTunnels()); n != 8 {
+		t.Errorf("printed %d configs, want 8", n)
 	}
-	if n := out.count("rovunet://"); n != 7 {
-		t.Errorf("%d rovunet:// lines, want 7:\n%s", n, strings.Join(out.lines, "\n"))
+	if n := out.count("rovunet://"); n != 8 {
+		t.Errorf("%d rovunet:// lines, want 8:\n%s", n, strings.Join(out.lines, "\n"))
 	}
-	for _, label := range []string{"[soar] (no login)", "[soar-ssh] alice", "[soar-ssh] bob", "[dnstt] bob", "[noizdns] alice"} {
+	for _, label := range []string{"[soar] alice, no login needed", "[soar] bob, no login needed", "[soar-ssh] alice", "[soar-ssh] bob", "[dnstt] bob", "[noizdns] alice"} {
 		if out.count(label) != 1 {
 			t.Errorf("want one %q:\n%s", label, strings.Join(out.lines, "\n"))
 		}
