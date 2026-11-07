@@ -113,7 +113,7 @@ func vlessRoutes(cfg *config.Config, naiveTag string) []vlessRoute {
 func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vless []vlessRoute) string {
 	naiveCfg := tunnel.Naive
 
-	// No built-in default login: a well-known "rovunet:rovunet" credential
+	// No built-in default login: a well-known default credential (the upstream panel once had one)
 	// would let anyone use the proxy. Without any credential the proxy gets a
 	// random one, so it stays closed until a panel user exists.
 	auth := naiveAuthLines(naiveCfg.User, naiveCfg.Password, users)
