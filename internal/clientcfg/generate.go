@@ -234,13 +234,11 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 
 	// User credentials — always populate both SOCKS and SSH fields
 	// The user/password is shared across SOCKS and SSH in slipgate
-	username := opts.Username
-	password := opts.Password
-
-	if username == "" && backend != nil && backend.Type == config.BackendSOCKS && backend.SOCKS != nil {
-		username = backend.SOCKS.User
-		password = backend.SOCKS.Password
-	}
+	// The wire format joins fields with "|", so a raw "|" in a credential
+	// would shift every later field. Plain fields carry a stripped copy;
+	// v33 exports add the original values losslessly (see portable.go).
+	rawUser, rawPass := credentialsFor(tunnel, backend, opts)
+	username, password := stripFieldDelimiter(rawUser), stripFieldDelimiter(rawPass)
 
 	// SOCKS credentials (fields 12-13) — always set when we have a user
 	fields[FSOCKSUser] = username
@@ -266,7 +264,7 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 	// NaiveProxy requires naiveUsername/naivePassword (fields 29/30)
 	if tunnel.Transport == config.TransportNaive && username != "" {
 		fields[FNaiveUser] = username
-		fields[FNaivePass] = b64(password)
+		fields[FNaivePass] = b64(rawPass) // base64 has no "|"
 	}
 	if tunnel.Transport == config.TransportNaive && fields[FNaiveUser] == "" {
 		return "", fmt.Errorf("NaiveProxy needs a login: create a user with 'slipgate users add'")
@@ -296,4 +294,13 @@ func durationToSeconds(d string) string {
 		return "0"
 	}
 	return fmt.Sprintf("%d", int(dur.Seconds()))
+}
+
+// credentialsFor returns the unmodified login a tunnel's client config uses:
+// the requested user's, or the SOCKS backend's own when none was given.
+func credentialsFor(tunnel *config.TunnelConfig, backend *config.BackendConfig, opts URIOptions) (string, string) {
+	if opts.Username == "" && backend != nil && backend.Type == config.BackendSOCKS && backend.SOCKS != nil {
+		return backend.SOCKS.User, backend.SOCKS.Password
+	}
+	return opts.Username, opts.Password
 }
