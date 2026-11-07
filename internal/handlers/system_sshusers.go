@@ -425,11 +425,26 @@ func nextUsernameIndex(cfg *config.Config, prefix string) int {
 func showUserConfigs(cfg *config.Config, username, password string, out actions.OutputWriter) {
 	printUserConfigs(cfg, username, password, out)
 	if u := cfg.GetUser(username); u != nil {
-		if link := SubscriptionURL(cfg, *u); link != "" {
-			out.Print("  Subscription link (all of the above, for the app's Subscriptions menu):")
-			out.Print("  " + link)
-			out.Print("")
+		printSubscriptionLink(cfg, *u, out)
+	}
+}
+
+// printSubscriptionLink prints a user's subscription link, if the user has
+// one. Users made before links existed get theirs written first.
+func printSubscriptionLink(cfg *config.Config, u config.UserConfig, out actions.OutputWriter) {
+	if u.Username == "" {
+		return
+	}
+	if u.SubToken == "" {
+		_ = WriteSubscriptions(cfg, discardOutput{}) // mints missing tokens
+		if cu := cfg.GetUser(u.Username); cu != nil {
+			u = *cu
 		}
+	}
+	if link := SubscriptionURL(cfg, u); link != "" {
+		out.Print("  Subscription link (all configs of " + u.Username + ", for the app's Subscriptions menu):")
+		out.Print("  " + link)
+		out.Print("")
 	}
 }
 

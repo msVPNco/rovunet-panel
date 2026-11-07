@@ -1035,6 +1035,7 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 			}
 		}
 		printed += flushCores(1 << 30)
+		printSubscriptionLink(cfg, u, out)
 	}
 	noteHidden(out, hidden)
 	return printed + printSoarLinks(cfg, out, tunnels)
