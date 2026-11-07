@@ -25,6 +25,12 @@ func init() {
 			for _, name := range gone {
 				fmt.Printf("Retired user %s\n", name)
 			}
+			// A limited user's feed depends on which cores answer; refresh the
+			// feeds each run (it writes only what changed), so a core that came
+			// up after an update is added without waiting for a user change.
+			if werr := handlers.WriteSubscriptions(cfg, out); werr != nil {
+				fmt.Fprintln(cmd.ErrOrStderr(), "subscription files:", werr)
+			}
 			return err
 		},
 	})
