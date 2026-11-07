@@ -2,6 +2,10 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.15.2
+
+- **A traffic-limited user's subscription is refreshed every 5 minutes.** Their feed includes a REALITY or XHTTP config only while that core's statistics answer. Right after an update the cores are still restarting, so the feed written at that moment could miss them and stay that way until the next user change. The limits timer now rewrites the feeds on each run (only files whose content changed are touched), so the missing configs appear within 5 minutes. This was seen on a renewed user whose configs did not grow after the update.
+
 ## v1.15.1
 
 - **`rovunet diag` no longer lists the limits timer as an orphaned service** (v1.14.0 added `rovunet-user-expiry` and `diag` did not know it).
