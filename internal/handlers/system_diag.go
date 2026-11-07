@@ -158,7 +158,9 @@ func handleSystemDiag(ctx *actions.Context) error {
 			}
 		case config.TransportStunTLS:
 			// A fronted tunnel rides the NaiveProxy Caddy and has no port of its own.
-			if sc := t.StunTLS; sc != nil && !sc.Fronted() && sc.Port > 0 {
+			if sc := t.StunTLS; sc != nil && sc.Fronted() {
+				out.Info(fmt.Sprintf("%-40s %s", fmt.Sprintf("[%s] port", tag), fmt.Sprintf("none of its own (carried by %s)", sc.Front)))
+			} else if sc != nil && sc.Port > 0 {
 				portOK := isPortListening(sc.Port, "tcp")
 				check(fmt.Sprintf("[%s] port %d/tcp", tag, sc.Port), portOK,
 					boolStr(portOK, "listening"+portOwnerNote(sc.Port, "tcp"), "not listening"))
@@ -172,7 +174,7 @@ func handleSystemDiag(ctx *actions.Context) error {
 				}
 				portOK := isPortListening(v.Port, "tcp")
 				check(fmt.Sprintf("[%s] port %d/tcp", tag, v.Port), portOK,
-					boolStr(portOK, "listening", "not listening"))
+					boolStr(portOK, "listening"+portOwnerNote(v.Port, "tcp"), "not listening"))
 			}
 		}
 
@@ -219,7 +221,7 @@ func handleSystemDiag(ctx *actions.Context) error {
 
 		port53OK := isPortListening(53, "udp")
 		check("Port 53/udp", port53OK,
-			boolStr(port53OK, "listening", "not listening — DNS tunnels unreachable"))
+			boolStr(port53OK, "listening"+portOwnerNote(53, "udp"), "not listening — DNS tunnels unreachable"))
 	}
 
 	// SOCKS5 proxy
@@ -235,7 +237,7 @@ func handleSystemDiag(ctx *actions.Context) error {
 
 		port1080OK := isPortListening(1080, "tcp")
 		check("Port 1080/tcp", port1080OK,
-			boolStr(port1080OK, "listening", "not listening"))
+			boolStr(port1080OK, "listening"+portOwnerNote(1080, "tcp"), "not listening"))
 	}
 
 	// WARP
@@ -591,7 +593,32 @@ func portOwnerNote(port int, proto string) string {
 	if err != nil {
 		return ""
 	}
-	return ownerFromSS(string(out))
+	name := ownerFromSS(string(out))
+	// ss shows the kernel's 15-character process name ("slipstream-serv");
+	// the executable's own name is complete.
+	if pid := pidFromSS(string(out)); pid > 0 && name != "" {
+		if exe, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid)); err == nil {
+			if base := filepath.Base(strings.TrimSuffix(exe, " (deleted)")); base != "" && base != "." && base != "/" {
+				return " (" + base + ")"
+			}
+		}
+	}
+	return name
+}
+
+// pidFromSS extracts the first pid from `ss -p` output, or 0.
+func pidFromSS(out string) int {
+	i := strings.Index(out, "pid=")
+	if i < 0 {
+		return 0
+	}
+	rest := out[i+4:]
+	j := 0
+	for j < len(rest) && rest[j] >= '0' && rest[j] <= '9' {
+		j++
+	}
+	n, _ := strconv.Atoi(rest[:j])
+	return n
 }
 
 // ownerFromSS extracts the first process name from `ss -p` output.

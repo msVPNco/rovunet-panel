@@ -2,6 +2,11 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.11.3
+
+- **`rovunet diag` names the process on every listening port**, including VLESS (2053), the DNS router (53) and SOCKS5 (1080), which v1.11.2 had left out. Names are no longer cut at 15 characters (`slipstream-serv` is now `slipstream-server`).
+- **A TLS-SSH tunnel carried by NaïveProxy now says so** (`none of its own (carried by <tag>)`) instead of showing no port line.
+
 ## v1.11.2
 
 - **`rovunet diag` checks the NaïveProxy and TLS-SSH ports.** Until now a Caddy that was running but held no port still showed green. A TLS-SSH tunnel carried by NaïveProxy has no port of its own and is skipped.
