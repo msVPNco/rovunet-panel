@@ -89,8 +89,17 @@ func TestHandleVerifyClampsOversizedEDNS0PayloadSize(t *testing.T) {
 	if resp == nil {
 		t.Fatal("expected a response to be sent")
 	}
-	if len(resp) > 2000 {
-		t.Fatalf("response unexpectedly large (%d bytes); padding size was not clamped", len(resp))
+	// A legitimate response targets ~75%-100% of mtu (clamped to
+	// maxPaddingSize here), so a few hundred bytes above maxPaddingSize for
+	// header/question/answer/OPT overhead is normal and expected. What this
+	// guards against is the unclamped bug: an EDNS0 size of 65535 flowing
+	// straight into targetData, which would either panic outright (caught
+	// separately, since a panic fails the whole test) or, had the panic
+	// been avoided some other way, produce a response tens of kilobytes
+	// larger than this bound.
+	const maxReasonableResponse = maxPaddingSize + 256
+	if len(resp) > maxReasonableResponse {
+		t.Fatalf("response unexpectedly large (%d bytes, want <= %d); EDNS0 size was not clamped", len(resp), maxReasonableResponse)
 	}
 }
 
