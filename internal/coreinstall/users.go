@@ -76,6 +76,9 @@ func loadUserCore(name string) (o coreplan.Options, st coreplan.State, ok bool, 
 // whether the server configuration differs from what was on disk.
 func writeUserCore(dir string, o coreplan.Options, st *coreplan.State, users []config.UserConfig) (changed bool, err error) {
 	clients := clientsFor(users)
+	if st.APIPort == 0 && coreplan.Metered(o.Protocol) {
+		st.APIPort = pickAPIPort(filepath.Base(dir))
+	}
 	b, err := coreplan.GenerateFor(o, st, clients)
 	if err != nil {
 		return false, err
@@ -207,6 +210,7 @@ func syncCore(name string, users []config.UserConfig) error {
 			return err
 		}
 	}
+	_ = collectCore(name) // Xray's counters restart at zero with the core
 	return service.Restart(ServiceName(name))
 }
 
