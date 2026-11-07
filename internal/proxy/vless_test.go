@@ -424,7 +424,8 @@ func TestVLESSReloadClosesRemovedUsersSessions(t *testing.T) {
 	}
 	bob.writeFrame(0x2, []byte("still here"))
 	_ = bob.conn.SetReadDeadline(time.Now().Add(3 * time.Second))
-	if got := readUntil(t, bob, nil, len("still here")); string(got) != "still here" {
+	// The 'x' sent with the request header is echoed first.
+	if got := readUntil(t, bob, nil, len("xstill here")); string(got) != "xstill here" {
 		t.Fatalf("bob's stream disturbed: %q", got)
 	}
 }
