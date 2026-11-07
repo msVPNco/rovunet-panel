@@ -85,7 +85,7 @@ func askUserLimits(daysArg, gbArg string) (days, gb int, err error) {
 
 // newUser builds a user with the chosen limits, counted from now.
 func newUser(username, password string, days, gb int, now time.Time) config.UserConfig {
-	u := config.UserConfig{Username: username, Password: password, QuotaGB: gb}
+	u := config.UserConfig{Username: username, Password: password, QuotaGB: gb, SubToken: config.NewSubToken()}
 	if days > 0 {
 		u.ExpiresAt = now.UTC().Add(time.Duration(days) * 24 * time.Hour).Format(time.RFC3339)
 	}

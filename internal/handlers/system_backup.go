@@ -455,6 +455,10 @@ func syncNaive(cfg *config.Config, out interface{ Warning(string) }) {
 	if err := transport.SyncNaive(cfg); err != nil && out != nil {
 		out.Warning("Failed to update NaiveProxy users: " + err.Error())
 	}
+	// The users' subscription files follow the same changes.
+	if err := WriteSubscriptions(cfg, discardOutput{}); err != nil && out != nil {
+		out.Warning("Failed to update subscription files: " + err.Error())
+	}
 }
 
 func setupSOCKS(cfg *config.Config) error {
@@ -485,3 +489,12 @@ func writePrivateFile(path, text string) error {
 	}
 	return os.Chmod(path, 0600) // WriteFile keeps the mode of an existing file
 }
+
+// discardOutput drops all messages.
+type discardOutput struct{}
+
+func (discardOutput) Info(string)    {}
+func (discardOutput) Success(string) {}
+func (discardOutput) Warning(string) {}
+func (discardOutput) Error(string)   {}
+func (discardOutput) Print(string)   {}

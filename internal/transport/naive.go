@@ -147,7 +147,7 @@ func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vles
 :%d, %s {
   tls %s
   route {
-%s    forward_proxy {
+%s%s    forward_proxy {
 %s      hide_ip
       hide_via
       probe_resistance
@@ -157,7 +157,20 @@ func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vles
     }
   }
 }
-`, port, tunnel.Domain, naiveCfg.Email, vlessRouteLines(vless), auth, decoy)
+`, port, tunnel.Domain, naiveCfg.Email, vlessRouteLines(vless), subscriptionRouteLines(), auth, decoy)
+}
+
+// SubscriptionDir is where the panel writes each user's subscription file.
+// Files sit under sub/ and are named by an unguessable token. Variable for tests.
+var SubscriptionDir = "/var/lib/rovunet/subscriptions"
+
+// subscriptionRouteLines serves /sub/<token>.json from SubscriptionDir as
+// plain static files, before the proxy and the decoy. There is no listing and
+// no application behind it: a path that is not a token's file is a 404.
+func subscriptionRouteLines() string {
+	return "    @rovunet_sub path /sub/*\n" +
+		"    root @rovunet_sub " + SubscriptionDir + "\n" +
+		"    file_server @rovunet_sub\n"
 }
 
 // vlessRouteLines sends each fronted VLESS WebSocket path to its local

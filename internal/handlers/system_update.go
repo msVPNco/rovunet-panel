@@ -254,6 +254,11 @@ func runPostUpdate(ctx *actions.Context) error {
 		}
 	}
 
+	// Subscription files: one per user, served by the NaïveProxy Caddy.
+	if err := WriteSubscriptions(cfg, out); err != nil {
+		out.Warning("Failed to write subscription files: " + err.Error())
+	}
+
 	out.Print("")
 	out.Success("Update complete!")
 	return nil

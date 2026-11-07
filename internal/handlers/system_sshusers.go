@@ -244,6 +244,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 		}
 		updated := *cfg.GetUser(username) // keeps the user's expiry and limit
 		updated.Password = password
+		updated.SubToken = config.NewSubToken() // the old link stops working
 		cfg.AddUser(updated)
 
 		if err := cfg.Save(); err != nil {
@@ -419,7 +420,20 @@ func nextUsernameIndex(cfg *config.Config, prefix string) int {
 	return highest + 1
 }
 
+// showUserConfigs prints a user's configs, then the subscription link that
+// delivers the same configs to the app.
 func showUserConfigs(cfg *config.Config, username, password string, out actions.OutputWriter) {
+	printUserConfigs(cfg, username, password, out)
+	if u := cfg.GetUser(username); u != nil {
+		if link := SubscriptionURL(cfg, *u); link != "" {
+			out.Print("  Subscription link (all of the above, for the app's Subscriptions menu):")
+			out.Print("  " + link)
+			out.Print("")
+		}
+	}
+}
+
+func printUserConfigs(cfg *config.Config, username, password string, out actions.OutputWriter) {
 	ensureServerAddress(cfg, out, cfg.Tunnels)
 	// Fastest first: Xray cores are slotted in among the tunnels by rank.
 	flushCores := coreProfilePrinter(cfg, config.UserConfig{Username: username, Password: password}, out)
