@@ -4,7 +4,7 @@
 
 **Открытая панель для самостоятельного развёртывания многопротокольного доступа на совместимом Linux-сервере.** Объединяет установку служб, создание пользователей, экспорт конфигураций, systemd, диагностику и резервные копии. Несколько путей уменьшают зависимость от одного протокола, но не гарантируют доступ в любой сети.
 
-Управляемые пути включают VLESS WebSocket, NaiveProxy, прямой SSH, SSH over TLS/STunTLS, SOCKS5, DNS-семейства DNSTT, NoizDNS, VayDNS, Slipstream и Soar. Поддержка клиента шире автоустановки: REALITY/XHTTP/Hysteria2/WireGuard через core-plan могут требовать ручного развёртывания. [Состояние интеграции](docs/ROVUNET-STATUS.md).
+Управляемые пути включают VLESS WebSocket, NaiveProxy, прямой SSH, SSH over TLS/STunTLS, SOCKS5, DNS-семейства DNSTT, NoizDNS, VayDNS, Slipstream и Soar. Ядра Xray (VLESS REALITY, VLESS XHTTP, Hysteria2, WireGuard) устанавливаются и управляются командой `rovunet core-install`: порт проверяется заранее, Xray сверяется с контрольными суммами выпуска и проверяет конфигурацию до запуска, нужный порт TCP или UDP открывается. Каждое устройство получает свой файл в `/etc/rovunet/core/<имя>/clients/`; XHTTP и Hysteria2 требуют `--cert` и `--key`. [Состояние интеграции](docs/ROVUNET-STATUS.md).
 
 ## Установка
 
@@ -14,7 +14,7 @@
 curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.sh | sudo bash
 ```
 
-Нужны собственный сервер, домен с управляемым DNS и открытые порты выбранных служб. Установщик спрашивает протоколы, настраивает их, создаёт пользователя и печатает конфигурации. Для существующего SlipGate сначала прочитайте руководство миграции и сделайте копию; не экспериментируйте без возможности восстановления сервера.
+Нужны собственный сервер, домен с управляемым DNS и открытые порты выбранных служб. Установщик спрашивает протоколы, настраивает их, создаёт пользователя и печатает конфигурации. Сервер с прежним именем панели переносится автоматически при обновлении (`slipgate update`): сначала сделайте резервную копию; не экспериментируйте без возможности восстановления сервера.
 
 ```bash
 sudo rovunet
@@ -23,6 +23,9 @@ sudo rovunet users configs
 sudo rovunet diag
 sudo rovunet backup
 sudo rovunet export-clients --user USER --format rovunet
+sudo rovunet core-install --name r1 --protocol reality --host SERVER_IP \
+  --target www.microsoft.com:443 --sni www.microsoft.com --port 8443 --devices 5
+sudo rovunet core-list
 ```
 
 ## Клиенты и диагностика
@@ -39,4 +42,4 @@ sudo rovunet export-clients --user USER --format rovunet
 
 ## Лицензия
 
-AGPL-3.0, [NOTICE](NOTICE.md). На основе [SlipGate](https://github.com/anonvector/slipgate) автора Anonvector; независимый проект без официальной связи. Команда rovunet сохранена для совместимости.
+AGPL-3.0, [NOTICE](NOTICE.md). На основе [SlipGate](https://github.com/anonvector/slipgate) автора Anonvector; независимый проект без официальной связи. Команда — `rovunet`; сервер, установленный под прежним именем, переносится автоматически при обновлении.

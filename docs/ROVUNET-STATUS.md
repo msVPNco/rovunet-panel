@@ -8,7 +8,7 @@
 
 قالب rovunet:// فرادادهٔ مجموعه را حمل می‌کند؛ لینک استاندارد VLESS برای کلاینت‌های سازگار هم ارائه می‌شود. اپ مسیر انتخاب‌شده را بدون تست اجباری وصل می‌کند؛ تست HTTPS جداگانه از داخل تونل اجرا و پیش از ورود تست به جایگزین DNS رضایت گرفته می‌شود. انتخاب‌های ذخیره‌شده حفظ می‌شوند؛ Soar و Soar+SSH جدید در ویرایشگر اپ UDP + TCP را پیش‌فرض دارند، ولی مقدار صریح خروجی پنل یا کانفیگ موجود بی‌صدا تغییر نمی‌کند.
 
-پشتیبانی کلاینت از یک مسیر به معنی استقرار خودکار آن توسط پنل نیست. core-plan برای تولید برنامه/کانفیگ استقرار دستی است و مدیریت خودکار همهٔ مسیرهای هسته را ثابت نمی‌کند.
+هسته‌های Xray (REALITY، XHTTP، Hysteria2 و WireGuard) با `rovunet core-install` نصب و مدیریت می‌شوند؛ `core-plan` همچنان فقط فایل برای استقرار دستی می‌سازد. CI اپ، خروجی واقعی هر چهار پروتکل پنل و خروجی کامل کاربرها (Soar، VLESS و رمزهای v33) را با importer واقعی اپ آزمایش می‌کند.
 
 ## عیب‌یابی مشترک
 
@@ -17,9 +17,8 @@
 ## کارهای پیش از استقرار گسترده
 
 - endpoint اشتراک HTTPS و شناسهٔ پایدار سرور/کاربر مستقل از IP و دامنه.
-- اتصال خروجی core-plan به مجموعهٔ همان کاربر.
-- تخصیص پورت بدون برخورد Caddy/REALITY روی TCP و HTTP/3/Hysteria2 روی UDP.
-- اجرای قرارداد واقعی Go exporter/Kotlin importer در CI و ثبت نتیجهٔ همان کامیت.
+- اتصال کانفیگ‌های هستهٔ Xray به مجموعهٔ همان کاربر (فعلاً هر دستگاه جدا و بدون گروه وارد اپ می‌شود).
+- آزمایش هسته‌های Xray و مهاجرت از نام قبلی روی سرور و دستگاه واقعی.
 - بررسی چندکاربره، منابع، مجوز مقصدهای سرویس‌ها و بازیابی پس از خطا.
 
 موفقیت یک اتصال، کارکرد برای صدها کاربر یا همهٔ شبکه‌ها را اثبات نمی‌کند. بازخورد نسخهٔ خصوصی، شاهد انتشار عمومی یا تأیید مسیر مهاجرت نیست.
@@ -30,4 +29,4 @@
 
 ## English
 
-For the current app version, read the [app status](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md); this document does not repeat it so it cannot drift again. Public releases from alpha14 onward share one managed production signer (explicitly authorized before user deployment) and install over each other without uninstalling. It is a fresh install relative to the historical alpha11 signer; subsequent direct APKs must reuse the pinned identity. Private candidates remain separate from public updates. Read the app's current status and migration notes. Native exports retain collection metadata; explicit connection does not require a ping, and HTTPS tests are separate. Client protocol support does not imply panel-managed deployment. SOCKS/Soar field diagnosis, stable subscription identity, core-plan integration, port allocation and multi-user resource/recovery checks remain necessary.
+For the current app version, read the [app status](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md); this document does not repeat it so it cannot drift again. Public releases from alpha14 onward share one managed production signer (explicitly authorized before user deployment) and install over each other without uninstalling. It is a fresh install relative to the historical alpha11 signer; subsequent direct APKs must reuse the pinned identity. Private candidates remain separate from public updates. Read the app's current status and migration notes. Native exports retain collection metadata; explicit connection does not require a ping, and HTTPS tests are separate. Client protocol support does not imply panel-managed deployment. Xray cores are installed and managed with `rovunet core-install`, and the app's CI imports the panel's real exports (all four core protocols, Soar, VLESS, v33 credentials). SOCKS/Soar field diagnosis, stable subscription identity, grouping core profiles into the user's collection, real-server and real-device testing, and multi-user resource/recovery checks remain necessary.
