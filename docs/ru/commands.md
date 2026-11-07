@@ -73,7 +73,7 @@
 
 | Команда | Описание |
 |---|---|
-| `rovunet core-install --name N --protocol P --host H [options]` | Установить ядро; см. [Ядра Xray](xray-cores.md#installing-a-core) |
+| `rovunet core-install --name N --protocol P --host H [options]` | Установить ядро для всех пользователей; см. [Ядра Xray](xray-cores.md#installing-a-core) |
 | `rovunet core-list` | Установленные ядра |
 | `rovunet core-remove N` | Удалить ядро |
 | `rovunet core-plan --protocol P --host H --output DIR [options]` | Только записать файлы ядра |

@@ -2,7 +2,7 @@
 
 [Documentation](README.md) › Xray cores
 
-An Xray core is a separate Xray server installed and managed by the panel, beside the tunnels. It provides four protocols the built-in servers do not.
+An Xray core is a separate Xray server installed and managed by the panel, beside the tunnels. It provides four protocols the built-in servers do not. Every panel user gets a configuration on every core, printed by `users configs` with their tunnels and grouped with them in the Rovunet app.
 
 | Protocol | Transport | Certificate | Best for |
 |---|---|---|---|
@@ -13,21 +13,23 @@ An Xray core is a separate Xray server installed and managed by the panel, besid
 
 ## Installing a core
 
+The installer (`sudo rovunet install`) offers **VLESS + REALITY** and **WireGuard** next to the other protocols and sets them up after the first user, on the first free default port (REALITY: 9443, 2096 or 8880/tcp; WireGuard: 51820–51822/udp). Any core can also be added later:
+
 ```bash
 # VLESS + REALITY
 sudo rovunet core-install --name r1 --protocol reality --host SERVER_IP \
-  --target www.microsoft.com:443 --sni www.microsoft.com --port 8443 --devices 5
+  --target www.microsoft.com:443 --sni www.microsoft.com --port 9443
 
 # VLESS + XHTTP
 sudo rovunet core-install --name x1 --protocol xhttp --host vpn.example.com --sni vpn.example.com \
-  --cert /path/fullchain.pem --key /path/privkey.pem --port 2096 --devices 5
+  --cert /path/fullchain.pem --key /path/privkey.pem --port 2096
 
 # Hysteria 2
 sudo rovunet core-install --name h1 --protocol hysteria2 --host vpn.example.com --sni vpn.example.com \
-  --cert /path/fullchain.pem --key /path/privkey.pem --port 8443 --devices 5
+  --cert /path/fullchain.pem --key /path/privkey.pem --port 8443
 
 # WireGuard
-sudo rovunet core-install --name w1 --protocol wireguard --host SERVER_IP --port 51820 --devices 5
+sudo rovunet core-install --name w1 --protocol wireguard --host SERVER_IP --port 51820
 ```
 
 | Option | Meaning |
@@ -38,7 +40,7 @@ sudo rovunet core-install --name w1 --protocol wireguard --host SERVER_IP --port
 | `--sni` | Certificate name, or the server name REALITY presents (defaults to `--host`) |
 | `--target` | REALITY only: the real TLS site to imitate, as `host:port` |
 | `--port` | Listen port (default 8443); must be free |
-| `--devices` | Number of distinct client credentials, 1–1000 |
+| `--devices` | Per-device mode instead of per-user: this many standalone credentials (1–1000), written as files only |
 | `--cert`, `--key` | XHTTP and Hysteria 2: certificate and private key paths |
 
 ## What installation does
@@ -47,7 +49,7 @@ sudo rovunet core-install --name w1 --protocol wireguard --host SERVER_IP --port
 2. Installs the pinned Xray build published with this release, verified against the release's SHA256SUMS. An existing `/usr/local/bin/xray` is kept.
 3. Writes the server configuration and has Xray test it (`xray run -test`) before anything goes live.
 4. Creates and starts the service `rovunet-core-<name>` and opens the port in the firewall.
-5. Writes one client file per device to `/etc/rovunet/core/<name>/clients/`.
+5. Writes one client file per user to `/etc/rovunet/core/<name>/clients/`.
 
 If any step fails, everything created is removed again.
 
@@ -61,9 +63,14 @@ sudo rovunet core-remove r1       # stop and delete
 
 `core-plan` takes the same options plus `--output <new directory>` and only writes the files, for manual deployment.
 
-## Client files
+## Users and configurations
 
-Each device gets distinct credentials: a `vless://` or `hysteria2://` link, or a WireGuard `.conf` file. They import into the Rovunet app and into standard Xray-based and WireGuard clients. Never use one WireGuard file on two devices at the same time.
+Each user's credentials are derived from the core's own secret, the username and the password:
+
+- `users add` gives the new user a configuration on every core; existing users' configurations do not change.
+- `users remove` and `passwd` revoke the old configuration within seconds. Xray validates every change first; if it rejects one, the previous configuration stays.
+- `users configs` and `export-clients --format rovunet` print each user's core profiles as native `rovunet://` profiles in the user's collection. `export-clients --format standard` prints the plain `vless://` and `hysteria2://` links for other clients.
+- Each user's plain profile is also in `/etc/rovunet/core/<name>/clients/<user>.txt` (`.conf` for WireGuard). Never use one WireGuard configuration on two devices at the same time.
 
 ## Backups
 
@@ -71,7 +78,7 @@ Cores are included in `rovunet backup` and started again by `restore`. Certifica
 
 ## Limitations
 
-- Core profiles are imported as separate profiles, not into the user's collection.
-- Cores are independent of panel users: removing a user does not revoke a core credential; remove or reinstall the core.
+- XHTTP and Hysteria 2 read their certificate at start. When the certificate is renewed, restart the core (`systemctl restart rovunet-core-<name>`).
+- Cores installed before v1.9.0 (per device) keep working as they are; reinstall them to serve the panel's users.
 
 Next: [Operations](operations.md)

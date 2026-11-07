@@ -2,7 +2,7 @@
 
 [Документация](README.md) › Ядра Xray
 
-Ядро Xray — отдельный сервер Xray, который панель устанавливает и обслуживает рядом с туннелями. Оно даёт четыре протокола, которых нет у встроенных серверов.
+Ядро Xray — отдельный сервер Xray, который панель устанавливает и обслуживает рядом с туннелями. Оно даёт четыре протокола, которых нет у встроенных серверов. Каждый пользователь панели получает конфигурацию на каждом ядре; `users configs` печатает её вместе с его туннелями, а приложение Rovunet помещает в ту же коллекцию.
 
 | Протокол | Транспорт | Сертификат | Лучше всего для |
 |---|---|---|---|
@@ -14,21 +14,23 @@
 <a id="installing-a-core"></a>
 ## Установка ядра
 
+Установщик (`sudo rovunet install`) предлагает **VLESS + REALITY** и **WireGuard** вместе с остальными протоколами и настраивает их после создания первого пользователя на первом свободном порту по умолчанию (REALITY: 9443, 2096 или 8880/tcp; WireGuard: 51820–51822/udp). Любое ядро можно добавить и позже:
+
 ```bash
 # VLESS + REALITY
 sudo rovunet core-install --name r1 --protocol reality --host SERVER_IP \
-  --target www.microsoft.com:443 --sni www.microsoft.com --port 8443 --devices 5
+  --target www.microsoft.com:443 --sni www.microsoft.com --port 9443
 
 # VLESS + XHTTP
 sudo rovunet core-install --name x1 --protocol xhttp --host vpn.example.com --sni vpn.example.com \
-  --cert /path/fullchain.pem --key /path/privkey.pem --port 2096 --devices 5
+  --cert /path/fullchain.pem --key /path/privkey.pem --port 2096
 
 # Hysteria 2
 sudo rovunet core-install --name h1 --protocol hysteria2 --host vpn.example.com --sni vpn.example.com \
-  --cert /path/fullchain.pem --key /path/privkey.pem --port 8443 --devices 5
+  --cert /path/fullchain.pem --key /path/privkey.pem --port 8443
 
 # WireGuard
-sudo rovunet core-install --name w1 --protocol wireguard --host SERVER_IP --port 51820 --devices 5
+sudo rovunet core-install --name w1 --protocol wireguard --host SERVER_IP --port 51820
 ```
 
 | Параметр | Значение |
@@ -39,7 +41,7 @@ sudo rovunet core-install --name w1 --protocol wireguard --host SERVER_IP --port
 | `--sni` | Имя сертификата или имя сервера, которое предъявляет REALITY (по умолчанию `--host`) |
 | `--target` | Только REALITY: настоящий TLS-сайт для имитации, в виде `host:port` |
 | `--port` | Порт прослушивания (по умолчанию 8443); должен быть свободен |
-| `--devices` | Количество отдельных учётных данных клиентов, 1–1000 |
+| `--devices` | Режим «на устройство» вместо «на пользователя»: столько отдельных учётных данных (1–1000), только в виде файлов |
 | `--cert`, `--key` | XHTTP и Hysteria 2: пути к сертификату и закрытому ключу |
 
 ## Что делает установка
@@ -48,7 +50,7 @@ sudo rovunet core-install --name w1 --protocol wireguard --host SERVER_IP --port
 2. Устанавливает закреплённую сборку Xray, опубликованную с этим выпуском, и сверяет её с SHA256SUMS выпуска. Уже установленный `/usr/local/bin/xray` сохраняется.
 3. Записывает конфигурацию сервера, и Xray проверяет её (`xray run -test`) до запуска.
 4. Создаёт и запускает службу `rovunet-core-<имя>` и открывает порт в брандмауэре.
-5. Записывает по файлу клиента на устройство в `/etc/rovunet/core/<имя>/clients/`.
+5. Записывает по файлу клиента на пользователя в `/etc/rovunet/core/<имя>/clients/`.
 
 Если какой-либо шаг не удался, всё созданное удаляется.
 
@@ -62,9 +64,14 @@ sudo rovunet core-remove r1       # stop and delete
 
 `core-plan` принимает те же параметры и `--output <новый каталог>` и только записывает файлы для ручного развёртывания.
 
-## Файлы клиентов
+## Пользователи и конфигурации
 
-Каждое устройство получает отдельные учётные данные: ссылку `vless://` или `hysteria2://` либо файл `.conf` WireGuard. Они импортируются в приложение Rovunet и в стандартные клиенты на основе Xray и WireGuard. Никогда не используйте один файл WireGuard на двух устройствах одновременно.
+Учётные данные каждого пользователя выводятся из секрета самого ядра, имени пользователя и пароля:
+
+- `users add` выдаёт новому пользователю конфигурацию на всех ядрах; конфигурации существующих пользователей не меняются.
+- `users remove` и `passwd` отзывают прежнюю конфигурацию за секунды. Xray сначала проверяет каждое изменение; если он его отвергает, остаётся прежняя конфигурация.
+- `users configs` и `export-clients --format rovunet` печатают профили ядер каждого пользователя как собственные профили `rovunet://` в его коллекции. `export-clients --format standard` печатает простые ссылки `vless://` и `hysteria2://` для других клиентов.
+- Простой профиль каждого пользователя также лежит в `/etc/rovunet/core/<имя>/clients/<пользователь>.txt` (`.conf` для WireGuard). Никогда не используйте одну конфигурацию WireGuard на двух устройствах одновременно.
 
 ## Резервные копии
 
@@ -72,7 +79,7 @@ sudo rovunet core-remove r1       # stop and delete
 
 ## Ограничения
 
-- Профили ядер импортируются как отдельные профили, а не в коллекцию пользователя.
-- Ядра не зависят от пользователей панели: удаление пользователя не отзывает учётные данные ядра — удалите или переустановите ядро.
+- XHTTP и Hysteria 2 читают сертификат при запуске. После продления сертификата перезапустите ядро (`systemctl restart rovunet-core-<имя>`).
+- Ядра, установленные до v1.9.0 (на устройство), продолжают работать как есть; чтобы они обслуживали пользователей панели, переустановите их.
 
 Далее: [Эксплуатация](operations.md)

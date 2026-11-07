@@ -73,7 +73,7 @@ Run every command as root (`sudo rovunet …`). A required option that is not gi
 
 | Command | Description |
 |---|---|
-| `rovunet core-install --name N --protocol P --host H [options]` | Install a core; see [Xray cores](xray-cores.md#installing-a-core) |
+| `rovunet core-install --name N --protocol P --host H [options]` | Install a core serving every user; see [Xray cores](xray-cores.md#installing-a-core) |
 | `rovunet core-list` | Installed cores |
 | `rovunet core-remove N` | Remove a core |
 | `rovunet core-plan --protocol P --host H --output DIR [options]` | Write a core's files only |
