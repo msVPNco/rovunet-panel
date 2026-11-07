@@ -53,6 +53,10 @@ jobs:
           cd "$RUNNER_TEMP/xray-src"
           go build -ldflags='-checklinkname=0' -o "$RUNNER_TEMP/xray" ./main
           echo "XRAY=$RUNNER_TEMP/xray" >> "$GITHUB_ENV"
+          # The same pinned core, shipped for core-install (checksummed below)
+          for arch in amd64 arm64; do
+            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags='-s -w -checklinkname=0' -o "$GITHUB_WORKSPACE/xray-linux-$arch" ./main
+          done
 
       - name: Test
         if: steps.tag.outputs.skip != 'true'
@@ -63,7 +67,7 @@ jobs:
         run: |
           tag="${{ steps.tag.outputs.tag }}"
           make build-linux VERSION="${tag#v}" COMMIT="${GITHUB_SHA::7}"
-          sha256sum slipgate-linux-* > SHA256SUMS
+          sha256sum slipgate-linux-* xray-linux-* > SHA256SUMS
 
       - name: Publish
         if: steps.tag.outputs.skip != 'true'
@@ -75,7 +79,7 @@ jobs:
           awk -v h="## $tag" '$0==h{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md > notes.md || true
           if [ -s notes.md ]; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
           gh release create "$tag" \
-            slipgate-linux-amd64 slipgate-linux-arm64 SHA256SUMS \
+            slipgate-linux-amd64 slipgate-linux-arm64 xray-linux-amd64 xray-linux-arm64 SHA256SUMS \
             --target "$GITHUB_SHA" \
             --title "Rovunet Panel $tag" \
             "${notes[@]}"
