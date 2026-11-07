@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/network"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/network"
 )
 
 // Router is a pure Go DNS forwarder that routes queries by domain.

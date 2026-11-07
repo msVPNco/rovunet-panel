@@ -4,10 +4,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/prompt"
-	"github.com/anonvector/slipgate/internal/service"
-	"github.com/anonvector/slipgate/internal/system"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/system"
 )
 
 const (
@@ -56,7 +56,7 @@ func offerDnstmCleanup(out actions.OutputWriter, action string) (bool, error) {
 	}
 
 	out.Warning("Detected existing dnstm installation")
-	ok, err := prompt.Confirm("Remove dnstm? Its services may conflict with slipgate (port 53)")
+	ok, err := prompt.Confirm("Remove dnstm? Its services may conflict with rovunet (port 53)")
 	if err != nil {
 		return false, err
 	}

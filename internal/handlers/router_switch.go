@@ -3,9 +3,9 @@ package handlers
 import (
 	"fmt"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/router"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/router"
 )
 
 func handleRouterSwitch(ctx *actions.Context) error {
@@ -23,7 +23,7 @@ func handleRouterSwitch(ctx *actions.Context) error {
 
 	if cfg.Route.Mode != "single" {
 		return actions.NewErrorWithHint(actions.RouterSwitch, "switch only works in single mode",
-			"Run 'slipgate router mode single' first", nil)
+			"Run 'rovunet router mode single' first", nil)
 	}
 
 	if err := router.SwitchActive(cfg, tag); err != nil {

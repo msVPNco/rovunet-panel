@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anonvector/slipgate/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 )
 
 func TestCaddyfileHasEveryUser(t *testing.T) {
@@ -53,7 +53,7 @@ func TestCaddyfileFrontsStunTLSOverTLS(t *testing.T) {
 func TestCaddyfileHasNoDefaultLogin(t *testing.T) {
 	tun := &config.TunnelConfig{Domain: "n.example.com", Naive: &config.NaiveConfig{Email: "a@b.c", Port: 443, DecoyURL: "https://www.example.org"}}
 	c := buildCaddyfile(tun, nil, nil)
-	if strings.Contains(c, "basic_auth slipgate") {
+	if strings.Contains(c, "basic_auth rovunet") {
 		t.Fatalf("well-known default login must not be accepted:\n%s", c)
 	}
 	if strings.Count(c, "basic_auth") != 1 || !strings.Contains(c, "basic_auth locked-") {

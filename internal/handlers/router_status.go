@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
 func handleRouterStatus(ctx *actions.Context) error {
@@ -18,7 +18,7 @@ func handleRouterStatus(ctx *actions.Context) error {
 	out.Print(fmt.Sprintf("  Default: %s", cfg.Route.Default))
 
 	// DNS router service status
-	routerStatus, err := service.Status("slipgate-dnsrouter")
+	routerStatus, err := service.Status("rovunet-dnsrouter")
 	if err != nil {
 		routerStatus = "not installed"
 	}

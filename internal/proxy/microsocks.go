@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
 const (
-	socksServiceName = "slipgate-socks5"
+	socksServiceName = "rovunet-socks5"
 	// socksCredsFile holds `user:pass` lines, one per user. The `socks serve`
 	// command reads this at start and on SIGHUP, so credential changes do not
 	// require a process restart (which would drop every active client).
@@ -73,8 +73,8 @@ func setupSOCKSMulti(listenAddr string, users []config.UserConfig, requireAuth b
 	}
 
 	// Clean up old microsocks service if it exists
-	_ = service.Stop("slipgate-microsocks")
-	_ = service.Remove("slipgate-microsocks")
+	_ = service.Stop("rovunet-microsocks")
+	_ = service.Remove("rovunet-microsocks")
 
 	svcUser := config.SystemUser
 	if RunAsUser != "" {

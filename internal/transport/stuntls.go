@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
 func createStunTLSService(tunnel *config.TunnelConfig, cfg *config.Config) error {
@@ -19,7 +19,7 @@ func createStunTLSService(tunnel *config.TunnelConfig, cfg *config.Config) error
 		return fmt.Errorf("backend %q not found", tunnel.Backend)
 	}
 
-	// slipgate binary itself serves as the TLS proxy — no external binary needed
+	// rovunet binary itself serves as the TLS proxy — no external binary needed
 	execPath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("resolve executable: %w", err)

@@ -9,25 +9,25 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/binary"
-	"github.com/anonvector/slipgate/internal/certs"
-	"github.com/anonvector/slipgate/internal/clientcfg"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/dnsrouter"
-	"github.com/anonvector/slipgate/internal/keys"
-	"github.com/anonvector/slipgate/internal/network"
-	"github.com/anonvector/slipgate/internal/prompt"
-	"github.com/anonvector/slipgate/internal/proxy"
-	"github.com/anonvector/slipgate/internal/system"
-	"github.com/anonvector/slipgate/internal/transport"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/binary"
+	"github.com/msVPNco/rovunet-panel/internal/certs"
+	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/dnsrouter"
+	"github.com/msVPNco/rovunet-panel/internal/keys"
+	"github.com/msVPNco/rovunet-panel/internal/network"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/proxy"
+	"github.com/msVPNco/rovunet-panel/internal/system"
+	"github.com/msVPNco/rovunet-panel/internal/transport"
 )
 
 func handleQuickWizard(ctx *actions.Context) error {
 	out := ctx.Output
 
 	if runtime.GOOS != "linux" {
-		return actions.NewError(actions.QuickWizard, "slipgate only supports Linux servers", nil)
+		return actions.NewError(actions.QuickWizard, "rovunet only supports Linux servers", nil)
 	}
 
 	out.Print("")

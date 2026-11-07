@@ -10,9 +10,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/service"
-	"github.com/anonvector/slipgate/internal/warp"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
 
 // createNaiveService creates the Caddyfile and systemd service for NaiveProxy.
@@ -113,7 +113,7 @@ func vlessRoutes(cfg *config.Config, naiveTag string) []vlessRoute {
 func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vless []vlessRoute) string {
 	naiveCfg := tunnel.Naive
 
-	// No built-in default login: a well-known "slipgate:slipgate" credential
+	// No built-in default login: a well-known "rovunet:rovunet" credential
 	// would let anyone use the proxy. Without any credential the proxy gets a
 	// random one, so it stays closed until a panel user exists.
 	auth := naiveAuthLines(naiveCfg.User, naiveCfg.Password, users)

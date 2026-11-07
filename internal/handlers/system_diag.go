@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/service"
-	"github.com/anonvector/slipgate/internal/version"
-	"github.com/anonvector/slipgate/internal/warp"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/version"
+	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
 
 func handleSystemDiag(ctx *actions.Context) error {
@@ -53,7 +53,7 @@ func handleSystemDiag(ctx *actions.Context) error {
 
 	// System user
 	_, err := user.Lookup(config.SystemUser)
-	check("System user (slipgate)", err == nil, boolStr(err == nil, "exists", "missing — run install"))
+	check("System user (rovunet)", err == nil, boolStr(err == nil, "exists", "missing — run install"))
 
 	// Config directory
 	_, err = os.Stat(config.DefaultConfigDir)
@@ -90,7 +90,7 @@ func handleSystemDiag(ctx *actions.Context) error {
 	}
 
 	for _, t := range cfg.Tunnels {
-		// Direct transports use system services (sshd, microsocks), not slipgate-managed ones
+		// Direct transports use system services (sshd, microsocks), not rovunet-managed ones
 		if t.IsDirectTransport() {
 			continue
 		}
@@ -186,17 +186,17 @@ func handleSystemDiag(ctx *actions.Context) error {
 
 	// DNS router
 	if hasDNSTunnels {
-		routerExists := service.Exists("slipgate-dnsrouter")
+		routerExists := service.Exists("rovunet-dnsrouter")
 		if routerExists {
-			status, _ := service.Status("slipgate-dnsrouter")
+			status, _ := service.Status("rovunet-dnsrouter")
 			routerOK := status == "active"
 			check("DNS router service", routerOK,
 				boolStr(routerOK, "active", status))
 			if !routerOK {
-				showRecentLogs(out, "slipgate-dnsrouter")
+				showRecentLogs(out, "rovunet-dnsrouter")
 			}
 
-			enabled := isServiceEnabled("slipgate-dnsrouter")
+			enabled := isServiceEnabled("rovunet-dnsrouter")
 			check("DNS router enabled at boot", enabled,
 				boolStr(enabled, "yes", "no — will not start after reboot"))
 		} else {
@@ -209,14 +209,14 @@ func handleSystemDiag(ctx *actions.Context) error {
 	}
 
 	// SOCKS5 proxy
-	socksExists := service.Exists("slipgate-socks5")
+	socksExists := service.Exists("rovunet-socks5")
 	if socksExists {
-		status, _ := service.Status("slipgate-socks5")
+		status, _ := service.Status("rovunet-socks5")
 		socksOK := status == "active"
 		check("SOCKS5 proxy service", socksOK,
 			boolStr(socksOK, "active", status))
 		if !socksOK {
-			showRecentLogs(out, "slipgate-socks5")
+			showRecentLogs(out, "rovunet-socks5")
 		}
 
 		port1080OK := isPortListening(1080, "tcp")
@@ -230,14 +230,14 @@ func handleSystemDiag(ctx *actions.Context) error {
 		out.Print("  WARP Routing")
 		out.Print("  ────────────")
 
-		warpExists := service.Exists("slipgate-warp")
+		warpExists := service.Exists("rovunet-warp")
 		if warpExists {
-			status, _ := service.Status("slipgate-warp")
+			status, _ := service.Status("rovunet-warp")
 			warpOK := status == "active"
 			check("WARP service", warpOK,
 				boolStr(warpOK, "active", status))
 			if !warpOK {
-				showRecentLogs(out, "slipgate-warp")
+				showRecentLogs(out, "rovunet-warp")
 			}
 		} else {
 			check("WARP service", false, "enabled in config but service missing")
@@ -281,17 +281,17 @@ func handleSystemDiag(ctx *actions.Context) error {
 		if len(expectedUIDs) == 0 {
 			info("WARP routing rules", "no managed UIDs found — no traffic will route through WARP")
 		} else if !allRulesOK {
-			out.Info("  Hint: run 'slipgate restart' or re-enable WARP to fix missing rules")
+			out.Info("  Hint: run 'rovunet restart' or re-enable WARP to fix missing rules")
 		}
 
 		// SOCKS5 service user
-		if service.Exists("slipgate-socks5") {
-			actualUser := service.GetUser("slipgate-socks5")
+		if service.Exists("rovunet-socks5") {
+			actualUser := service.GetUser("rovunet-socks5")
 			userOK := actualUser == warp.SocksUser
 			check("SOCKS5 service user", userOK,
 				boolStr(userOK,
 					fmt.Sprintf("%s (correct)", actualUser),
-					fmt.Sprintf("%s — should be %s; run 'slipgate restart' to fix", actualUser, warp.SocksUser)))
+					fmt.Sprintf("%s — should be %s; run 'rovunet restart' to fix", actualUser, warp.SocksUser)))
 		}
 
 		// NaiveProxy service users
@@ -312,12 +312,12 @@ func handleSystemDiag(ctx *actions.Context) error {
 	}
 
 	// ── Orphaned Services ───────────────────────────────────
-	allSvc := service.ListSlipgateServices()
+	allSvc := service.ListRovunetServices()
 	knownSvc := map[string]bool{
-		"slipgate-dnsrouter": true,
-		"slipgate-socks5":    true,
-		"slipgate-warp":      true,
-		"slipgate-iptables":  true,
+		"rovunet-dnsrouter": true,
+		"rovunet-socks5":    true,
+		"rovunet-warp":      true,
+		"rovunet-iptables":  true,
 	}
 	for _, t := range cfg.Tunnels {
 		knownSvc[service.TunnelServiceName(t.Tag)] = true
@@ -370,7 +370,7 @@ func boolStr(b bool, t, f string) string {
 }
 
 func isResolvedStubDisabled() bool {
-	data, err := os.ReadFile("/etc/systemd/resolved.conf.d/slipgate-no-stub.conf")
+	data, err := os.ReadFile("/etc/systemd/resolved.conf.d/rovunet-no-stub.conf")
 	if err != nil {
 		return false
 	}
@@ -497,7 +497,7 @@ func collectExpectedWarpUIDs(cfg *config.Config) map[string]int {
 	if uid := lookupSystemUID(warp.SocksUser); uid > 0 {
 		uids[warp.SocksUser] = uid
 	}
-	// slipgate-naive (Caddy) is intentionally NOT WARP-routed — see
+	// rovunet-naive (Caddy) is intentionally NOT WARP-routed — see
 	// warp.collectUserUIDs for the reason. Don't expect a rule for it.
 
 	return uids

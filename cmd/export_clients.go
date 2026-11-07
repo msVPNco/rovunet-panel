@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/anonvector/slipgate/internal/clientcfg"
-	"github.com/anonvector/slipgate/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/spf13/cobra"
 )
 

@@ -6,7 +6,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/anonvector/slipgate/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 )
 
 // stubDetection replaces the local IP and DNS lookups for one test, and

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 )
 
 // URIOptions controls URI generation.
@@ -233,7 +233,7 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 	}
 
 	// User credentials — always populate both SOCKS and SSH fields
-	// The user/password is shared across SOCKS and SSH in slipgate
+	// The user/password is shared across SOCKS and SSH in rovunet
 	// The wire format joins fields with "|", so a raw "|" in a credential
 	// would shift every later field. Plain fields carry a stripped copy;
 	// v33 exports add the original values losslessly (see portable.go).
@@ -267,7 +267,7 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 		fields[FNaivePass] = b64(rawPass) // base64 has no "|"
 	}
 	if tunnel.Transport == config.TransportNaive && fields[FNaiveUser] == "" {
-		return "", fmt.Errorf("NaiveProxy needs a login: create a user with 'slipgate users add'")
+		return "", fmt.Errorf("NaiveProxy needs a login: create a user with 'rovunet users add'")
 	}
 
 	// A VLESS config carries the user's UUID, never their SSH/SOCKS password

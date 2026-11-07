@@ -82,7 +82,7 @@ func LoadVLESSSecret(path string) ([]byte, error) {
 }
 
 // VLESSUserID derives a user's 16-byte VLESS ID from the tunnel secret and
-// the user's SlipGate credentials. Changing the password or removing the user
+// the user's Rovunet credentials. Changing the password or removing the user
 // revokes the ID; nobody without the secret can link an ID to a password.
 // The bytes carry RFC 4122 version 4 and variant bits so every client that
 // validates UUIDs accepts them.

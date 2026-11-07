@@ -17,12 +17,12 @@ curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.
 需要自有服务器、控制 DNS 的域名和所选服务所需端口。安装器询问协议，配置服务，创建首个用户并输出配置。已有 SlipGate 请先阅读迁移指南并备份，不要直接在不可重建服务器上试装。
 
 ```bash
-sudo slipgate
-sudo slipgate users add
-sudo slipgate users configs
-sudo slipgate diag
-sudo slipgate backup
-sudo slipgate export-clients --user USER --format rovunet
+sudo rovunet
+sudo rovunet users add
+sudo rovunet users configs
+sudo rovunet diag
+sudo rovunet backup
+sudo rovunet export-clients --user USER --format rovunet
 ```
 
 ## 客户端与诊断
@@ -33,10 +33,10 @@ SOCKS CONNECT 成功不证明数据通过；分别检查认证、REP、DNS 和�
 
 ## 文档、社区与支持
 
-[完整指南](docs/GUIDE.md) · [用户指南](docs/USER_GUIDE.md) · [变更记录](CHANGELOG.md) · [Telegram](https://t.me/RovunetVPN)。生产前测试所需协议并运行 slipgate backup；多用户、资源和恢复需在实际环境验证。
+[完整指南](docs/GUIDE.md) · [用户指南](docs/USER_GUIDE.md) · [变更记录](CHANGELOG.md) · [Telegram](https://t.me/RovunetVPN)。生产前测试所需协议并运行 rovunet backup；多用户、资源和恢复需在实际环境验证。
 
 自愿帮助开发：**USDT，仅限 Tron/TRC20**，`TG3Mhou3pdq9KaFgJSHjDiDx2ahhJuHvbJ`。使用不需要捐款。
 
 ## 许可证
 
-AGPL-3.0，见 [NOTICE](NOTICE.md)。基于 Anonvector 的 [SlipGate](https://github.com/anonvector/slipgate)，独立维护且无隶属关系。兼容命令仍为 slipgate。
+AGPL-3.0，见 [NOTICE](NOTICE.md)。基于 Anonvector 的 [SlipGate](https://github.com/anonvector/slipgate)，独立维护且无隶属关系。兼容命令仍为 rovunet。

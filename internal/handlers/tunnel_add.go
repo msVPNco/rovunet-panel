@@ -6,14 +6,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/certs"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/keys"
-	"github.com/anonvector/slipgate/internal/network"
-	"github.com/anonvector/slipgate/internal/prompt"
-	"github.com/anonvector/slipgate/internal/router"
-	"github.com/anonvector/slipgate/internal/transport"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/certs"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/keys"
+	"github.com/msVPNco/rovunet-panel/internal/network"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/router"
+	"github.com/msVPNco/rovunet-panel/internal/transport"
 )
 
 func handleTunnelAdd(ctx *actions.Context) error {
@@ -657,7 +657,7 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 			if tunnel.VLESS != nil {
 				printVLESSSetup(out, cfg, &tunnel)
 			}
-			out.Info(fmt.Sprintf("Share with: slipgate tunnel share %s", tag))
+			out.Info(fmt.Sprintf("Share with: rovunet tunnel share %s", tag))
 		}
 	}
 	return nil

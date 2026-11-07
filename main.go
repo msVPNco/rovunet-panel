@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/anonvector/slipgate/cmd"
+	"github.com/msVPNco/rovunet-panel/cmd"
 )
 
 func main() {

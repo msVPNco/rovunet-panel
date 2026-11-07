@@ -163,7 +163,7 @@ func (s *StunTLSConfig) Fronted() bool { return s != nil && s.Front != "" }
 //
 // Clients reach it at Domain, normally through a CDN such as Cloudflare
 // (orange cloud), so the server's own IP stays hidden and can't be blocked
-// by address. Each SlipGate user gets their own VLESS UUID, derived from
+// by address. Each Rovunet user gets their own VLESS UUID, derived from
 // their credentials and the tunnel secret.
 type VLESSConfig struct {
 	Port       int    `json:"port"`                  // listen port
@@ -187,7 +187,7 @@ func (v *VLESSConfig) Fronted() bool { return v != nil && v.Front != "" }
 // DefaultVLESSSecret is the server-wide secret behind every VLESS tunnel's
 // user UUIDs; it is not inside a tunnel's directory, so removing a tunnel
 // doesn't lose it.
-const DefaultVLESSSecret = "/etc/slipgate/vless.secret"
+const DefaultVLESSSecret = "/etc/rovunet/vless.secret"
 
 // DefaultVLESSBlockPorts keeps users from sending mail straight from the
 // server's IP, the usual way a proxy gets the IP blacklisted.
@@ -245,7 +245,7 @@ func (t *TunnelConfig) IsDNSTunnel() bool {
 	return false
 }
 
-// HasManagedService returns true if slipgate manages a systemd service for this tunnel.
+// HasManagedService returns true if rovunet manages a systemd service for this tunnel.
 func (t *TunnelConfig) HasManagedService() bool {
 	return t.IsDNSTunnel() && t.Transport != TransportExternal
 }

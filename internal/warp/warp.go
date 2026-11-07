@@ -12,24 +12,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anonvector/slipgate/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 )
 
 const (
-	WarpDir     = "/etc/slipgate/warp"
-	WarpConf    = "/etc/slipgate/warp/wg0.conf"
-	ProfileFile = "/etc/slipgate/warp/wgcf-profile.conf" // legacy wgcf profile
-	ServiceName = "slipgate-warp"
+	WarpDir     = "/etc/rovunet/warp"
+	WarpConf    = "/etc/rovunet/warp/wg0.conf"
+	ProfileFile = "/etc/rovunet/warp/wgcf-profile.conf" // legacy wgcf profile
+	ServiceName = "rovunet-warp"
 	RouteTable  = 200
 
 	// SocksUser is a dedicated system user for the SOCKS5 proxy so its
 	// outbound traffic can be routed through WARP independently of the
 	// tunnel processes that also run as config.SystemUser.
-	SocksUser = "slipgate-socks"
+	SocksUser = "rovunet-socks"
 
 	// NaiveUser is a dedicated system user for the Caddy/NaiveProxy
 	// process so its forward-proxy traffic can be routed through WARP.
-	NaiveUser = "slipgate-naive"
+	NaiveUser = "rovunet-naive"
 
 	// PublicAddrRulePref is the `ip rule` priority for "from <public-ip>
 	// lookup main" rules. Set well below the default uidrange rule pref
@@ -114,7 +114,7 @@ func Setup(cfg *config.Config, log func(string)) error {
 	// If WARP is already running, the new wg0.conf won't take effect until
 	// the interface is restarted — which would drop every in-flight TCP
 	// stream. Live-install the public-addr rules now so existing servers
-	// upgrading via `slipgate install` get the asymmetric-routing fix
+	// upgrading via `rovunet install` get the asymmetric-routing fix
 	// without a restart.
 	if IsRunning() {
 		ensurePublicAddrRules()
@@ -520,9 +520,9 @@ func collectUserUIDs(cfg *config.Config) []int {
 		uids = append(uids, uid)
 	}
 
-	// NaiveProxy's user (slipgate-naive) is intentionally NOT routed
+	// NaiveProxy's user (rovunet-naive) is intentionally NOT routed
 	// through WARP. Caddy is just an HTTPS-wrapped TCP forwarder — actual
-	// proxied traffic terminates on 127.0.0.1:1080 (slipgate-socks) or
+	// proxied traffic terminates on 127.0.0.1:1080 (rovunet-socks) or
 	// 127.0.0.1:22 (per-tunnel SSH user), both of which ARE in the WARP
 	// table. So proxied egress already routes through WARP at the next
 	// hop. Putting Caddy itself in the WARP table is redundant and breaks
@@ -561,7 +561,7 @@ func ensureSocksUser() error {
 		return nil
 	}
 
-	// Ensure the slipgate group exists
+	// Ensure the rovunet group exists
 	_ = tryRun("groupadd", "--system", config.SystemGroup)
 
 	return run("useradd", "--system", "--no-create-home",
@@ -619,15 +619,15 @@ func removeService() error {
 	return exec.Command("systemctl", "daemon-reload").Run()
 }
 
-// resolvedDropIn is the systemd-resolved drop-in slipgate installs so that
+// resolvedDropIn is the systemd-resolved drop-in rovunet installs so that
 // WARP-routed services can resolve DNS. Removed on Uninstall.
-const resolvedDropIn = "/etc/systemd/resolved.conf.d/slipgate-warp-dns.conf"
+const resolvedDropIn = "/etc/systemd/resolved.conf.d/rovunet-warp-dns.conf"
 
 // ensurePublicResolvers makes the system use public DNS resolvers reachable
 // from behind WARP. Many cloud providers default to LAN-only resolvers
 // (DigitalOcean: 67.207.67.x, AWS: 169.254.169.253, GCP: 169.254.169.254)
 // that silently drop queries originating from outside their network — so
-// any WARP-routed slipgate service (NaiveProxy, per-user SOCKS egress, etc.)
+// any WARP-routed rovunet service (NaiveProxy, per-user SOCKS egress, etc.)
 // can't resolve anything. That breaks Caddy's Let's Encrypt acquisition on
 // first install and every outbound HTTPS call after.
 //

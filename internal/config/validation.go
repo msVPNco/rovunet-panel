@@ -102,7 +102,7 @@ func ValidateTagName(tag string) error {
 }
 
 // ValidatePassword rejects characters that can't round-trip through every
-// place slipgate serializes a password: `chpasswd` stdin (`user:pass` lines,
+// place rovunet serializes a password: `chpasswd` stdin (`user:pass` lines,
 // so ':' splits and '\n' terminates), and the SOCKS5 creds file (same
 // `user:pass\n` framing). Also rejects control characters, which are
 // generally unsafe in shadow-file passwords.
@@ -162,7 +162,7 @@ func (c *Config) RemoveInvalidUsers() []string {
 
 // ValidateImported checks a config that comes from outside this server, such
 // as a backup being restored, before any of it is used. On top of Validate it
-// requires each value to have the form slipgate itself writes: these values
+// requires each value to have the form rovunet itself writes: these values
 // end up in systemd unit lines, the NaiveProxy Caddyfile, useradd and
 // chpasswd, where a crafted one could run commands or take over an account.
 // Key and certificate paths are not checked here; the caller decides where

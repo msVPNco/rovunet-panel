@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/certs"
-	"github.com/anonvector/slipgate/internal/clientcfg"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/keys"
-	"github.com/anonvector/slipgate/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/certs"
+	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/keys"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
 )
 
 // setupVLESS asks for (or takes from flags) a VLESS tunnel's settings and
@@ -227,7 +227,7 @@ func printVLESSSetup(out actions.OutputWriter, cfg *config.Config, t *config.Tun
 func handleVLESSShare(ctx *actions.Context, cfg *config.Config, tunnel *config.TunnelConfig) error {
 	if len(cfg.Users) == 0 {
 		return actions.NewErrorWithHint(actions.TunnelShare, "VLESS configs are per user and there are no users",
-			"Create one with: sudo slipgate users add", nil)
+			"Create one with: sudo rovunet users add", nil)
 	}
 	username := ctx.GetArg("user")
 	if username == "" {

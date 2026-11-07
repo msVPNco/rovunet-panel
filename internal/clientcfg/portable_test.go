@@ -3,7 +3,7 @@ package clientcfg
 import (
 	"encoding/base64"
 	"encoding/json"
-	"github.com/anonvector/slipgate/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 	"os"
 	"strings"
 	"testing"

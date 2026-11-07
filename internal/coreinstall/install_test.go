@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anonvector/slipgate/internal/coreplan"
+	"github.com/msVPNco/rovunet-panel/internal/coreplan"
 )
 
 func TestValidateName(t *testing.T) {
@@ -76,8 +76,8 @@ func TestWriteBundleRoundTripsMeta(t *testing.T) {
 }
 
 func TestUnitRunsValidatedConfig(t *testing.T) {
-	u := Unit("r1", "/etc/slipgate/core/r1")
-	if u.Name != "slipgate-core-r1" || !strings.HasSuffix(u.ExecStart, "run -c /etc/slipgate/core/r1/server.json") {
+	u := Unit("r1", "/etc/rovunet/core/r1")
+	if u.Name != "rovunet-core-r1" || !strings.HasSuffix(u.ExecStart, "run -c /etc/rovunet/core/r1/server.json") {
 		t.Fatalf("unit %+v", u)
 	}
 }

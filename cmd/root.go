@@ -1,23 +1,25 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/handlers"
-	"github.com/anonvector/slipgate/internal/menu"
-	"github.com/anonvector/slipgate/internal/version"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/handlers"
+	"github.com/msVPNco/rovunet-panel/internal/menu"
+	"github.com/msVPNco/rovunet-panel/internal/migrate"
+	"github.com/msVPNco/rovunet-panel/internal/version"
 	"github.com/spf13/cobra"
 
 	// Register all actions
-	_ "github.com/anonvector/slipgate/internal/actions"
+	_ "github.com/msVPNco/rovunet-panel/internal/actions"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "slipgate",
+	Use:   "rovunet",
 	Short: "Unified server tunnel manager",
-	Long:  "Rovunet Panel (slipgate) manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar) and HTTPS proxies (NaiveProxy) with systemd services.",
+	Long:  "Rovunet Panel manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar) and HTTPS proxies (NaiveProxy) with systemd services.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if v, _ := cmd.Flags().GetBool("version"); v {
 			cmd.Println(version.String())
@@ -26,6 +28,14 @@ var rootCmd = &cobra.Command{
 		// No args → launch interactive TUI
 		cfg, err := loadOrDefaultConfig()
 		return menu.Run(cfg, err)
+	},
+	// A server still on the pre-rename layout is migrated by the first
+	// command run as root, before any command reads its config.
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if migrate.Needed() && os.Geteuid() == 0 {
+			return migrate.Run(func(s string) { fmt.Println(s) })
+		}
+		return nil
 	},
 	SilenceUsage:  true,
 	SilenceErrors: true,
@@ -46,6 +56,10 @@ func init() {
 		Use:    "post-update",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Before loading config: it may still be under the old name.
+			if err := migrate.Run(func(s string) { fmt.Println(s) }); err != nil {
+				fmt.Fprintln(os.Stderr, "Migration failed:", err)
+			}
 			cfg, _ := loadOrDefaultConfig()
 			ctx := &actions.Context{
 				Args:   make(map[string]string),

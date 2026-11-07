@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/keys"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/keys"
 )
 
 func testVLESSTunnel(t *testing.T, mutate func(*config.VLESSConfig)) *config.TunnelConfig {

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/anonvector/slipgate/internal/coreinstall"
-	"github.com/anonvector/slipgate/internal/coreplan"
+	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
+	"github.com/msVPNco/rovunet-panel/internal/coreplan"
 	"github.com/spf13/cobra"
 )
 

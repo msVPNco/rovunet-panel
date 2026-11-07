@@ -30,7 +30,7 @@ var QuickTransportOptions = []SelectOption{
 	{Value: "direct-socks5", Label: "SOCKS5 — Direct SOCKS5 proxy"},
 }
 
-// InstallTransportOptions is the list `slipgate install` shows: the quick
+// InstallTransportOptions is the list `rovunet install` shows: the quick
 // wizard's plus VLESS, which install sets up with no further questions than
 // its domain.
 var InstallTransportOptions = []SelectOption{

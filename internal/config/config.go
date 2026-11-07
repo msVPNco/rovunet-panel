@@ -10,13 +10,13 @@ import (
 )
 
 const (
-	DefaultConfigDir  = "/etc/slipgate"
-	DefaultConfigFile = "/etc/slipgate/config.json"
-	DefaultTunnelDir  = "/etc/slipgate/tunnels"
+	DefaultConfigDir  = "/etc/rovunet"
+	DefaultConfigFile = "/etc/rovunet/config.json"
+	DefaultTunnelDir  = "/etc/rovunet/tunnels"
 	DefaultBinDir     = "/usr/local/bin"
-	SystemUser        = "slipgate"
-	SystemGroup       = "slipgate"
-	SSHGroup          = "slipgate-ssh"
+	SystemUser        = "rovunet"
+	SystemGroup       = "rovunet"
+	SSHGroup          = "rovunet-ssh"
 )
 
 // WarpConfig tracks Cloudflare WARP outbound state.
@@ -24,7 +24,7 @@ type WarpConfig struct {
 	Enabled bool `json:"enabled"`
 }
 
-// Config is the top-level slipgate configuration.
+// Config is the top-level rovunet configuration.
 type Config struct {
 	mu       sync.RWMutex
 	path     string

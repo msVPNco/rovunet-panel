@@ -70,29 +70,29 @@ curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.
 git clone https://github.com/msVPNco/rovunet-panel.git
 cd rovunet-panel
 make build
-sudo ./slipgate install
+sudo ./rovunet install
 ```
 
 **Offline install (SCP to server):**
 
-Download slipgate from Rovunet Panel's [latest release](https://github.com/msVPNco/rovunet-panel/releases) and the transport binaries you need from [upstream's](https://github.com/anonvector/slipgate/releases):
+Download rovunet from Rovunet Panel's [latest release](https://github.com/msVPNco/rovunet-panel/releases) and the transport binaries you need from [upstream's](https://github.com/anonvector/slipgate/releases):
 
 ```bash
 # On your local machine — download binaries
-mkdir slipgate-bundle && cd slipgate-bundle
-curl -LO https://github.com/msVPNco/rovunet-panel/releases/latest/download/slipgate-linux-amd64
+mkdir rovunet-bundle && cd rovunet-bundle
+curl -LO https://github.com/msVPNco/rovunet-panel/releases/latest/download/rovunet-linux-amd64
 curl -LO https://github.com/anonvector/slipgate/releases/latest/download/dnstt-server-linux-amd64
 curl -LO https://github.com/anonvector/slipgate/releases/latest/download/slipstream-server-linux-amd64
 curl -LO https://github.com/anonvector/slipgate/releases/latest/download/vaydns-server-linux-amd64
 curl -LO https://github.com/anonvector/slipgate/releases/latest/download/caddy-naive-linux-amd64
 
 # SCP to server
-scp * user@server:/tmp/slipgate/
+scp * user@server:/tmp/rovunet/
 
 # On the server
-chmod +x /tmp/slipgate/*
-sudo cp /tmp/slipgate/slipgate-linux-amd64 /usr/local/bin/slipgate
-sudo slipgate install --bin-dir /tmp/slipgate
+chmod +x /tmp/rovunet/*
+sudo cp /tmp/rovunet/rovunet-linux-amd64 /usr/local/bin/rovunet
+sudo rovunet install --bin-dir /tmp/rovunet
 ```
 
 **Switch a server running SlipGate to Rovunet Panel** (config, tunnels and users are kept; use `arm64` on ARM servers):
@@ -100,83 +100,83 @@ sudo slipgate install --bin-dir /tmp/slipgate
 ```bash
 # Download beside the running binary, then swap it in (writing over a running
 # binary fails with "Text file busy" / curl error 23)
-curl -fsSL -o /tmp/slipgate https://github.com/msVPNco/rovunet-panel/releases/latest/download/slipgate-linux-amd64
-sudo install -m 755 /tmp/slipgate /usr/local/bin/slipgate
-sudo slipgate post-update      # refreshes transport binaries and regenerates services
-slipgate --version
+curl -fsSL -o /tmp/rovunet https://github.com/msVPNco/rovunet-panel/releases/latest/download/rovunet-linux-amd64
+sudo install -m 755 /tmp/rovunet /usr/local/bin/rovunet
+sudo rovunet post-update      # refreshes transport binaries and regenerates services
+rovunet --version
 ```
 
-From then on `slipgate update` updates from Rovunet Panel.
+From then on `rovunet update` updates from Rovunet Panel.
 
 Then launch the interactive menu:
 
 ```bash
-sudo slipgate
+sudo rovunet
 ```
 
 ## CLI Usage
 
 ```
-slipgate                        # Interactive TUI menu
-slipgate install                # Install dependencies and configure server
-slipgate uninstall              # Remove all services, configs, and binaries
-slipgate update                 # Self-update and restart all services
-slipgate restart                # Restart all services (DNS router, tunnels, SOCKS)
-slipgate backup [file]          # Back up config, keys and users (file, or text to copy-paste)
-slipgate restore [file]         # Restore a backup on this server ("-" reads stdin)
-slipgate users                  # Manage users (SSH, SOCKS and VLESS) and view configs
-slipgate users add              # Add a single user
-slipgate users bulk_add         # Add multiple users in one batch (random creds, up to 500)
-slipgate users remove           # Remove a user
-slipgate users list             # List users and their per-tunnel configs
-slipgate users configs          # Show every config (all tunnels and users, incl. no-login Soar and vless:// links)
-slipgate stats                  # Live dashboard (CPU, RAM, traffic, connections, tunnels)
-slipgate diag                   # Run diagnostics (services, ports, keys, DNS, boot status)
-slipgate mtu [value]            # Set MTU for all DNSTT/NoizDNS/VayDNS tunnels at once
+rovunet                        # Interactive TUI menu
+rovunet install                # Install dependencies and configure server
+rovunet uninstall              # Remove all services, configs, and binaries
+rovunet update                 # Self-update and restart all services
+rovunet restart                # Restart all services (DNS router, tunnels, SOCKS)
+rovunet backup [file]          # Back up config, keys and users (file, or text to copy-paste)
+rovunet restore [file]         # Restore a backup on this server ("-" reads stdin)
+rovunet users                  # Manage users (SSH, SOCKS and VLESS) and view configs
+rovunet users add              # Add a single user
+rovunet users bulk_add         # Add multiple users in one batch (random creds, up to 500)
+rovunet users remove           # Remove a user
+rovunet users list             # List users and their per-tunnel configs
+rovunet users configs          # Show every config (all tunnels and users, incl. no-login Soar and vless:// links)
+rovunet stats                  # Live dashboard (CPU, RAM, traffic, connections, tunnels)
+rovunet diag                   # Run diagnostics (services, ports, keys, DNS, boot status)
+rovunet mtu [value]            # Set MTU for all DNSTT/NoizDNS/VayDNS tunnels at once
 
 # Tunnel management
-slipgate tunnel add             # Add tunnel(s) — supports multi-select and "both" backend
-slipgate tunnel edit [tag]      # Edit tunnel settings (tag, MTU, keys, VLESS path / CDN IP, --front)
-slipgate tunnel remove [tag]    # Remove a tunnel
-slipgate tunnel remove --all    # Remove all tunnels at once
-slipgate tunnel start [tag]     # Start a tunnel
-slipgate tunnel stop [tag]      # Stop a tunnel
-slipgate tunnel status          # Show all tunnel statuses
-slipgate tunnel status [tag]    # Show tunnel details (keys, MTU, port)
-slipgate tunnel share [tag]     # Generate rovunet:// URI for clients (+ vless:// link per user for VLESS)
-slipgate tunnel logs [tag]      # View tunnel logs
+rovunet tunnel add             # Add tunnel(s) — supports multi-select and "both" backend
+rovunet tunnel edit [tag]      # Edit tunnel settings (tag, MTU, keys, VLESS path / CDN IP, --front)
+rovunet tunnel remove [tag]    # Remove a tunnel
+rovunet tunnel remove --all    # Remove all tunnels at once
+rovunet tunnel start [tag]     # Start a tunnel
+rovunet tunnel stop [tag]      # Stop a tunnel
+rovunet tunnel status          # Show all tunnel statuses
+rovunet tunnel status [tag]    # Show tunnel details (keys, MTU, port)
+rovunet tunnel share [tag]     # Generate rovunet:// URI for clients (+ vless:// link per user for VLESS)
+rovunet tunnel logs [tag]      # View tunnel logs
 
 # DNS routing
-slipgate router status          # Show DNS routing config
-slipgate router mode            # Switch between single/multi mode
-slipgate router switch          # Change active tunnel (single mode)
+rovunet router status          # Show DNS routing config
+rovunet router mode            # Switch between single/multi mode
+rovunet router switch          # Change active tunnel (single mode)
 
 # Configuration
-slipgate config export          # Print config.json (no keys; use backup to move a server)
-slipgate config import [path]   # Replace config.json (no keys)
-slipgate config address [ip]    # Public IP or hostname for StunTLS/SSH/SOCKS5 configs ("auto" to detect)
+rovunet config export          # Print config.json (no keys; use backup to move a server)
+rovunet config import [path]   # Replace config.json (no keys)
+rovunet config address [ip]    # Public IP or hostname for StunTLS/SSH/SOCKS5 configs ("auto" to detect)
 
 # Internal (used by systemd services)
-slipgate dnsrouter serve        # Start DNS router
-slipgate socks serve            # Start built-in SOCKS5 proxy
-slipgate stuntls serve          # Start StunTLS proxy
-slipgate vless serve            # Start VLESS over WebSocket server
+rovunet dnsrouter serve        # Start DNS router
+rovunet socks serve            # Start built-in SOCKS5 proxy
+rovunet stuntls serve          # Start StunTLS proxy
+rovunet vless serve            # Start VLESS over WebSocket server
 ```
 
 ### Non-Interactive Examples
 
-All commands support flags for scripting and automation. If any required flag is omitted, slipgate falls back to an interactive prompt.
+All commands support flags for scripting and automation. If any required flag is omitted, rovunet falls back to an interactive prompt.
 
 ```bash
 # DNSTT tunnel
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport dnstt \
   --backend socks \
   --tag mydnstt \
   --domain t.example.com
 
 # DNSTT tunnel with custom Curve25519 keys
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport dnstt \
   --backend socks \
   --tag mytunnel \
@@ -185,21 +185,21 @@ sudo slipgate tunnel add \
   --public-key <64-char-hex>   # optional, validated if provided
 
 # DNSTT with both backends (creates mydnstt-socks + mydnstt-ssh)
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport dnstt \
   --backend both \
   --tag mydnstt \
   --domain t.example.com
 
 # VayDNS tunnel (KCP + Curve25519)
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport vaydns \
   --backend socks \
   --tag myvaydns \
   --domain v.example.com
 
 # VayDNS with all tuning parameters
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport vaydns \
   --backend both \
   --tag myvaydns \
@@ -210,10 +210,10 @@ sudo slipgate tunnel add \
   --clientid-size 2 \
   --queue-size 512
 
-# Soar tunnel (built into slipgate, no extra binary). Direct backend: no
+# Soar tunnel (built into rovunet, no extra binary). Direct backend: no
 # login, the server reaches public sites itself (works with stock soar clients)
 # Optional: --private-key <base64 Ed25519 seed> to import an existing key
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport soar \
   --backend direct \
   --tag mysoar \
@@ -221,22 +221,22 @@ sudo slipgate tunnel add \
   --allow-ports 80,443
 
 # Soar with the SSH backend: the server reaches only the SSH server, so each
-# person needs their own SSH user (Rovunet; share with 'slipgate tunnel share')
-sudo slipgate tunnel add \
+# person needs their own SSH user (Rovunet; share with 'rovunet tunnel share')
+sudo rovunet tunnel add \
   --transport soar \
   --backend ssh \
   --tag mysoar-ssh \
   --domain rs.example.com
 
 # Slipstream tunnel
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport slipstream \
   --backend ssh \
   --tag myslip \
   --domain s.example.com
 
 # NaiveProxy tunnel
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport naive \
   --backend socks \
   --tag myproxy \
@@ -245,25 +245,25 @@ sudo slipgate tunnel add \
   --decoy-url https://www.wikipedia.org
 
 # StunTLS tunnel (SSH over TLS + WebSocket), then carry it on NaiveProxy's 443
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport stuntls \
   --tag mytls
-sudo slipgate tunnel edit --tag mytls --front myproxy
+sudo rovunet tunnel edit --tag mytls --front myproxy
 
 # VLESS over WebSocket on NaiveProxy's 443 (recommended). Each user gets their
-# own UUID; share per user with 'slipgate tunnel share myvless --user alice'.
+# own UUID; share per user with 'rovunet tunnel share myvless --user alice'.
 # Optional: --block-ports "25,465" (default 25, "none" for no limit)
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport vless \
   --tag myvless \
   --domain example.com \
   --cdn no \
   --listen-port 2053
-sudo slipgate tunnel edit --tag myvless --front myproxy
+sudo rovunet tunnel edit --tag myvless --front myproxy
 
 # Optional: VLESS behind Cloudflare instead (orange-cloud hostname, SSL mode Full),
 # for when the server's IP is blocked. Also: --tls no, --cdn-address <clean IP>
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport vless \
   --tag myvless-cf \
   --domain cdn.example.com \
@@ -271,7 +271,7 @@ sudo slipgate tunnel add \
   --listen-port 2053
 
 # External DNS routing (forward queries to a custom port)
-sudo slipgate tunnel add \
+sudo rovunet tunnel add \
   --transport external \
   --tag my-proto \
   --domain j.example.com \
@@ -279,30 +279,30 @@ sudo slipgate tunnel add \
 # Queries for j.example.com route to 127.0.0.1:5301
 
 # Direct SSH / SOCKS5 transports
-sudo slipgate tunnel add --transport direct-ssh --tag myssh
-sudo slipgate tunnel add --transport direct-socks5 --tag mysocks
+sudo rovunet tunnel add --transport direct-ssh --tag myssh
+sudo rovunet tunnel add --transport direct-socks5 --tag mysocks
 
 # Rename a tunnel
-sudo slipgate tunnel edit --tag mydnstt --new-tag my-tunnel
+sudo rovunet tunnel edit --tag mydnstt --new-tag my-tunnel
 
 # Change MTU on a DNSTT tunnel
-sudo slipgate tunnel edit --tag mydnstt --mtu 1232
+sudo rovunet tunnel edit --tag mydnstt --mtu 1232
 
 # Put a clean Cloudflare IP into future VLESS configs ("-" goes back to the domain)
-sudo slipgate tunnel edit --tag myvless --cdn-address 104.16.0.1
+sudo rovunet tunnel edit --tag myvless --cdn-address 104.16.0.1
 
 # Serve VLESS through NaiveProxy's Caddy: port 443, its Let's Encrypt
 # certificate, the decoy site for probes, no Cloudflare ("-" undoes it)
-sudo slipgate tunnel edit --tag myvless --front naive
+sudo rovunet tunnel edit --tag myvless --front naive
 
 # Carry StunTLS (SSH over WebSocket) the same way, for networks that drop its own port
-sudo slipgate tunnel edit --tag stuntls --front naive
+sudo rovunet tunnel edit --tag stuntls --front naive
 
 # Set MTU for all DNSTT/NoizDNS/VayDNS tunnels at once (rewrites and restarts each service)
-sudo slipgate mtu 1200
+sudo rovunet mtu 1200
 
 # Tune VayDNS parameters
-sudo slipgate tunnel edit --tag myvaydns \
+sudo rovunet tunnel edit --tag myvaydns \
   --mtu 1232 \
   --record-type txt \
   --idle-timeout 10s \
@@ -311,20 +311,20 @@ sudo slipgate tunnel edit --tag myvaydns \
   --queue-size 512
 
 # View tunnel details (keys, MTU, port, status)
-sudo slipgate tunnel status --tag mydnstt
+sudo rovunet tunnel status --tag mydnstt
 
 # Share tunnel config as rovunet:// URI
-sudo slipgate tunnel share mydnstt
+sudo rovunet tunnel share mydnstt
 
 # VLESS configs are per user: rovunet:// and vless:// for alice
-sudo slipgate tunnel share myvless --user alice
+sudo rovunet tunnel share myvless --user alice
 
 # Move to a new server: same keys and passwords, so client configs keep working.
 # Afterwards point the DNS records (ns.<domain>, NaiveProxy and VLESS domains) at the new IP.
-ssh root@old-server slipgate backup - | ssh root@new-server slipgate restore - --yes
+ssh root@old-server rovunet backup - | ssh root@new-server rovunet restore - --yes
 
 # Bulk-add SSH/SOCKS users (random passwords, up to 500 per call)
-sudo slipgate users bulk_add --count=50 --prefix=user
+sudo rovunet users bulk_add --count=50 --prefix=user
 # Creates user001..user050 with random passwords. A single SOCKS reload
 # and WARP rule sync runs for the whole batch.
 ```
@@ -368,13 +368,13 @@ sudo slipgate users bulk_add --count=50 --prefix=user
 │                                             Internet                          │
 └───────────────────────────────────────────────────────────────────────────────┘
 
-  systemd: slipgate-dnsrouter, slipgate-socks5, slipgate-{tag}
+  systemd: rovunet-dnsrouter, rovunet-socks5, rovunet-{tag}
   Also: direct SSH (:22), direct SOCKS5 (:1080), StunTLS on its own port (:8443)
 ```
 
 Soar with the direct backend and VLESS dial each stream's destination themselves, so their traffic skips the backend layer and WARP.
 
-Everything HTTPS arrives on one domain and port 443. Caddy (NaiveProxy) holds the Let's Encrypt certificate and looks at each request: a VLESS or StunTLS secret WebSocket path goes to that server (VLESS on localhost, StunTLS over TLS), an authenticated proxy request goes to NaiveProxy's `forward_proxy`, and anything else gets the decoy website. Install sets this up whenever NaiveProxy is selected; `slipgate tunnel edit --tag <tunnel> --front <naive-tag|->` switches an existing tunnel. The Cloudflare path on the right is optional, for when the server's IP is blocked.
+Everything HTTPS arrives on one domain and port 443. Caddy (NaiveProxy) holds the Let's Encrypt certificate and looks at each request: a VLESS or StunTLS secret WebSocket path goes to that server (VLESS on localhost, StunTLS over TLS), an authenticated proxy request goes to NaiveProxy's `forward_proxy`, and anything else gets the decoy website. Install sets this up whenever NaiveProxy is selected; `rovunet tunnel edit --tag <tunnel> --front <naive-tag|->` switches an existing tunnel. The Cloudflare path on the right is optional, for when the server's IP is blocked.
 
 ### Transport Types
 
@@ -383,10 +383,10 @@ Everything HTTPS arrives on one domain and port 443. Caddy (NaiveProxy) holds th
 | **DNSTT/NoizDNS** | DNS | 53/udp | Curve25519 encrypted DNS tunnel. A single server serves both DNSTT and NoizDNS clients. NoizDNS adds DPI evasion with base36/hex encoding and CDN prefix stripping |
 | **Slipstream** | QUIC DNS | 53/udp | QUIC-based tunnel with certificate authentication |
 | **VayDNS** | KCP DNS | 53/udp | KCP-based DNS tunnel with Curve25519 encryption. Supports configurable idle timeout, keepalive, queue size, and multiple DNS record types |
-| **Soar** | DNS | 53/udp | [Soar](https://github.com/getlantern/soar) multipath DNS tunnel (X25519 + Ed25519-signed handshake), served by slipgate itself. Soar has no per-user login, so it has two backends. **Direct**: like soar-server, it dials the destination each stream names, limited to public addresses and the allowed ports (default `80,443`, or `any`); anyone who finds the zone can use it, and it works with stock soar clients (zone + base64 public key from `tunnel status`). **SSH**: it reaches only the SSH server, so access goes through SSH users, added and removed one by one. Both export `rovunet://` configs for a Rovunet version with Soar support |
+| **Soar** | DNS | 53/udp | [Soar](https://github.com/getlantern/soar) multipath DNS tunnel (X25519 + Ed25519-signed handshake), served by rovunet itself. Soar has no per-user login, so it has two backends. **Direct**: like soar-server, it dials the destination each stream names, limited to public addresses and the allowed ports (default `80,443`, or `any`); anyone who finds the zone can use it, and it works with stock soar clients (zone + base64 public key from `tunnel status`). **SSH**: it reaches only the SSH server, so access goes through SSH users, added and removed one by one. Both export `rovunet://` configs for a Rovunet version with Soar support |
 | **NaiveProxy** | HTTPS | 443/tcp | Caddy with forwardproxy plugin. Auto-TLS via Let's Encrypt. Probe-resistant with decoy site |
 | **StunTLS** | TLS/WSS | 8443/tcp, or 443 fronted | SSH over TLS + WebSocket proxy. Auto-detects WebSocket, HTTP CONNECT, raw TLS, and payload (DPI bypass) modes. Self-signed TLS cert, no domain required. Fronted by NaiveProxy (`--front`), clients reach it as SSH over WebSocket on the Naive domain, port 443, real certificate |
-| **VLESS** | WS/WSS | 443 fronted; or 2053, 2083, 2087, 2096, 8443/tcp | VLESS over WebSocket, served by slipgate itself, with Rovunet's VLESS profiles and any VLESS client (v2rayNG, Hiddify, NekoBox…). **Fronted by NaiveProxy** (recommended): Caddy carries it on 443 with its Let's Encrypt certificate, so links need no `allowInsecure` (which Xray clients drop from 2026-08). **Behind Cloudflare**: clients reach a Cloudflare IP and the server's IP stays hidden; set SSL/TLS mode to **Full**. **Direct**: its own port with a self-signed certificate. Each user's UUID is derived from their credentials and a server-wide secret: removing a user or changing the password revokes it within seconds, and a shared config never carries the password. Streams reach public addresses only, port 25 blocked by default; TCP and plain UDP (no mux/XUDP). Other paths answer like a stock nginx. Outbound traffic doesn't go through WARP |
+| **VLESS** | WS/WSS | 443 fronted; or 2053, 2083, 2087, 2096, 8443/tcp | VLESS over WebSocket, served by rovunet itself, with Rovunet's VLESS profiles and any VLESS client (v2rayNG, Hiddify, NekoBox…). **Fronted by NaiveProxy** (recommended): Caddy carries it on 443 with its Let's Encrypt certificate, so links need no `allowInsecure` (which Xray clients drop from 2026-08). **Behind Cloudflare**: clients reach a Cloudflare IP and the server's IP stays hidden; set SSL/TLS mode to **Full**. **Direct**: its own port with a self-signed certificate. Each user's UUID is derived from their credentials and a server-wide secret: removing a user or changing the password revokes it within seconds, and a shared config never carries the password. Streams reach public addresses only, port 25 blocked by default; TCP and plain UDP (no mux/XUDP). Other paths answer like a stock nginx. Outbound traffic doesn't go through WARP |
 | **External** | DNS | 53/udp | Routes DNS queries for a domain to a user-specified UDP port. No managed service — use for custom/private protocol testing |
 
 ### Domain Layout
@@ -447,51 +447,51 @@ The DNS router answers on both UDP and TCP port 53. Queries arriving over TCP (R
 After creating a tunnel, generate a shareable config:
 
 ```bash
-sudo slipgate tunnel share mytunnel
+sudo rovunet tunnel share mytunnel
 ```
 
 This outputs a `rovunet://` URI that can be scanned or imported into the Rovunet Android app. For DNSTT tunnels, you'll be asked to choose between a DNSTT or NoizDNS client profile — both connect to the same server, but NoizDNS profiles enable DPI evasion on the client side.
 
-`slipgate install` offers VLESS too and then asks only for its domain: it picks a free port, derives the WebSocket path from a server-wide secret (`/etc/slipgate/vless.secret`, kept when a tunnel is removed, so removing and re-adding a tunnel gives the same links) and prints every user's links at the end. When NaiveProxy is selected as well, VLESS and StunTLS are fronted by it from the start.
+`rovunet install` offers VLESS too and then asks only for its domain: it picks a free port, derives the WebSocket path from a server-wide secret (`/etc/rovunet/vless.secret`, kept when a tunnel is removed, so removing and re-adding a tunnel gives the same links) and prints every user's links at the end. When NaiveProxy is selected as well, VLESS and StunTLS are fronted by it from the start.
 
 For VLESS tunnels it asks which user's config to show (or pass `--user <name>`) and prints both a `rovunet://` URI and a standard `vless://` link for other clients. Behind Cloudflare you can replace the CDN address with a clean Cloudflare IP in Rovunet at any time. A step-by-step guide in Persian is in [docs/VLESS_FA.md](VLESS_FA.md).
 
 To move an existing VLESS or StunTLS tunnel onto NaiveProxy's 443 (or back with `-`), then hand out the new configs:
 
 ```bash
-sudo slipgate tunnel edit --tag vless --front naive
-sudo slipgate tunnel edit --tag stuntls --front naive
-sudo slipgate users configs
+sudo rovunet tunnel edit --tag vless --front naive
+sudo rovunet tunnel edit --tag stuntls --front naive
+sudo rovunet users configs
 ```
 
 To print every config at once, for all tunnels and users (also in the menu under **Users → Show all configs**):
 
 ```bash
-sudo slipgate users configs
+sudo rovunet users configs
 ```
 
 ### Server address (Oracle, AWS, GCP, Azure)
 
-StunTLS, direct SSH and direct SOCKS5 configs carry the server's IP, since clients connect to it directly. Cloud servers only see a private IP (e.g. `10.0.0.5`) on their network interface, so slipgate looks for the public one: the server's own IP when it is public, otherwise the IP that `ns.<your domain>` or a NaiveProxy domain points at. If it finds none, it asks once and saves the answer. Set or change it at any time (also in the menu under **Tunnels → Server address**):
+StunTLS, direct SSH and direct SOCKS5 configs carry the server's IP, since clients connect to it directly. Cloud servers only see a private IP (e.g. `10.0.0.5`) on their network interface, so rovunet looks for the public one: the server's own IP when it is public, otherwise the IP that `ns.<your domain>` or a NaiveProxy domain points at. If it finds none, it asks once and saves the answer. Set or change it at any time (also in the menu under **Tunnels → Server address**):
 
 ```bash
-sudo slipgate config address 203.0.113.7   # an IP or hostname, without a port
-sudo slipgate config address auto          # detect it again
+sudo rovunet config address 203.0.113.7   # an IP or hostname, without a port
+sudo rovunet config address auto          # detect it again
 ```
 
 Configs for DNS tunnels, Soar, NaiveProxy, VLESS and fronted StunTLS connect by domain and don't depend on it. VLESS configs never carry the server's IP.
 
 ### User Model
 
-Users are **global**, not scoped to specific tunnels or transports. `slipgate users add` only asks for a username and password — the protocol is a property of the tunnel, chosen at `tunnel add` time. Every user can authenticate against every tunnel using the same credentials, and `slipgate users list` prints one config block per (user × tunnel) pair. `slipgate users configs` prints them all at once, together with the configs that need no login (Soar with the direct backend), which belong to no user. The client picks which tunnel to use by importing the matching `rovunet://` URI. On VLESS tunnels each user's UUID is derived from their username and password (with a per-tunnel secret), so removing a user or changing their password also revokes their VLESS access, within seconds and without a restart.
+Users are **global**, not scoped to specific tunnels or transports. `rovunet users add` only asks for a username and password — the protocol is a property of the tunnel, chosen at `tunnel add` time. Every user can authenticate against every tunnel using the same credentials, and `rovunet users list` prints one config block per (user × tunnel) pair. `rovunet users configs` prints them all at once, together with the configs that need no login (Soar with the direct backend), which belong to no user. The client picks which tunnel to use by importing the matching `rovunet://` URI. On VLESS tunnels each user's UUID is derived from their username and password (with a per-tunnel secret), so removing a user or changing their password also revokes their VLESS access, within seconds and without a restart.
 
 ## File Locations
 
 | Path | Description |
 |------|-------------|
-| `/etc/slipgate/config.json` | Main configuration |
-| `/etc/slipgate/tunnels/` | Per-tunnel keys, certs, and configs (VLESS: `vless.secret`, which turns users' credentials into their UUIDs) |
-| `/usr/local/bin/slipgate` | Rovunet Panel binary (includes the built-in SOCKS5, Soar, StunTLS and VLESS servers) |
+| `/etc/rovunet/config.json` | Main configuration |
+| `/etc/rovunet/tunnels/` | Per-tunnel keys, certs, and configs (VLESS: `vless.secret`, which turns users' credentials into their UUIDs) |
+| `/usr/local/bin/rovunet` | Rovunet Panel binary (includes the built-in SOCKS5, Soar, StunTLS and VLESS servers) |
 | `/usr/local/bin/dnstt-server` | DNSTT transport binary |
 | `/usr/local/bin/slipstream-server` | Slipstream transport binary |
 | `/usr/local/bin/vaydns-server` | VayDNS transport binary |
@@ -506,7 +506,7 @@ make test               # Run tests
 make release            # Build release binaries
 ```
 
-**Releases**: set `VERSION` in the Makefile and merge to `main`; the Release workflow then publishes `v<VERSION>` with `slipgate-linux-amd64`, `slipgate-linux-arm64` and `SHA256SUMS` (it skips versions already released). Pushing a `v*` tag works too.
+**Releases**: set `VERSION` in the Makefile and merge to `main`; the Release workflow then publishes `v<VERSION>` with `rovunet-linux-amd64`, `rovunet-linux-arm64` and `SHA256SUMS` (it skips versions already released). Pushing a `v*` tag works too.
 
 ## Credits
 
@@ -515,9 +515,9 @@ Rovunet Panel builds on these projects:
 - [dnstt](https://www.bamsoftware.com/software/dnstt/) by David Fifield - the DNS tunnel behind the DNSTT and NoizDNS transports, via the [tladesignz/dnstt](https://github.com/tladesignz/dnstt) fork (public domain / CC0)
 - [Slipstream](https://github.com/EndPositive/slipstream) by [EndPositive](https://github.com/EndPositive) and its Rust rewrite [slipstream-rust](https://github.com/Mygod/slipstream-rust) by [Mygod](https://github.com/Mygod) - the QUIC-over-DNS tunnel behind the Slipstream transport (Apache-2.0)
 - [VayDNS](https://github.com/net2share/vaydns) by [net2share](https://github.com/net2share) - the KCP-based DNS tunnel behind the VayDNS transport (CC0)
-- [Soar](https://github.com/getlantern/soar) by [Lantern](https://github.com/getlantern) - the multi-resolver DNS tunnel behind the Soar transport, built into slipgate (Apache-2.0)
+- [Soar](https://github.com/getlantern/soar) by [Lantern](https://github.com/getlantern) - the multi-resolver DNS tunnel behind the Soar transport, built into rovunet (Apache-2.0)
 - [dnstm](https://github.com/net2share/dnstm) by [net2share](https://github.com/net2share) - the DNS tunnel manager Rovunet Panel was originally built on
-- [VLESS](https://github.com/XTLS/Xray-core) by [Project X](https://github.com/XTLS) - the protocol the VLESS transport speaks, implemented independently in slipgate
+- [VLESS](https://github.com/XTLS/Xray-core) by [Project X](https://github.com/XTLS) - the protocol the VLESS transport speaks, implemented independently in rovunet
 - WARP integration inspired by [dnstun-ezpz](https://github.com/aleskxyz/dnstun-ezpz) by [aleskxyz](https://github.com/aleskxyz)
 
 ## License

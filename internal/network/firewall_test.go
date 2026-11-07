@@ -31,7 +31,7 @@ func TestTrackedPortsRoundTrip(t *testing.T) {
 	}
 }
 
-func TestBootRulesOnlyInsertSlipgatePorts(t *testing.T) {
+func TestBootRulesOnlyInsertRovunetPorts(t *testing.T) {
 	rules := renderBootRules([]trackedPort{{"tcp", 443}, {"udp", 53}})
 	for _, want := range []string{"*filter\n", "-I INPUT -p tcp --dport 443 -j ACCEPT\n", "-I INPUT -p udp --dport 53 -j ACCEPT\n", "COMMIT\n"} {
 		if !strings.Contains(rules, want) {

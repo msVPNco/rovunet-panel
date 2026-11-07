@@ -5,13 +5,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/clientcfg"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/prompt"
-	"github.com/anonvector/slipgate/internal/proxy"
-	"github.com/anonvector/slipgate/internal/system"
-	"github.com/anonvector/slipgate/internal/warp"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/proxy"
+	"github.com/msVPNco/rovunet-panel/internal/system"
+	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
 
 // bulkAddMax caps the number of users per bulk_add invocation. A single call
@@ -44,12 +44,12 @@ func handleSystemUsers(ctx *actions.Context) error {
 	case "configs":
 		out.Print("")
 		if printClientConfigs(cfg, out, cfg.Tunnels) == 0 {
-			out.Info("No tunnels with app configs. Run 'slipgate tunnel add' to create one.")
+			out.Info("No tunnels with app configs. Run 'rovunet tunnel add' to create one.")
 		}
 
 	case "list":
 		if len(cfg.Users) == 0 {
-			out.Info("No users configured. Run 'slipgate users add' to create one, or 'slipgate users configs' for configs that need no login.")
+			out.Info("No users configured. Run 'rovunet users add' to create one, or 'rovunet users configs' for configs that need no login.")
 			return nil
 		}
 

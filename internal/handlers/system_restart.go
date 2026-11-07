@@ -3,12 +3,12 @@ package handlers
 import (
 	"fmt"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/network"
-	"github.com/anonvector/slipgate/internal/proxy"
-	"github.com/anonvector/slipgate/internal/service"
-	"github.com/anonvector/slipgate/internal/warp"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/network"
+	"github.com/msVPNco/rovunet-panel/internal/proxy"
+	"github.com/msVPNco/rovunet-panel/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
 
 func handleSystemRestart(ctx *actions.Context) error {
@@ -28,14 +28,14 @@ func handleSystemRestart(ctx *actions.Context) error {
 	}
 
 	// 1. Restart SOCKS5 backend first (tunnels forward to it)
-	if service.Exists("slipgate-socks5") {
+	if service.Exists("rovunet-socks5") {
 		// Check if the service user matches the expected WARP state.
 		// If not, recreate the service file to fix it.
 		expectedUser := config.SystemUser
 		if cfg.Warp.Enabled {
 			expectedUser = warp.SocksUser
 		}
-		if service.GetUser("slipgate-socks5") != expectedUser {
+		if service.GetUser("rovunet-socks5") != expectedUser {
 			if cfg.Warp.Enabled {
 				proxy.RunAsUser = warp.SocksUser
 			} else {
@@ -60,15 +60,15 @@ func handleSystemRestart(ctx *actions.Context) error {
 				socksErr = proxy.SetupSOCKS()
 			}
 			if socksErr != nil {
-				out.Warning(fmt.Sprintf("Failed to restart slipgate-socks5: %v", socksErr))
+				out.Warning(fmt.Sprintf("Failed to restart rovunet-socks5: %v", socksErr))
 			} else {
-				out.Success("  slipgate-socks5 restarted (fixed service user)")
+				out.Success("  rovunet-socks5 restarted (fixed service user)")
 			}
 		} else {
-			if err := service.Restart("slipgate-socks5"); err != nil {
-				out.Warning(fmt.Sprintf("Failed to restart slipgate-socks5: %v", err))
+			if err := service.Restart("rovunet-socks5"); err != nil {
+				out.Warning(fmt.Sprintf("Failed to restart rovunet-socks5: %v", err))
 			} else {
-				out.Success("  slipgate-socks5 restarted")
+				out.Success("  rovunet-socks5 restarted")
 			}
 		}
 	}
@@ -89,11 +89,11 @@ func handleSystemRestart(ctx *actions.Context) error {
 	}
 
 	// 3. Restart DNS router last (routes to tunnels, needs them up)
-	if service.Exists("slipgate-dnsrouter") {
-		if err := service.Restart("slipgate-dnsrouter"); err != nil {
-			out.Warning(fmt.Sprintf("Failed to restart slipgate-dnsrouter: %v", err))
+	if service.Exists("rovunet-dnsrouter") {
+		if err := service.Restart("rovunet-dnsrouter"); err != nil {
+			out.Warning(fmt.Sprintf("Failed to restart rovunet-dnsrouter: %v", err))
 		} else {
-			out.Success("  slipgate-dnsrouter restarted")
+			out.Success("  rovunet-dnsrouter restarted")
 		}
 	}
 

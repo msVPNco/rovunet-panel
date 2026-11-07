@@ -3,9 +3,9 @@ package router
 import (
 	"fmt"
 
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/dnsrouter"
-	"github.com/anonvector/slipgate/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/dnsrouter"
+	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
 // SwitchMode is kept for backward compatibility but all tunnels now use the
@@ -51,7 +51,7 @@ func SwitchActive(cfg *config.Config, tag string) error {
 }
 
 func ensureRouterRunning() error {
-	status, err := service.Status("slipgate-dnsrouter")
+	status, err := service.Status("rovunet-dnsrouter")
 	if err != nil || status != "active" {
 		if err := dnsrouter.CreateRouterService(); err != nil {
 			return err

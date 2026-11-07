@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/anonvector/slipgate/internal/actions"
-	"github.com/anonvector/slipgate/internal/config"
-	"github.com/anonvector/slipgate/internal/prompt"
-	"github.com/anonvector/slipgate/internal/version"
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/version"
 )
 
 const banner = `
@@ -80,7 +80,7 @@ func Run(cfg *config.Config, cfgErr error) error {
 				printError(err)
 				waitForEnter()
 			} else {
-				fmt.Println("\n  Restart slipgate to use the new version.")
+				fmt.Println("\n  Restart rovunet to use the new version.")
 				return nil
 			}
 		case "backup":
