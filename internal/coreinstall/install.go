@@ -6,7 +6,6 @@ package coreinstall
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,21 +51,7 @@ func Proto(protocol string) string {
 }
 
 // PortFree reports whether nothing on this host already listens on port/proto.
-func PortFree(port int, proto string) error {
-	addr := net.JoinHostPort("", strconv.Itoa(port))
-	if proto == "udp" {
-		c, err := net.ListenPacket("udp", addr)
-		if err != nil {
-			return fmt.Errorf("port %d/udp is already in use: %w", port, err)
-		}
-		return c.Close()
-	}
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		return fmt.Errorf("port %d/tcp is already in use: %w", port, err)
-	}
-	return l.Close()
-}
+func PortFree(port int, proto string) error { return network.PortFree(port, proto) }
 
 // Unit builds the systemd unit for a core whose config sits in dir.
 func Unit(name, dir string) *service.Unit {

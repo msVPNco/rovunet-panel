@@ -2,9 +2,11 @@ package network
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -334,4 +336,22 @@ func splitFields(s string) []string {
 func run(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	return cmd.Run()
+}
+
+// PortFree reports an error if something on this host already listens on
+// port/proto, by trying to bind it briefly.
+func PortFree(port int, proto string) error {
+	addr := net.JoinHostPort("", strconv.Itoa(port))
+	if proto == "udp" {
+		c, err := net.ListenPacket("udp", addr)
+		if err != nil {
+			return fmt.Errorf("port %d/udp is already in use", port)
+		}
+		return c.Close()
+	}
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("port %d/tcp is already in use", port)
+	}
+	return l.Close()
 }

@@ -554,6 +554,23 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 
 	}
 
+	// Refuse a listen port that is already taken before anything is saved,
+	// instead of creating a service that crash-loops on bind. Fronted VLESS
+	// listens behind Caddy, and NaiveProxy reuses Caddy, so neither binds here.
+	var listenPorts []int
+	if tunnel.StunTLS != nil && tunnel.StunTLS.Port > 0 && !tunnel.StunTLS.Fronted() {
+		listenPorts = append(listenPorts, tunnel.StunTLS.Port)
+	}
+	if tunnel.VLESS != nil && tunnel.VLESS.Port > 0 && !tunnel.VLESS.Fronted() {
+		listenPorts = append(listenPorts, tunnel.VLESS.Port)
+	}
+	for _, p := range listenPorts {
+		if err := network.PortFree(p, "tcp"); err != nil {
+			_ = os.RemoveAll(tunnelDir)
+			return actions.NewError(actions.TunnelAdd, err.Error()+": pick another port or stop what is using it", nil)
+		}
+	}
+
 	// Add to config and save
 	cfg.AddTunnel(tunnel)
 	if cfg.Route.Active == "" {
