@@ -88,15 +88,19 @@ func handleTunnelEdit(ctx *actions.Context) error {
 			tunnel.StunTLS.Cert = filepath.Join(newDir, "cert.pem")
 			tunnel.StunTLS.Key = filepath.Join(newDir, "key.pem")
 		}
+		if s := tunnel.Slipstream; s != nil {
+			// Missed before: the cert moved with the directory but the
+			// config kept the old path, so the service and the router's
+			// HMAC verification both failed after a rename.
+			s.Cert = movedPath(s.Cert, oldDir, newDir)
+			s.Key = movedPath(s.Key, oldDir, newDir)
+		}
 		if v := tunnel.VLESS; v != nil {
-			// A secret kept inside the tunnel's own directory moves with it
-			if filepath.Dir(v.SecretFile) == oldDir {
-				v.SecretFile = filepath.Join(newDir, "vless.secret")
-			}
-			if v.TLS {
-				v.Cert = filepath.Join(newDir, "cert.pem")
-				v.Key = filepath.Join(newDir, "key.pem")
-			}
+			// Only files kept inside the tunnel's own directory move with it;
+			// a custom certificate elsewhere keeps its path.
+			v.SecretFile = movedPath(v.SecretFile, oldDir, newDir)
+			v.Cert = movedPath(v.Cert, oldDir, newDir)
+			v.Key = movedPath(v.Key, oldDir, newDir)
 		}
 
 		// Stop old systemd service
@@ -567,4 +571,13 @@ func askFront(ctx *actions.Context, cfg *config.Config, current, what string) (s
 		return "", fmt.Errorf("%q is not a NaiveProxy tunnel", front)
 	}
 	return front, nil
+}
+
+// movedPath returns p relocated into newDir when it lies directly inside
+// oldDir (the tunnel directory that was just renamed), else p unchanged.
+func movedPath(p, oldDir, newDir string) string {
+	if p != "" && filepath.Dir(p) == filepath.Clean(oldDir) {
+		return filepath.Join(newDir, filepath.Base(p))
+	}
+	return p
 }
