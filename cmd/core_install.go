@@ -18,6 +18,11 @@ func init() {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var dir string
 			var err error
+			if host, perr := coreplan.AutoReality(&o); perr != nil {
+				return perr
+			} else if host != "" {
+				fmt.Printf("REALITY disguise: %s (random from the built-in list; pass --target to choose)\n", host)
+			}
 			perDevice := cmd.Flags().Changed("devices")
 			if perDevice {
 				dir, err = coreinstall.Install(name, o)
@@ -50,7 +55,7 @@ func init() {
 	f.IntVar(&o.Devices, "devices", 1, "Per-device mode: this many standalone credentials instead of one per panel user (1..1000)")
 	f.StringVar(&o.Cert, "cert", "", "Server TLS certificate path (xhttp, hysteria2)")
 	f.StringVar(&o.Key, "key", "", "Server TLS private key path (xhttp, hysteria2)")
-	f.StringVar(&o.RealityTarget, "target", "", "REALITY TLS target host:port")
+	f.StringVar(&o.RealityTarget, "target", "", "REALITY TLS target host:port (default: a random working site from the built-in list)")
 	for _, r := range []string{"name", "protocol", "host"} {
 		_ = install.MarkFlagRequired(r)
 	}

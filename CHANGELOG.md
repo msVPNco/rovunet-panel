@@ -2,6 +2,11 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.12.1
+
+- **REALITY picks its disguise at random.** When no `--target` is given, `core-install` and the installer choose a random site from a built-in list of 16 (Microsoft, Amazon and its image servers, Apple, Cloudflare, Google download and font hosts, NVIDIA, Samsung, Intel, Oracle, Mozilla). Each candidate is first checked from your server for TLS 1.3 and HTTP/2, which REALITY needs, and only working ones are drawn. The server name follows the chosen site. If none can be reached the installer falls back to `www.microsoft.com`; `core-install` stops and asks for `--target`. Cores installed earlier keep their target.
+- The list is a judgement about sites that are rarely blocked, not a guarantee. It is `RealityTargets` in `internal/coreplan/targets.go`.
+
 ## v1.12.0
 
 ### Users can expire
