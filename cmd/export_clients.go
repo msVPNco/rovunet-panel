@@ -10,7 +10,7 @@ import (
 
 func init() {
 	var user, format string
-	var annotated bool
+	var annotated, all bool
 	command := &cobra.Command{
 		Use: "export-clients", Short: "Export client links (contains credentials; keep output private)",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -26,6 +26,7 @@ func init() {
 				return fmt.Errorf("invalid format")
 			}
 			count := 0
+			hidden := 0
 			// Fastest first: Xray cores are slotted in among the tunnels by
 			// rank (see clientcfg.TunnelRank).
 			var cores []coreinstall.Profile
@@ -69,6 +70,10 @@ func init() {
 					continue
 				}
 				emitCores(clientcfg.TunnelRank(t.Transport))
+				if clientcfg.PlainSOCKS(t) && !all {
+					hidden++
+					continue
+				}
 				modes := []string{"dnstt"}
 				if t.Transport == config.TransportDNSTT {
 					modes = append(modes, "noizdns")
@@ -97,6 +102,9 @@ func init() {
 				}
 			}
 			emitCores(1 << 30)
+			if hidden > 0 {
+				fmt.Fprintf(cmd.ErrOrStderr(), clientcfg.HiddenNote+"\n", hidden)
+			}
 			if count == 0 {
 				return fmt.Errorf("no compatible enabled tunnels exported")
 			}
@@ -106,6 +114,7 @@ func init() {
 	command.Flags().StringVar(&user, "user", "", "Existing managed username")
 	command.Flags().StringVar(&format, "format", "auto", "auto, standard, rovunet, veyra (compatibility), or legacy")
 	command.Flags().BoolVar(&annotated, "annotated", false, "Prefix each line with its tunnel tag and client mode, e.g. \"tag (dnstt): rovunet://...\". Leave off for scripts, which parse one bare link per line")
+	command.Flags().BoolVar(&all, "all", false, "Also export plain (unencrypted) SOCKS5 configs, left out by default")
 	_ = command.MarkFlagRequired("user")
 	rootCmd.AddCommand(command)
 }
