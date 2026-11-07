@@ -2,6 +2,10 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.16.0
+
+- **Backups now include each user's traffic used so far, and restore brings it back.** Before, restoring onto a new server (or after a reinstall) started every traffic-limited user's counter from zero, giving them their whole quota again. Restore adds only what the server is missing, so restoring twice, or onto a server that already counted traffic, never counts it twice. Older backups restore as before (their users start from zero, as they did).
+
 ## v1.15.2
 
 - **A traffic-limited user's subscription is refreshed every 5 minutes.** Their feed includes a REALITY or XHTTP config only while that core's statistics answer. Right after an update the cores are still restarting, so the feed written at that moment could miss them and stay that way until the next user change. The limits timer now rewrites the feeds on each run (only files whose content changed are touched), so the missing configs appear within 5 minutes. This was seen on a renewed user whose configs did not grow after the update.

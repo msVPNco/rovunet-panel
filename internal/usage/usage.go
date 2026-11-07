@@ -113,3 +113,55 @@ func Totals() map[string]int64 {
 	}
 	return total
 }
+
+// restoredName is the totals file a restore writes. No server owns it.
+const restoredName = "restored"
+
+// totalsExcept sums every totals file but the named one.
+func totalsExcept(skip string) map[string]int64 {
+	total := map[string]int64{}
+	entries, _ := os.ReadDir(Dir)
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || e.Name() == skip+".json" {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(Dir, e.Name()))
+		if err != nil {
+			continue
+		}
+		var m map[string]int64
+		if json.Unmarshal(data, &m) != nil {
+			continue
+		}
+		for u, n := range m {
+			total[u] += n
+		}
+	}
+	return total
+}
+
+// Restore makes the totals at least the ones from a backup. It adds only what
+// this server lacks, in a file of its own, so restoring twice, or onto a
+// server that already counted some of the traffic, never counts it twice.
+func Restore(saved map[string]int64) error {
+	have := totalsExcept(restoredName)
+	extra := map[string]int64{}
+	for u, n := range saved {
+		if n > have[u] {
+			extra[u] = n - have[u]
+		}
+	}
+	if err := os.MkdirAll(Dir, 0755); err != nil {
+		return err
+	}
+	data, err := json.Marshal(extra)
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(Dir, restoredName+".json")
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
