@@ -16,7 +16,15 @@ func init() {
 		Use:   "core-install",
 		Short: "Install an Xray core (REALITY, XHTTP, Hysteria2, WireGuard) as a managed service",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dir, err := coreinstall.Install(name, o)
+			var dir string
+			var err error
+			perDevice := cmd.Flags().Changed("devices")
+			if perDevice {
+				dir, err = coreinstall.Install(name, o)
+			} else {
+				cfg, _ := loadOrDefaultConfig()
+				dir, err = coreinstall.InstallForUsers(name, o, cfg.Users)
+			}
 			if dir == "" && err != nil {
 				return err
 			}
@@ -24,8 +32,12 @@ func init() {
 				fmt.Println("Warning:", err)
 			}
 			fmt.Printf("Core %q is running as %s\n", name, coreinstall.ServiceName(name))
-			fmt.Printf("Per-device client configs: %s\n", filepath.Join(dir, "clients"))
-			fmt.Println("Give each device its own file; never share one WireGuard file between devices.")
+			if perDevice {
+				fmt.Printf("Per-device client configs: %s\n", filepath.Join(dir, "clients"))
+				fmt.Println("Give each device its own file; never share one WireGuard file between devices.")
+			} else {
+				fmt.Println("Every panel user has a configuration on it: 'rovunet users configs' prints them with the rest.")
+			}
 			return nil
 		},
 	}
@@ -35,7 +47,7 @@ func init() {
 	f.StringVar(&o.Host, "host", "", "Public endpoint hostname or IP")
 	f.StringVar(&o.SNI, "sni", "", "Certificate name or REALITY server name")
 	f.IntVar(&o.Port, "port", 8443, "Listener port (must be free)")
-	f.IntVar(&o.Devices, "devices", 1, "Distinct client credentials (1..1000)")
+	f.IntVar(&o.Devices, "devices", 1, "Per-device mode: this many standalone credentials instead of one per panel user (1..1000)")
 	f.StringVar(&o.Cert, "cert", "", "Server TLS certificate path (xhttp, hysteria2)")
 	f.StringVar(&o.Key, "key", "", "Server TLS private key path (xhttp, hysteria2)")
 	f.StringVar(&o.RealityTarget, "target", "", "REALITY TLS target host:port")

@@ -388,7 +388,8 @@ var coreNameRegex = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,30}$`)
 // validCorePath accepts a core's top-level files and its per-device client
 // files, nothing that could escape the core's directory.
 func validCorePath(rel string) bool {
-	if rel == "meta" || rel == "server.json" {
+	switch rel {
+	case "meta", "server.json", "options.json", "state.json":
 		return true
 	}
 	dir, name, ok := strings.Cut(rel, "/")
@@ -411,8 +412,11 @@ func (b *Bundle) AddCores(root string) error {
 		}
 		dir := filepath.Join(root, e.Name())
 		files := make(map[string]File)
-		for _, rel := range []string{"meta", "server.json"} {
+		for _, rel := range []string{"meta", "server.json", "options.json", "state.json"} {
 			f, err := readFile(filepath.Join(dir, rel))
+			if errors.Is(err, os.ErrNotExist) && (rel == "options.json" || rel == "state.json") {
+				continue // a per-device core has neither
+			}
 			if err != nil {
 				return fmt.Errorf("core %s: %w", e.Name(), err)
 			}

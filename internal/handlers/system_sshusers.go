@@ -8,6 +8,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
 	"github.com/msVPNco/rovunet-panel/internal/system"
@@ -156,6 +157,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 			out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
 		}
 		syncNaive(cfg, out)
+		syncCores(cfg, out)
 
 		// One WARP live rule sync for the whole batch.
 		if cfg.Warp.Enabled {
@@ -238,6 +240,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 			out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
 		}
 		syncNaive(cfg, out)
+		syncCores(cfg, out)
 
 		out.Success(fmt.Sprintf("Password updated for %q", username))
 
@@ -273,6 +276,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 		}
 		_ = setupSOCKS(cfg)
 		syncNaive(cfg, out)
+		syncCores(cfg, out)
 
 		if err := cfg.Save(); err != nil {
 			return actions.NewError(actions.SystemUsers, "failed to save config", err)
@@ -344,6 +348,7 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 		out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
 	}
 	syncNaive(cfg, out)
+	syncCores(cfg, out)
 
 	if cfg.Warp.Enabled {
 		if err := warp.RefreshRouting(cfg); err != nil {
@@ -454,5 +459,51 @@ func showUserConfigs(cfg *config.Config, username, password string, out actions.
 			out.Print(fmt.Sprintf("  %s", uri))
 			out.Print("")
 		}
+	}
+	printCoreProfiles(cfg, config.UserConfig{Username: username, Password: password}, out)
+}
+
+// printCoreProfiles prints a user's Xray core profiles, each wrapped so the
+// app files it in the user's collection with their tunnels.
+func printCoreProfiles(cfg *config.Config, user config.UserConfig, out actions.OutputWriter) int {
+	profiles, err := coreinstall.Profiles(user)
+	if err != nil {
+		out.Warning("Xray cores: " + err.Error())
+	}
+	printed := 0
+	for _, p := range profiles {
+		uri, err := clientcfg.GenerateCoreURI(p.Core, p.Link, cfg, clientcfg.URIOptions{Username: user.Username})
+		if err != nil {
+			out.Warning(fmt.Sprintf("Xray core %s: %v", p.Core, err))
+			continue
+		}
+		out.Print(fmt.Sprintf("  [%s] %s, user=%s", p.Core, coreProtocolName(p.Protocol), user.Username))
+		out.Print(fmt.Sprintf("  %s", uri))
+		out.Print("")
+		printed++
+	}
+	return printed
+}
+
+// coreProtocolName is a core protocol's standard name.
+func coreProtocolName(protocol string) string {
+	switch protocol {
+	case "reality":
+		return "VLESS + REALITY"
+	case "xhttp":
+		return "VLESS + XHTTP"
+	case "hysteria2":
+		return "Hysteria 2"
+	case "wireguard":
+		return "WireGuard"
+	}
+	return protocol
+}
+
+// syncCores brings the Xray cores in line with the panel's users; call it
+// wherever users change, next to syncNaive.
+func syncCores(cfg *config.Config, out interface{ Warning(string) }) {
+	if err := coreinstall.Sync(cfg.Users); err != nil {
+		out.Warning("Failed to update Xray cores: " + err.Error())
 	}
 }

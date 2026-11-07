@@ -87,3 +87,66 @@ func TestWriteAppFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestGenerateForIsStablePerClient(t *testing.T) {
+	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard"} {
+		o := Options{Protocol: protocol, Host: "example.org", SNI: "example.org", RealityTarget: "example.org:443", Port: 8443, Cert: "c.pem", Key: "k.pem"}
+		st, err := NewState()
+		if err != nil {
+			t.Fatal(err)
+		}
+		alice, bob := Client{"alice", "pw-a"}, Client{"bob", "pw-b"}
+		one, err := GenerateFor(o, &st, []Client{alice})
+		if err != nil {
+			t.Fatal(protocol, err)
+		}
+		again, err := GenerateFor(o, &st, []Client{alice})
+		if err != nil || again.Clients[0] != one.Clients[0] || string(again.Server) != string(one.Server) {
+			t.Fatalf("%s: regenerating changed the output", protocol)
+		}
+		// Adding a client, in front of her, leaves alice's profile unchanged.
+		two, err := GenerateFor(o, &st, []Client{bob, alice})
+		if err != nil || two.Clients[1] != one.Clients[0] {
+			t.Fatalf("%s: adding bob changed alice's profile:\n%s\n%s", protocol, one.Clients[0], two.Clients[1])
+		}
+		if two.Clients[0] == two.Clients[1] {
+			t.Fatalf("%s: two clients share a profile", protocol)
+		}
+		// A new password gives new credentials.
+		changed, err := GenerateFor(o, &st, []Client{{"alice", "new"}})
+		if err != nil || changed.Clients[0] == one.Clients[0] {
+			t.Fatalf("%s: a password change kept the old credentials", protocol)
+		}
+		// Another core (new state) never shares credentials.
+		other, _ := NewState()
+		elsewhere, err := GenerateFor(o, &other, []Client{alice})
+		if err != nil || elsewhere.Clients[0] == one.Clients[0] {
+			t.Fatalf("%s: two cores issued the same credentials", protocol)
+		}
+	}
+}
+
+func TestWireGuardAddressesNeverMove(t *testing.T) {
+	st, _ := NewState()
+	if err := st.assignWGAddrs([]Client{{"b", ""}, {"c", ""}}); err != nil {
+		t.Fatal(err)
+	}
+	b, c := st.WGAddrs["b"], st.WGAddrs["c"]
+	if b == c || b == "" {
+		t.Fatalf("bad assignment %v", st.WGAddrs)
+	}
+	// "a" sorts first but must not take b's or c's address.
+	if err := st.assignWGAddrs([]Client{{"a", ""}, {"b", ""}, {"c", ""}}); err != nil {
+		t.Fatal(err)
+	}
+	if st.WGAddrs["b"] != b || st.WGAddrs["c"] != c || st.WGAddrs["a"] == b || st.WGAddrs["a"] == c {
+		t.Fatalf("addresses moved: %v", st.WGAddrs)
+	}
+	// A removed client frees its address and is forgotten.
+	if err := st.assignWGAddrs([]Client{{"c", ""}}); err != nil {
+		t.Fatal(err)
+	}
+	if len(st.WGAddrs) != 1 || st.WGAddrs["c"] != c {
+		t.Fatalf("after removal: %v", st.WGAddrs)
+	}
+}

@@ -43,6 +43,8 @@ var InstallTransportOptions = []SelectOption{
 	{Value: "vless", Label: "VLESS — over WebSocket behind Cloudflare (ready with just a domain)"},
 	{Value: "direct-ssh", Label: "SSH — Direct SSH tunnel"},
 	{Value: "direct-socks5", Label: "SOCKS5 — Direct SOCKS5 proxy"},
+	{Value: "xray-reality", Label: "VLESS + REALITY — Xray core, no domain or certificate needed"},
+	{Value: "xray-wireguard", Label: "WireGuard — Xray core, one configuration per user"},
 }
 
 // ClientModeOptions is used during `tunnel share` to pick the slipnet:// URL type.
