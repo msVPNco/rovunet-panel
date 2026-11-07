@@ -32,7 +32,8 @@ var rootCmd = &cobra.Command{
 	// A server still on the pre-rename layout is migrated by the first
 	// command run as root, before any command reads its config.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if migrate.Needed() && os.Geteuid() == 0 {
+		// post-update runs the migration itself, with its own error policy.
+		if cmd.Name() != "post-update" && migrate.Needed() && os.Geteuid() == 0 {
 			return migrate.Run(func(s string) { fmt.Println(s) })
 		}
 		return nil
@@ -56,9 +57,17 @@ func init() {
 		Use:    "post-update",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// A failing post-update makes a pre-rename updater fall back to
+			// its own post-update code, which rebuilds the old-named
+			// services from /etc/slipgate paths. That is only safe while
+			// nothing was moved yet, so an error is returned only then.
+			//
 			// Before loading config: it may still be under the old name.
 			if err := migrate.Run(func(s string) { fmt.Println(s) }); err != nil {
 				fmt.Fprintln(os.Stderr, "Migration failed:", err)
+				if migrate.Needed() {
+					return err // old layout untouched: the old fallback is safe
+				}
 			}
 			cfg, _ := loadOrDefaultConfig()
 			ctx := &actions.Context{
@@ -66,7 +75,10 @@ func init() {
 				Output: &actions.StdOutput{},
 				Config: cfg,
 			}
-			return handlers.HandlePostUpdate(ctx)
+			if err := handlers.HandlePostUpdate(ctx); err != nil {
+				fmt.Fprintln(os.Stderr, "Warning: post-update:", err)
+			}
+			return nil
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,

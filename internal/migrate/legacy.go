@@ -92,12 +92,25 @@ func Run(log Logger) error {
 		_ = run("systemctl", "disable", u+".service")
 	}
 
-	renameAccounts(log)
-
+	// Moving the directory is the step that can fail outright, so it comes
+	// first: if it fails, only the units were stopped, and the old layout
+	// (old users included) is intact for the old updater's fallback.
 	if err := os.Rename(OldConfigDir, NewConfigDir); err != nil {
+		for _, u := range units {
+			if wasActive[u] {
+				_ = run("systemctl", "start", u+".service")
+			}
+			if wasEnabled[u] {
+				_ = run("systemctl", "enable", u+".service")
+			}
+		}
 		return fmt.Errorf("move %s: %w", OldConfigDir, err)
 	}
 	log("  " + OldConfigDir + " → " + NewConfigDir)
+	// Older versions wrote config.json (it holds user passwords) as 0644.
+	_ = os.Chmod(filepath.Join(NewConfigDir, "config.json"), 0600)
+
+	renameAccounts(log)
 	if err := rewriteTextFiles(NewConfigDir); err != nil {
 		return err
 	}
