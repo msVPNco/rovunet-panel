@@ -1,6 +1,8 @@
 package binary
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -96,6 +98,13 @@ func binaryURLTemplates() map[string]string {
 
 // EnsureInstalled checks if a binary exists. If not, copies from OfflineDir
 // (if set) or downloads from GitHub releases.
+//
+// Unlike Download (used for this project's own slipgate binary), this does
+// not verify a checksum: these binaries come from upstream SlipGate's
+// releases, which are not confirmed to publish a SHA256SUMS file in a
+// known format, and failing to verify against a hash that may not exist is
+// a false sense of security. If upstream starts publishing one, this
+// should call the same fetchSHA256Sums/verifyDownload path Download uses.
 func EnsureInstalled(name string) error {
 	binPath := filepath.Join(config.DefaultBinDir, name)
 	if _, err := os.Stat(binPath); err == nil {
@@ -210,25 +219,118 @@ func CheckUpdate() (newVersion string, downloadURL string, err error) {
 	return release.TagName, "", fmt.Errorf("no matching binary for %s/%s", runtime.GOOS, runtime.GOARCH)
 }
 
-// Download fetches a URL to a temp file.
-func Download(url string) (string, error) {
-	tmp, err := os.CreateTemp("", "slipgate-update-*")
+// Download fetches url to a temp file inside destDir, verifies it against
+// the SHA256SUMS published alongside it in the same release, and returns
+// its path on success. destDir should be the directory the caller intends
+// to install into (e.g. the running binary's own directory): creating the
+// temp file there, rather than under the system temp directory, means a
+// later os.Rename onto the final path stays on one filesystem and is
+// atomic, instead of crossing filesystems and falling back to a
+// remove-then-copy that can leave no binary behind if the copy fails.
+//
+// Verification is fail-closed: if SHA256SUMS can't be fetched or parsed,
+// or has no entry matching url's checksum, Download returns an error and
+// removes the temp file rather than handing back an unverified binary.
+func Download(url, destDir string) (string, error) {
+	tmp, err := os.CreateTemp(destDir, "slipgate-update-*")
 	if err != nil {
 		return "", err
 	}
-	defer tmp.Close()
+	tmpPath := tmp.Name()
 
 	if err := downloadToWriter(url, tmp); err != nil {
-		os.Remove(tmp.Name())
+		tmp.Close()
+		os.Remove(tmpPath)
+		return "", err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpPath)
 		return "", err
 	}
 
-	if err := os.Chmod(tmp.Name(), 0755); err != nil {
-		os.Remove(tmp.Name())
+	if err := verifyDownload(url, tmpPath); err != nil {
+		os.Remove(tmpPath)
+		return "", fmt.Errorf("verify download: %w", err)
+	}
+
+	if err := os.Chmod(tmpPath, 0755); err != nil {
+		os.Remove(tmpPath)
 		return "", err
 	}
 
-	return tmp.Name(), nil
+	return tmpPath, nil
+}
+
+// verifyDownload checks the file at path against the SHA256SUMS published
+// at the same base URL as url, under url's own asset filename.
+func verifyDownload(url, path string) error {
+	slash := strings.LastIndex(url, "/")
+	if slash < 0 {
+		return fmt.Errorf("malformed download URL: %s", url)
+	}
+	base, assetName := url[:slash], url[slash+1:]
+
+	sums, err := fetchSHA256Sums(base)
+	if err != nil {
+		return fmt.Errorf("fetch %s/SHA256SUMS: %w", base, err)
+	}
+	want, ok := sums[assetName]
+	if !ok {
+		return fmt.Errorf("SHA256SUMS has no entry for %s", assetName)
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return err
+	}
+	if got := hex.EncodeToString(h.Sum(nil)); !strings.EqualFold(got, want) {
+		return fmt.Errorf("checksum mismatch for %s: downloaded file is %s, SHA256SUMS says %s", assetName, got, want)
+	}
+	return nil
+}
+
+// fetchSHA256Sums downloads and parses base+"/SHA256SUMS" — the standard
+// `sha256sum` output format, one "<hex digest>  <filename>" pair per line
+// (release.yml generates it with exactly that command) — into a map from
+// filename to lowercase hex digest.
+func fetchSHA256Sums(base string) (map[string]string, error) {
+	resp, err := httpClient.Get(base + "/SHA256SUMS")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	sums := make(map[string]string)
+	for _, line := range strings.Split(string(body), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			continue
+		}
+		// `sha256sum -b` prefixes the filename with "*"; plain `sha256sum`
+		// (what release.yml uses) does not, but strip it either way.
+		name := strings.TrimPrefix(fields[1], "*")
+		sums[name] = strings.ToLower(fields[0])
+	}
+	if len(sums) == 0 {
+		return nil, errors.New("empty or unparseable SHA256SUMS")
+	}
+	return sums, nil
 }
 
 func downloadTo(url, dest string, mode os.FileMode) error {

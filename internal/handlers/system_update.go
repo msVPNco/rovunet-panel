@@ -26,28 +26,50 @@ func handleSystemUpdate(ctx *actions.Context) error {
 	downloadURL := fmt.Sprintf("%s/slipgate-%s-%s", base, runtime.GOOS, runtime.GOARCH)
 	out.Info("Downloading from: " + downloadURL)
 
-	tmpPath, err := binary.Download(downloadURL)
-	if err != nil {
-		return actions.NewError(actions.SystemUpdate, "failed to download update", err)
-	}
-	defer os.Remove(tmpPath)
-
 	execPath, err := os.Executable()
 	if err != nil {
 		return actions.NewError(actions.SystemUpdate, "failed to find current binary", err)
 	}
 
+	// Download into execPath's own directory (not the system temp dir) so
+	// the install below is a same-filesystem, atomic rename rather than a
+	// cross-filesystem copy that can leave no binary behind if it fails
+	// partway. Download also verifies the result against SHA256SUMS.
+	tmpPath, err := binary.Download(downloadURL, filepath.Dir(execPath))
+	if err != nil {
+		return actions.NewError(actions.SystemUpdate, "failed to download or verify update", err)
+	}
+	defer os.Remove(tmpPath) // no-op once the rename below has moved it
+
 	if runtime.GOOS == "linux" {
+		backupPath := execPath + ".bak"
+		if err := copyFile(execPath, backupPath); err != nil {
+			return actions.NewError(actions.SystemUpdate, "failed to back up current binary before update", err)
+		}
+		if err := os.Chmod(backupPath, 0755); err != nil {
+			out.Warning("Failed to set backup binary permissions: " + err.Error())
+		}
+
 		if err := os.Rename(tmpPath, execPath); err != nil {
-			// Rename fails across filesystems (EXDEV). Remove the running
-			// binary first to avoid ETXTBSY, then copy the new one in.
+			// tmpPath is in execPath's own directory (see binary.Download
+			// above), so this is expected to be a same-filesystem rename
+			// that always succeeds. If it still fails for some other
+			// reason (e.g. a permission or SELinux denial), fall back to
+			// remove-then-copy, but restore from the backup made above if
+			// that also fails — so a failed update can never leave the
+			// panel with no binary at all.
 			os.Remove(execPath)
-			cpCmd := exec.Command("cp", tmpPath, execPath)
-			if err := cpCmd.Run(); err != nil {
-				return actions.NewError(actions.SystemUpdate, "failed to replace binary", err)
+			if cpErr := exec.Command("cp", tmpPath, execPath).Run(); cpErr != nil {
+				if restoreErr := os.Rename(backupPath, execPath); restoreErr != nil {
+					return actions.NewError(actions.SystemUpdate, fmt.Sprintf(
+						"install failed (%v), fallback copy failed (%v), AND restoring the backup failed (%v) — %s may now be missing; the previous binary is still at %s",
+						err, cpErr, restoreErr, execPath, backupPath), err)
+				}
+				return actions.NewError(actions.SystemUpdate, fmt.Sprintf("failed to install update (%v); restored the previous binary", err), err)
 			}
 		}
 		os.Chmod(execPath, 0755)
+		os.Remove(backupPath)
 	}
 
 	out.Success("slipgate updated")
