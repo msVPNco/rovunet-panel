@@ -342,7 +342,7 @@ func clearSetup(current, incoming *config.Config, out actions.OutputWriter) {
 		if incoming.GetUser(u.Username) != nil {
 			continue
 		}
-		if err := system.RemoveSSHUser(u.Username); err != nil {
+		if err := revokeSSH(u.Username); err != nil {
 			out.Warning(fmt.Sprintf("Failed to remove user %q: %v", u.Username, err))
 		} else {
 			out.Info(fmt.Sprintf("Removed user %q (not in the backup)", u.Username))
@@ -350,7 +350,8 @@ func clearSetup(current, incoming *config.Config, out actions.OutputWriter) {
 	}
 }
 
-// restoreUsers creates cfg's users as SSH accounts. A name taken by an
+// restoreUsers creates cfg's users as SSH accounts, except those with a
+// traffic limit, who are not given one. A name taken by an
 // account rovunet didn't create (e.g. "ubuntu") is skipped and dropped from
 // cfg: a restore must never change another account's password.
 func restoreUsers(cfg *config.Config, out actions.OutputWriter) {
@@ -360,7 +361,7 @@ func restoreUsers(cfg *config.Config, out actions.OutputWriter) {
 			out.Warning(fmt.Sprintf("Skipped user %q: an account with that name already exists on this server", u.Username))
 			continue
 		}
-		if err := system.AddSSHUser(u.Username, u.Password); err != nil {
+		if err := grantSSH(u); err != nil {
 			out.Warning(fmt.Sprintf("Failed to set up user %q: %v", u.Username, err))
 		}
 		kept = append(kept, u)
@@ -455,8 +456,6 @@ func needsSOCKS(cfg *config.Config) bool {
 	return false
 }
 
-// setupSOCKS (re)creates the SOCKS5 proxy with cfg's users, on all
-// interfaces when a direct-socks5 tunnel exposes it.
 // syncNaive pushes the current user list into NaiveProxy's basic_auth.
 func syncNaive(cfg *config.Config, out interface{ Warning(string) }) {
 	if err := transport.SyncNaive(cfg); err != nil && out != nil {
@@ -466,18 +465,6 @@ func syncNaive(cfg *config.Config, out interface{ Warning(string) }) {
 	if err := WriteSubscriptions(cfg, discardOutput{}); err != nil && out != nil {
 		out.Warning("Failed to update subscription files: " + err.Error())
 	}
-}
-
-func setupSOCKS(cfg *config.Config) error {
-	for _, t := range cfg.Tunnels {
-		if t.Transport == config.TransportSOCKS {
-			return proxy.SetupSOCKSExternalWithUsers(cfg.Users)
-		}
-	}
-	if len(cfg.Users) > 0 {
-		return proxy.SetupSOCKSWithUsers(cfg.Users)
-	}
-	return proxy.SetupSOCKS()
 }
 
 // defaultBackupPath returns a timestamped file name in the home directory.

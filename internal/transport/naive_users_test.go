@@ -89,3 +89,25 @@ func TestCaddyfileServesSubscriptionsBeforeProxy(t *testing.T) {
 		t.Fatalf("only /sub/* is served and never listed:\n%s", c)
 	}
 }
+
+func TestCaddyfileLeavesTrafficLimitedUsersOut(t *testing.T) {
+	// The tunnel's own credential is carol's, from when she was the first user.
+	tun := &config.TunnelConfig{Domain: "n.example.com", Naive: &config.NaiveConfig{
+		Email: "a@b.c", Port: 443, User: "carol", Password: "pw-carol-xyz", DecoyURL: "https://www.example.org",
+	}}
+	users := []config.UserConfig{
+		{Username: "alice", Password: "pa"},
+		{Username: "carol", Password: "pw-carol-xyz", QuotaGB: 5},
+	}
+	for name, c := range map[string]string{
+		"full":     buildCaddyfile(tun, users, nil),
+		"fallback": buildCaddyfileSub(tun, users, nil, false),
+	} {
+		if !strings.Contains(c, "basic_auth alice pa") {
+			t.Fatalf("%s: an unlimited user must stay:\n%s", name, c)
+		}
+		if strings.Contains(c, "carol") || strings.Contains(c, "pw-carol-xyz") {
+			t.Fatalf("%s: a traffic-limited user must not be able to log in to a proxy that does not count traffic:\n%s", name, c)
+		}
+	}
+}

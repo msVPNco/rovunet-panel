@@ -76,6 +76,26 @@ type ArchivedUser struct {
 // QuotaBytes is the traffic limit in bytes (1 GB = 1024^3), or 0 for none.
 func (u UserConfig) QuotaBytes() int64 { return int64(u.QuotaGB) << 30 }
 
+// MeteredOnly reports whether the user's traffic limit confines them to the
+// paths whose traffic the panel counts: VLESS (WebSocket), REALITY and XHTTP.
+// Every other service (SSH, NaïveProxy, SOCKS5, Hysteria 2, WireGuard, the
+// DNS tunnels) would let them use traffic that is never counted, so they must
+// not hold a credential there. This is the one rule every service follows:
+// hiding a config is not enough, the server must refuse the user.
+func (u UserConfig) MeteredOnly() bool { return u.QuotaGB > 0 }
+
+// UnmeteredUsers returns the users who may hold a credential on a service
+// that does not count traffic.
+func UnmeteredUsers(users []UserConfig) []UserConfig {
+	out := make([]UserConfig, 0, len(users))
+	for _, u := range users {
+		if !u.MeteredOnly() {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
 // NewSubToken returns a fresh 128-bit random subscription token (32 hex).
 func NewSubToken() string {
 	b := make([]byte, 16)

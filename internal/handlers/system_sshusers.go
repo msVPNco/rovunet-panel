@@ -72,6 +72,9 @@ func handleSystemUsers(ctx *actions.Context) error {
 		for _, a := range cfg.Archived {
 			out.Print(fmt.Sprintf("  %-20s stopped: %s (restore with 'users --action renew')", a.Username, a.Reason))
 		}
+		for _, note := range pendingRevocationNotes() {
+			out.Warning(note)
+		}
 		out.Print("")
 
 		// Let user pick one to see configs
@@ -152,11 +155,12 @@ func handleSystemUsers(ctx *actions.Context) error {
 			}
 			password := system.GeneratePassword(16)
 
-			if err := system.AddSSHUser(uname, password); err != nil {
+			nu := newUser(uname, password, days, gb, time.Now())
+			if err := grantSSH(nu); err != nil {
 				out.Warning(fmt.Sprintf("failed to create %s: %v (skipping)", uname, err))
 				continue
 			}
-			cfg.AddUser(newUser(uname, password, days, gb, time.Now()))
+			cfg.AddUser(nu)
 			created = append(created, newCred{uname, password})
 		}
 
@@ -255,12 +259,12 @@ func handleSystemUsers(ctx *actions.Context) error {
 
 		// AddSSHUser is upsert-style: existing OS user keeps their entry and
 		// just gets chpasswd'd. Same for cfg.AddUser, which updates in place.
-		if err := system.AddSSHUser(username, password); err != nil {
-			return actions.NewError(actions.SystemUsers, "failed to update SSH password: "+err.Error(), err)
-		}
 		updated := *cfg.GetUser(username) // keeps the user's expiry and limit
 		updated.Password = password
 		updated.SubToken = config.NewSubToken() // the old link stops working
+		if err := grantSSH(updated); err != nil {
+			return actions.NewError(actions.SystemUsers, "failed to update SSH password: "+err.Error(), err)
+		}
 		cfg.AddUser(updated)
 
 		if err := cfg.Save(); err != nil {
@@ -357,11 +361,12 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 		return err
 	}
 
-	if err := system.AddSSHUser(username, password); err != nil {
+	nu := newUser(username, password, days, gb, time.Now())
+	if err := grantSSH(nu); err != nil {
 		return fmt.Errorf("failed to create SSH user: %w", err)
 	}
 
-	cfg.AddUser(newUser(username, password, days, gb, time.Now()))
+	cfg.AddUser(nu)
 
 	// Save before SOCKS so the config file is always at least as current
 	// as the SOCKS creds file; a failed save leaves SOCKS untouched.

@@ -43,6 +43,12 @@ type State struct {
 	// APIPort is the loopback port of the core's Xray statistics API, used to
 	// count each user's traffic (REALITY and XHTTP). 0 means none.
 	APIPort int `json:"apiPort,omitempty"`
+	// Paused is set while no user may use this core, so it is stopped. It is
+	// not the operator switching the core off: the next allowed user starts it.
+	Paused bool `json:"paused,omitempty"`
+	// Revocation is why a user's access to this core could not be taken away
+	// yet; empty when nothing is pending. It is retried on every limits run.
+	Revocation string `json:"revocation,omitempty"`
 }
 
 // Metered reports whether a protocol's per-user traffic can be read from Xray.
