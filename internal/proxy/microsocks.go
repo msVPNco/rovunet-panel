@@ -58,7 +58,7 @@ func SetupSOCKSExternalWithUsers(users []config.UserConfig) error {
 }
 
 func setupSOCKSMulti(listenAddr string, users []config.UserConfig, requireAuth bool) error {
-	execPath, err := os.Executable()
+	execPath, err := config.SelfPath()
 	if err != nil {
 		return err
 	}

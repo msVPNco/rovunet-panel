@@ -1,6 +1,10 @@
 package config
 
-import "math/rand"
+import (
+	"math/rand"
+	"os"
+	"path/filepath"
+)
 
 // BasePort is the starting port for DNS tunnel forwarding.
 const BasePort = 5310
@@ -63,4 +67,23 @@ var TransportBinaries = map[string]string{
 	TransportSlipstream: "slipstream-server",
 	TransportVayDNS:     "vaydns-server",
 	TransportNaive:      "caddy-naive",
+}
+
+// SelfPath is the panel binary that systemd units should run. Usually the
+// running executable; but a pre-rename updater runs the new binary from the
+// old command's path, which the migration then removes, so a unit written
+// from that path would fail to start (203/EXEC). The installed binary is
+// used whenever the running path is gone or is the old command.
+func SelfPath() (string, error) {
+	p, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	installed := filepath.Join(DefaultBinDir, "rovunet")
+	if _, statErr := os.Stat(p); statErr != nil || filepath.Base(p) == "slip"+"gate" {
+		if _, err := os.Stat(installed); err == nil {
+			return installed, nil
+		}
+	}
+	return p, nil
 }

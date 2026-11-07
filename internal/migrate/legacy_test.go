@@ -109,3 +109,46 @@ func TestRenameFiles(t *testing.T) {
 		t.Fatal("unrelated file touched")
 	}
 }
+
+func TestRepairUnits(t *testing.T) {
+	root := t.TempDir()
+	SystemdDir, BinDir = filepath.Join(root, "systemd"), filepath.Join(root, "bin")
+	for _, d := range []string{SystemdDir, BinDir} {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	old := filepath.Join(BinDir, legacy)
+	broken := "[Service]\nExecStart=" + old + " vless serve --listen 127.0.0.1:2053\n"
+	ok := "[Service]\nExecStart=/usr/local/bin/dnstt-server -udp :5300\n"
+	write := func(n, s string) {
+		if err := os.WriteFile(filepath.Join(SystemdDir, n), []byte(s), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("rovunet-vless.service", broken)
+	write("rovunet-dnstt.service", ok)
+	write("other.service", broken) // not the panel's: never touched
+
+	// While the old command exists, units using it still start: no change.
+	if err := os.WriteFile(old, []byte("x"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if fixed, err := RepairUnits(); err != nil || len(fixed) != 0 {
+		t.Fatalf("fixed %v while the old command exists (%v)", fixed, err)
+	}
+	if err := os.Remove(old); err != nil {
+		t.Fatal(err)
+	}
+	fixed, err := RepairUnits()
+	if err != nil || len(fixed) != 1 || fixed[0] != "rovunet-vless" {
+		t.Fatalf("fixed %v, %v", fixed, err)
+	}
+	b, _ := os.ReadFile(filepath.Join(SystemdDir, "rovunet-vless.service"))
+	if want := "ExecStart=" + filepath.Join(BinDir, "rovunet") + " vless serve"; !strings.Contains(string(b), want) {
+		t.Fatalf("unit not repaired:\n%s", b)
+	}
+	if b, _ := os.ReadFile(filepath.Join(SystemdDir, "other.service")); string(b) != broken {
+		t.Fatal("a unit that is not the panel's was changed")
+	}
+}
