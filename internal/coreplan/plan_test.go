@@ -172,3 +172,29 @@ func TestWireGuardAddressesNeverMove(t *testing.T) {
 		t.Fatalf("after removal: %v", st.WGAddrs)
 	}
 }
+
+func TestValidateRepairsPastedLinksAndRejectsPlaceholders(t *testing.T) {
+	o := Options{Protocol: "reality", Host: "66.92.161.184", Port: 9443,
+		SNI:           "[www.microsoft.com](https://www.microsoft.com)",
+		RealityTarget: "[www.microsoft.com:443](https://www.microsoft.com:443)"}
+	if err := Validate(&o); err != nil {
+		t.Fatal(err)
+	}
+	if o.SNI != "www.microsoft.com" || o.RealityTarget != "www.microsoft.com:443" {
+		t.Fatalf("not repaired: %q %q", o.SNI, o.RealityTarget)
+	}
+	for _, host := range []string{"SERVER_IP", "your.server ip", "[x](y"} {
+		bad := Options{Protocol: "wireguard", Host: host, Port: 51820}
+		if err := Validate(&bad); err == nil {
+			t.Fatalf("host %q accepted", host)
+		}
+	}
+	bad := Options{Protocol: "reality", Host: "203.0.113.7", Port: 9443, SNI: "a b", RealityTarget: "www.example.com:443"}
+	if Validate(&bad) == nil {
+		t.Fatal("bad server name accepted")
+	}
+	bad = Options{Protocol: "reality", Host: "203.0.113.7", Port: 9443, RealityTarget: "www.example.com:99999"}
+	if Validate(&bad) == nil {
+		t.Fatal("bad target port accepted")
+	}
+}
