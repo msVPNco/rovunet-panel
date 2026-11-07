@@ -27,10 +27,17 @@ var verifyEncoding = base32.NewEncoding("abcdefghijklmnopqrstuvwxyz234567").With
 // paddingPool reuses random padding buffers to avoid allocations.
 var paddingPool = sync.Pool{
 	New: func() any {
-		b := make([]byte, 4096)
+		b := make([]byte, maxPaddingSize)
 		return &b
 	},
 }
+
+// maxPaddingSize is the fixed capacity of every paddingPool buffer. A
+// client-controlled EDNS0 payload size (see parseEDNS0PayloadSize) must
+// never push the computed padding length past this, or the slice
+// expression that carves `targetData` bytes out of the pooled buffer
+// panics — a remote, unauthenticated crash.
+const maxPaddingSize = 4096
 
 // handleVerify detects and responds to HMAC verify probes.
 //
@@ -145,8 +152,15 @@ func (r *Router) handleVerify(packet []byte, from net.Addr, reply replyFunc) boo
 		targetData = 32
 	}
 
-	// Build payload: HMAC response + fast random padding from pool
+	// Build payload: HMAC response + fast random padding from pool.
+	// targetData is derived from mtu, which above may come straight from
+	// parseEDNS0PayloadSize — clamped there, but clamp again here against
+	// the buffer's actual capacity so no future change to that arithmetic
+	// can turn a crafted EDNS0 size back into an out-of-range slice.
 	bufPtr := paddingPool.Get().(*[]byte)
+	if targetData > len(*bufPtr) {
+		targetData = len(*bufPtr)
+	}
 	payload := (*bufPtr)[:targetData]
 	copy(payload, respHMAC)
 	if targetData > 32 {
@@ -215,9 +229,9 @@ func buildBinaryTXTResponseWithEDNS(query []byte, qEnd int, data []byte, ednsPay
 	resp = append(resp, query[12:qEnd]...)
 
 	// Answer: name pointer + TXT RR
-	resp = append(resp, 0xC0, 0x0C)              // name pointer to offset 12
-	resp = append(resp, 0x00, 0x10)              // TYPE = TXT
-	resp = append(resp, 0x00, 0x01)              // CLASS = IN
+	resp = append(resp, 0xC0, 0x0C)             // name pointer to offset 12
+	resp = append(resp, 0x00, 0x10)             // TYPE = TXT
+	resp = append(resp, 0x00, 0x01)             // CLASS = IN
 	resp = append(resp, 0x00, 0x00, 0x00, 0x3C) // TTL = 60
 
 	// Build RDATA with character-strings (max 255 bytes each)
@@ -241,14 +255,20 @@ func buildBinaryTXTResponseWithEDNS(query []byte, qEnd int, data []byte, ednsPay
 	resp = append(resp, 0x00)                                                 // Name: root
 	resp = append(resp, 0x00, 0x29)                                           // TYPE: OPT (41)
 	resp = append(resp, byte(ednsPayloadSize>>8), byte(ednsPayloadSize&0xFF)) // CLASS: UDP payload size
-	resp = append(resp, 0x00, 0x00, 0x00, 0x00)                              // TTL: extended RCODE(0) + version(0) + flags(0)
+	resp = append(resp, 0x00, 0x00, 0x00, 0x00)                               // TTL: extended RCODE(0) + version(0) + flags(0)
 	resp = append(resp, 0x00, 0x00)                                           // RDLENGTH: 0
 
 	return resp
 }
 
 // parseEDNS0PayloadSize scans the additional section of a DNS query for an
-// OPT (type 41) pseudo-RR and returns the advertised UDP payload size.
+// OPT (type 41) pseudo-RR and returns the advertised UDP payload size,
+// clamped to maxPaddingSize. The wire field is a client-controlled
+// uint16 (0-65535, RFC 6891 places no upper bound tied to this server's
+// buffers) and is fed into the response-padding size computation in
+// handleVerify; returning it unclamped let a single crafted query ask
+// for more padding than the fixed-size pool buffer holds, panicking the
+// process. 0 continues to mean "no OPT record found / not applicable".
 func parseEDNS0PayloadSize(packet []byte, qEnd int) int {
 	if len(packet) < 12 {
 		return 0
@@ -278,7 +298,11 @@ func parseEDNS0PayloadSize(packet []byte, qEnd int) int {
 		}
 		rrType := binary.BigEndian.Uint16(packet[offset : offset+2])
 		if rrType == 41 {
-			return int(binary.BigEndian.Uint16(packet[offset+2 : offset+4]))
+			size := int(binary.BigEndian.Uint16(packet[offset+2 : offset+4]))
+			if size > maxPaddingSize {
+				size = maxPaddingSize
+			}
+			return size
 		}
 		rdLen := int(binary.BigEndian.Uint16(packet[offset+8 : offset+10]))
 		offset += 10 + rdLen
