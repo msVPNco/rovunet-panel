@@ -966,8 +966,8 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 		// Fastest first: this user's Xray cores are slotted in by rank.
 		flushCores := func(int) int { return 0 }
 		limited := u.QuotaGB > 0
-		if u.Username != "" && !limited {
-			flushCores = coreProfilePrinter(cfg, u, out)
+		if u.Username != "" {
+			flushCores = coreProfilePrinterFor(cfg, u, out, limited)
 		}
 		hidden = 0
 		for _, t := range clientcfg.SortByRank(tunnels, tunnelRank) {

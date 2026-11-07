@@ -11,6 +11,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
+	"github.com/msVPNco/rovunet-panel/internal/coreplan"
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
 	"github.com/msVPNco/rovunet-panel/internal/system"
@@ -476,10 +477,9 @@ func printUserConfigs(cfg *config.Config, username, password string, out actions
 	ensureServerAddress(cfg, out, cfg.Tunnels)
 	// Fastest first: Xray cores are slotted in among the tunnels by rank.
 	limited := quotaLimited(cfg, username)
-	flushCores := coreProfilePrinter(cfg, config.UserConfig{Username: username, Password: password}, out)
+	flushCores := coreProfilePrinterFor(cfg, config.UserConfig{Username: username, Password: password}, out, limited)
 	if limited {
-		flushCores = func(int) int { return 0 } // Xray cores are not measured
-		out.Print("  # Traffic-limited user: only the VLESS config is given, because only its traffic is counted.")
+		out.Print("  # Traffic-limited user: only VLESS, REALITY and XHTTP configs are given, because only their traffic is counted.")
 	}
 	hidden := 0
 	for _, t := range clientcfg.SortByRank(cfg.Tunnels, tunnelRank) {
@@ -503,9 +503,7 @@ func printUserConfigs(cfg *config.Config, username, password string, out actions
 			printTunnelConfig(cfg, &vt, username, password, out)
 		}
 	}
-	if !limited {
-		flushCores(1 << 30)
-	}
+	flushCores(1 << 30)
 	noteHidden(out, hidden)
 }
 
@@ -579,9 +577,28 @@ func tunnelRank(t config.TunnelConfig) int { return clientcfg.TunnelRank(t.Trans
 // Calling it with each tunnel's rank before the tunnel, and with a huge limit
 // at the end, interleaves cores and tunnels from fastest to slowest.
 func coreProfilePrinter(cfg *config.Config, user config.UserConfig, out actions.OutputWriter) func(limit int) int {
+	return coreProfilePrinterFor(cfg, user, out, false)
+}
+
+// statsWorking is overridden by tests.
+var statsWorking = coreinstall.StatsWorking
+
+// coreProfilePrinterFor is coreProfilePrinter; for a traffic-limited user it
+// keeps only the cores whose traffic is counted (REALITY and XHTTP with a
+// working statistics API).
+func coreProfilePrinterFor(cfg *config.Config, user config.UserConfig, out actions.OutputWriter, limited bool) func(limit int) int {
 	profiles, err := coreinstall.Profiles(user)
 	if err != nil {
 		out.Warning("Xray cores: " + err.Error())
+	}
+	if limited {
+		kept := profiles[:0]
+		for _, p := range profiles {
+			if coreplan.Metered(p.Protocol) && statsWorking(p.Core) {
+				kept = append(kept, p)
+			}
+		}
+		profiles = kept
 	}
 	profiles = clientcfg.SortByRank(profiles, func(p coreinstall.Profile) int { return clientcfg.CoreRank(p.Protocol) })
 	next := 0

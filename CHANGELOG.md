@@ -2,6 +2,12 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.15.0
+
+- **Traffic limits now cover REALITY and XHTTP too.** Those cores expose Xray's statistics on a loopback-only port (a statistics API, a counter per user named by the panel username, and a routing rule; WireGuard and Hysteria 2 have none and stay unmetered). The limits timer reads each core's counters every 5 minutes and adds them to the user's total together with VLESS and SOCKS5. A traffic-limited user is now given the VLESS, REALITY and XHTTP configs, and a core is given only if its statistics answer (checked when the configs are printed); otherwise the user keeps just VLESS.
+- **`rovunet update` restarts each REALITY and XHTTP core once** to apply the new configuration. Xray clears its counters when a core restarts, so the panel reads them just before it restarts a core for a user change, and a restart outside the panel loses up to 5 minutes of counting.
+- This relies on the `xray api statsquery` command and the classic statistics configuration. They were written from the documented form and a CI test of the generated config, not run against your Xray yet: if a limited user is not given REALITY/XHTTP configs, or `users list` shows no growing usage for it, the statistics are not answering and the output of `xray api statsquery -s 127.0.0.1:10085 -pattern "user>>>"` is what is needed.
+
 ## v1.14.0
 
 ### Traffic limits, and stopped users can be renewed

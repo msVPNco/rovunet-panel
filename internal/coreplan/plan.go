@@ -40,7 +40,13 @@ type State struct {
 	Path          string            `json:"path"`
 	Seed          string            `json:"seed"` // hex, 32 bytes
 	WGAddrs       map[string]string `json:"wgAddrs,omitempty"`
+	// APIPort is the loopback port of the core's Xray statistics API, used to
+	// count each user's traffic (REALITY and XHTTP). 0 means none.
+	APIPort int `json:"apiPort,omitempty"`
 }
+
+// Metered reports whether a protocol's per-user traffic can be read from Xray.
+func Metered(protocol string) bool { return protocol == "reality" || protocol == "xhttp" }
 
 // Client is one credential holder. Secret takes part in the derivation, so a
 // changed password revokes the client's previous credentials.
@@ -269,7 +275,7 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 			b[8] = b[8]&0x3f | 0x80
 			raw := hex.EncodeToString(b)
 			id := raw[:8] + "-" + raw[8:12] + "-" + raw[12:16] + "-" + raw[16:20] + "-" + raw[20:]
-			u := object{"id": id}
+			u := object{"id": id, "email": c.Name} // email names the user in Xray's statistics
 			q.Set("encryption", "none")
 			q.Set("sni", o.SNI)
 			q.Set("fp", "chrome")
@@ -346,7 +352,20 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 	if len(stream) > 0 {
 		inbound["streamSettings"] = stream
 	}
-	server, err := json.MarshalIndent(object{"log": object{"loglevel": "warning"}, "inbounds": []object{inbound}, "outbounds": []object{{"protocol": "freedom"}}}, "", "  ")
+	root := object{"log": object{"loglevel": "warning"}, "inbounds": []object{inbound}, "outbounds": []object{{"protocol": "freedom"}}}
+	if st.APIPort > 0 && Metered(o.Protocol) {
+		// Loopback-only statistics API (the classic form: a dokodemo-door
+		// inbound routed to the api handler), plus per-user counters.
+		root["inbounds"] = []object{inbound, {
+			"tag": "api", "listen": "127.0.0.1", "port": st.APIPort,
+			"protocol": "dokodemo-door", "settings": object{"address": "127.0.0.1"},
+		}}
+		root["stats"] = object{}
+		root["api"] = object{"tag": "api", "services": []string{"StatsService"}}
+		root["policy"] = object{"levels": object{"0": object{"statsUserUplink": true, "statsUserDownlink": true}}}
+		root["routing"] = object{"rules": []object{{"type": "field", "inboundTag": []string{"api"}, "outboundTag": "api"}}}
+	}
+	server, err := json.MarshalIndent(root, "", "  ")
 	return Bundle{Server: server, Clients: profiles, Extension: extension}, err
 }
 func mustDecode(s string) []byte { b, _ := base64.StdEncoding.DecodeString(s); return b }

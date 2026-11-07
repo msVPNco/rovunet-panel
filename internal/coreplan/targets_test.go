@@ -50,3 +50,30 @@ func TestRealityBankIsValid(t *testing.T) {
 		seen[h] = true
 	}
 }
+
+func TestMeteredCoresExposeStats(t *testing.T) {
+	st, err := NewState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	st.APIPort = 10085
+	o := Options{Protocol: "reality", Host: "h.example.com", SNI: "www.microsoft.com", RealityTarget: "www.microsoft.com:443", Port: 9443}
+	b, err := GenerateFor(o, &st, []Client{{Name: "alice", Secret: "s"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"email": "alice"`, `"StatsService"`, `"statsUserUplink": true`, `"dokodemo-door"`, `"port": 10085`, `"outboundTag": "api"`} {
+		if !strings.Contains(string(b.Server), want) {
+			t.Errorf("server config lacks %s:\n%s", want, b.Server)
+		}
+	}
+	// No API port, no API: WireGuard and a core without a port stay as they were.
+	st.APIPort = 0
+	b, _ = GenerateFor(o, &st, []Client{{Name: "alice", Secret: "s"}})
+	if strings.Contains(string(b.Server), "StatsService") || strings.Contains(string(b.Server), "dokodemo") {
+		t.Fatalf("no statistics API without a port:\n%s", b.Server)
+	}
+	if Metered("wireguard") || Metered("hysteria2") || !Metered("xhttp") || !Metered("reality") {
+		t.Fatal("only REALITY and XHTTP are metered")
+	}
+}

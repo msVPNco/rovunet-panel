@@ -11,6 +11,7 @@ import (
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
 	"github.com/msVPNco/rovunet-panel/internal/system"
@@ -161,6 +162,9 @@ func retireUser(cfg *config.Config, out actions.OutputWriter, u config.UserConfi
 // EnforceLimits retires every user whose expiry has passed or whose traffic
 // limit is used up, and returns "name (reason)" for each.
 func EnforceLimits(cfg *config.Config, out actions.OutputWriter, now time.Time) ([]string, error) {
+	if err := coreinstall.CollectUsage(); err != nil {
+		out.Warning("Xray traffic: " + err.Error())
+	}
 	totals := usage.Totals()
 	var gone []string
 	for _, u := range append([]config.UserConfig(nil), cfg.Users...) {
@@ -249,7 +253,7 @@ func formatGB(b int64) string { return fmt.Sprintf("%.2f GB", float64(b)/float64
 
 // warnQuotaScope tells the operator what a traffic limit covers.
 func warnQuotaScope(cfg *config.Config, out actions.OutputWriter) {
-	out.Info("Traffic limit: only VLESS (WebSocket) traffic is counted, so this user is given only the VLESS config. Counting updates every 15 seconds and the limit is checked every 5 minutes, so a little more than the limit can pass.")
+	out.Info("Traffic limit: only VLESS (WebSocket), REALITY and XHTTP traffic is counted, so this user is given only those configs. Counting updates every 15 seconds and the limit is checked every 5 minutes, so a little more than the limit can pass.")
 	for _, t := range cfg.Tunnels {
 		if t.Transport == config.TransportVLESS {
 			return
