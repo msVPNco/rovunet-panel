@@ -195,3 +195,15 @@ const (
 	FCollectionName      = 86
 	TotalFieldsV32       = 87
 )
+
+// FCredentialsV33 (app-side: ConfigImporter.parseProfileV33) carries
+// SOCKS/SSH credentials as one base64(JSON) field — {"socksUser",
+// "socksPass", "sshUser", "sshPass"} — instead of relying solely on the
+// plain FSOCKSUser/FSOCKSPass/FSSHUser/FSSHPass fields below, which are
+// joined into the wire string with "|" and so can't hold a credential
+// containing "|" without desynchronizing every field after it.
+// TotalFieldsV33 is TotalFieldsV32 + 1 field (index 87).
+const (
+	FCredentialsV33 = 87
+	TotalFieldsV33  = 88
+)

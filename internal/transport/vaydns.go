@@ -29,6 +29,12 @@ func createVayDNSService(tunnel *config.TunnelConfig, cfg *config.Config) error 
 	if err := service.Create(unit); err != nil {
 		return err
 	}
+	// Restart if already running: systemctl start on an already-active unit
+	// is a no-op, so an edit to this tunnel's settings would otherwise sit
+	// in the rewritten unit file without ever reaching the running process.
+	if _, err := service.Status(unit.Name); err == nil {
+		return service.Restart(unit.Name)
+	}
 	return service.Start(unit.Name)
 }
 

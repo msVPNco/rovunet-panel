@@ -54,6 +54,13 @@ func createDNSTTService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 	if err := service.Create(unit); err != nil {
 		return err
 	}
+	// Restart if already running: systemctl start on an already-active unit
+	// is a no-op, so an edit to this tunnel's settings (backend, port,
+	// discovery list, ...) would otherwise sit in the rewritten unit file
+	// without ever reaching the running process.
+	if _, err := service.Status(unit.Name); err == nil {
+		return service.Restart(unit.Name)
+	}
 	return service.Start(unit.Name)
 }
 
@@ -75,6 +82,10 @@ func createSlipstreamService(tunnel *config.TunnelConfig, cfg *config.Config) er
 
 	if err := service.Create(unit); err != nil {
 		return err
+	}
+	// See createDNSTTService above: restart, not start, when already active.
+	if _, err := service.Status(unit.Name); err == nil {
+		return service.Restart(unit.Name)
 	}
 	return service.Start(unit.Name)
 }
