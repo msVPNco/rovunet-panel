@@ -8,115 +8,96 @@
 
 <p align="center">
   سرور خودمیزبان و چندپروتکلی برای عبور از فیلترینگ.<br>
-  یک نصب برای پروتکل‌های تحت مدیریت، با کانفیگ آماده برای هر کاربر.
+  یک نصب، همهٔ پروتکل‌های تحت مدیریت، و کانفیگ آماده برای هر کاربر.
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <b>فارسی</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ru.md">Русский</a> ·
-  <a href="https://t.me/RovunetVPN">تلگرام</a> ·
-  <a href="https://github.com/msVPNco/rovunet-android">اپ اندروید</a>
+  <a href="README.md">English</a> · <b>فارسی</b> · <a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a>
+  <br>
+  <a href="docs/fa/README.md">مستندات</a> · <a href="https://github.com/msVPNco/rovunet-android">اپ اندروید</a> · <a href="CHANGELOG.md">تغییرات</a> · <a href="https://t.me/RovunetVPN">تلگرام</a>
 </p>
 
 ---
 
-**Rovunet Panel یک ابزار متن‌باز و خودمیزبان برای راه‌اندازی و مدیریت دسترسی چندپروتکلی به اینترنت روی سرورهای لینوکسی سازگار است.** هدف آن، فراهم‌کردن چند مسیر اتصال برای هر کاربر است تا انتخاب اتصال به یک پروتکل یا یک وضعیت ثابت شبکه محدود نشود.
+پنل رووُنت ابزاری متن‌باز است که یک سرور لینوکسی را به سرور دسترسی چندپروتکلی تبدیل می‌کند. هر پروتکل را به‌صورت سرویس systemd نصب و مدیریت می‌کند، کاربر می‌سازد و کانفیگ کلاینت‌ها را خروجی می‌دهد، تا هر کاربر چند مسیر اتصال مستقل داشته باشد و به یک پروتکل یا یک وضعیت شبکه وابسته نماند.
 
-پنل، نصب و پیکربندی پروتکل‌های تحت مدیریت، ایجاد کاربران، تولید کانفیگ‌های کلاینت و مدیریت سرویس‌ها با systemd را در یک گردش کار مبتنی بر خط فرمان و منوی تعاملی جمع می‌کند. مسیرهای موجود شامل VLESS روی WebSocket، NaiveProxy، SSH مستقیم و SSH روی TLS، SOCKS5، خانواده‌ای از تونل‌های DNS مانند DNSTT، NoizDNS، VayDNS، Slipstream و Soar، و هسته‌های Xray (یعنی VLESS REALITY، VLESS XHTTP، Hysteria2 و WireGuard) هستند. ابزارهای بررسی وضعیت و پشتیبان‌گیری نیز برای نگهداری و عیب‌یابی سرور در دسترس‌اند.
+## ویژگی‌ها
 
-پنل در کنار [اپ اندروید Rovunet](https://github.com/msVPNco/rovunet-android) طراحی شده است: خروجی اختصاصی می‌تواند مسیرهای مرتبط را با اطلاعات مجموعه به اپ منتقل کند؛ اپ اتصال را از داخل تونل آزمایش می‌کند و پیش از ورود به مرحلهٔ جایگزین DNS از کاربر تأیید می‌گیرد. برای استفاده در کلاینت‌های سازگار دیگر، خروجی استاندارد VLESS نیز ارائه می‌شود.
-
-**دامنهٔ پشتیبانی:** هسته‌های Xray با `rovunet core-install` نصب و مدیریت می‌شوند (`core-plan` همچنان فقط فایل برای استقرار دستی می‌سازد). کیفیت و دسترس‌پذیری اتصال به وضعیت شبکه، تنظیمات سرور و پروتکل انتخابی وابسته است. [وضعیت یکپارچگی و برنامهٔ توسعه](docs/ROVUNET-STATUS.md) جزئیات بخش‌های آماده و کارهای باقی‌مانده را توضیح می‌دهد.
-
-> **وضعیت پروژه: انتشار اولیه و در حال توسعه.** پیش از استفادهٔ عملیاتی، پروتکل‌های موردنیاز را در محیط خود آزمایش کنید و با `rovunet backup` از تنظیمات پشتیبان بگیرید.
-
-## نصب سریع
-
-روی یک سرور تازهٔ Ubuntu 20.04 به بالا یا Debian 10 به بالا، با دسترسی root:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.sh | sudo bash
-```
-
-نصب‌کننده می‌پرسد کدام پروتکل‌ها فعال شوند، آن‌ها را راه‌اندازی می‌کند، اولین کاربر را می‌سازد و همهٔ کانفیگ‌های او را نمایش می‌دهد. بعد از آن:
-
-```bash
-sudo rovunet                # منوی تعاملی
-sudo rovunet users add      # افزودن کاربر
-sudo rovunet users configs  # نمایش دوبارهٔ کانفیگ همهٔ کاربران
-sudo rovunet diag           # بررسی سرویس‌ها، پورت‌ها، کلیدها و DNS
-```
-
-اگر قبلاً SlipGate نصب کرده‌اید، [راهنمای جابه‌جایی سرور](docs/GUIDE.md#quick-start) را ببینید؛ تنظیمات، تونل‌ها و کاربران حفظ می‌شوند.
+- **۱۴ پروتکل** در چهار دسته‌ی پروکسی، SSH، تونل DNS و هسته‌ی Xray، با یک ابزار خط فرمان و منوی تعاملی.
+- **یک لاگین برای هر کاربر** روی همه‌ی تونل‌ها، و شناسه‌ی VLESS جدا برای هر کاربر که ظرف چند ثانیه قابل لغو است.
+- **کانفیگ آماده‌ی وارد کردن**: لینک بومی ⁦`rovunet://`⁩ برای [اپ Rovunet](https://github.com/msVPNco/rovunet-android)، و ⁦`vless://`⁩، ⁦`hysteria2://`⁩ و فایل WireGuard استاندارد برای کلاینت‌های دیگر.
+- **سرو روی پورت ۴۴۳**: VLESS و SSH over TLS دامنه، پورت و گواهی Let's Encrypt NaïveProxy را پشت یک سایت پوششی مشترک دارند.
+- **عملیات امن**: آپدیت تأییدشده با checksum و برگشت خودکار، آزمایش کانفیگ پیش از استقرار، و بکاپ و بازیابی کامل سرور.
+- **عیب‌یابی**: داشبورد زنده، بررسی سلامت، تاریخ انقضای گواهی‌ها و لاگ هر سرویس.
 
 ## پروتکل‌ها
 
 | پروتکل | روش انتقال | پورت | کاربرد |
 |---|---|---|---|
-| **VLESS پشت NaiveProxy** | WebSocket پشت Caddy با گواهی واقعی | 443/tcp | انتخاب اول: سریع و شبیه یک سایت HTTPS معمولی |
-| **NaiveProxy** | پروکسی HTTP/2 با سایت پوششی | 443/tcp | وقتی اتصال TLS به دامنه برقرار است |
-| **SSH روی TLS (StunTLS)** | SSH داخل TLS/WebSocket، پشت 443 | 443/tcp | جایگزین VLESS روی همان پورت |
-| **SSH مستقیم** | SSH ساده | 22/tcp | سریع، در شبکه‌هایی که پورت 22 باز است |
-| **VLESS پشت Cloudflare** | WebSocket از طریق CDN کلادفلر | 2053/tcp | وقتی IP سرور مسدود شده؛ کندتر |
-| **DNSTT / NoizDNS** | تونل رمزنگاری‌شده روی DNS | 53/udp | برای شبکهٔ محدود؛ عملکرد وابسته به resolver و مسیر |
-| **VayDNS** | تونل DNS با قالب قابل تنظیم | 53/udp | مثل DNSTT با تنظیمات بیشتر |
-| **Slipstream** | QUIC روی DNS | 53/udp | آزمایشی |
-| **Soar** | DNS چندمسیره با کشف resolver | 53/udp | وقتی resolverها به‌طور ناهمسان فیلتر شده‌اند |
-| **SOCKS5** | SOCKS5 ساده | 1080/tcp | فقط برای شبکه‌های باز (رمزنگاری ندارد) |
-| **VLESS REALITY** (هستهٔ Xray) | TLS شبیه یک سایت واقعی، بدون نیاز به گواهی | هر پورت آزاد TCP | وقتی TLS به سایت‌های شناخته‌شده رد می‌شود |
-| **VLESS XHTTP** (هستهٔ Xray) | VLESS روی درخواست‌های HTTP، با گواهی واقعی | هر پورت آزاد TCP | پشت CDN یا جایی که WebSocket بسته است |
-| **Hysteria2** (هستهٔ Xray) | QUIC با کنترل ازدحام مخصوص خود، با گواهی واقعی | هر پورت آزاد UDP | شبکه‌های پرنوسان، جایی که UDP رد می‌شود |
-| **WireGuard** (هستهٔ Xray) | WireGuard استاندارد، یک فایل برای هر دستگاه | هر پورت آزاد UDP | جایی که WireGuard مسدود نیست |
+| **VLESS over WebSocket**، پشت NaïveProxy | WebSocket + TLS با گواهی واقعی | ⁦443/tcp⁩ | انتخاب اول هرجا HTTPS کار می‌کند |
+| **VLESS over WebSocket**، پشت Cloudflare | WebSocket از طریق CDN کلادفلر | ⁦2053/tcp⁩ | وقتی IP سرور مسدود است |
+| **NaïveProxy** | HTTP/2 + TLS با سایت پوششی | ⁦443/tcp⁩ | جایی که TLS به دامنهٔ شما برقرار است |
+| **SSH over TLS** (StunTLS) | SSH داخل TLS / WebSocket | ⁦443/tcp⁩ | جایگزین روی همان پورت |
+| **SSH** | SSH ساده | ⁦22/tcp⁩ | جایی که پورت ۲۲ باز است |
+| **SOCKS5** | SOCKS5 ساده، بدون رمزنگاری | ⁦1080/tcp⁩ | فقط شبکه‌های آزاد |
+| **DNSTT** / **NoizDNS** | تونل DNS رمزنگاری‌شده | ⁦53/udp⁩ | شبکه‌های محدودی که DNS از آن‌ها رد می‌شود |
+| **VayDNS** | تونل DNS با قالب قابل تنظیم | ⁦53/udp⁩ | مثل DNSTT با تنظیمات بیشتر |
+| **Slipstream** | QUIC روی DNS | ⁦53/udp⁩ | آزمایشی |
+| **Soar** | DNS چندمسیره با کشف resolver | ⁦53/udp⁩ | resolverهایی که ناهمسان فیلتر شده‌اند |
+| **VLESS + REALITY** (Xray) | TCP، شبیه یک سایت TLS واقعی | هر TCP | جایی که TLS به سایت‌های شناخته‌شده رد می‌شود |
+| **VLESS + XHTTP** (Xray) | درخواست‌های HTTP روی TLS | هر TCP | پشت CDN، یا جایی که WebSocket بسته است |
+| **Hysteria 2** (Xray) | QUIC | هر UDP | شبکه‌های پرنوسان که UDP از آن‌ها رد می‌شود |
+| **WireGuard** (Xray) | UDP | هر UDP | جایی که WireGuard مسدود نیست |
 
-این جدول راهنمای انتخاب است و تضمین کارکرد یا نتیجهٔ مقایسهٔ جامع نیست. عملکرد به سرور، اپراتور و وضعیت شبکه وابسته است؛ اپ مسیرها را آزمایش می‌کند.
+مناسب بودن هر پروتکل به سرور، اپراتور و شبکه بستگی دارد؛ این جدول راهنماست، نه تضمین. جزئیات در [پروتکل‌ها](docs/fa/protocols.md).
 
-هسته‌های Xray به‌صورت سرویس جدا کنار تونل‌ها اجرا می‌شوند:
+## شروع سریع
 
-```bash
-sudo rovunet core-install --name r1 --protocol reality --host SERVER_IP \
-  --target www.microsoft.com:443 --sni www.microsoft.com --port 8443 --devices 5
-sudo rovunet core-list
-sudo rovunet core-remove r1
-```
+روی یک سرور تازهٔ ⁦Ubuntu 20.04+⁩ یا ⁦Debian 10+⁩ و با دسترسی root:
 
-پیش از نصب، آزاد بودن پورت بررسی می‌شود؛ Xray با چک‌سام release تأیید می‌شود و کانفیگ را پیش از فعال شدن آزمایش می‌کند؛ پورت TCP یا UDP هم باز می‌شود. هر دستگاه فایل خودش را در `/etc/rovunet/core/<name>/clients/` می‌گیرد. XHTTP و Hysteria2 به `--cert` و `--key` برای گواهی معتبرِ `--sni` نیاز دارند.
-
-## اپ‌های کلاینت
-
-[انتشارهای اپ اندروید Rovunet](https://github.com/msVPNco/rovunet-android/releases) شامل فایل‌های نصب منتشرشده و سورس‌اند. پیش از نصب، [وضعیت فعلی اپ](https://github.com/msVPNco/rovunet-android/blob/main/docs/STATUS.md) و توضیح امضا/مهاجرت را بخوانید؛ نسخهٔ خصوصی، آپدیت مستقیم نسخهٔ عمومی نیست. [وضعیت یکپارچگی](docs/ROVUNET-STATUS.md) را ببینید.
-
-- **[رووُنت برای اندروید](https://github.com/msVPNco/rovunet-android)** (پیشنهادی): لینک‌های `rovunet://` را وارد می‌کند، مسیرهای مرتبط را در یک مجموعه می‌گذارد، مسیر انتخاب‌شده را بدون پینگ اجباری وصل می‌کند و تست جداگانهٔ HTTPS از داخل تونل دارد. [دانلود آخرین نسخه](https://github.com/msVPNco/rovunet-android/releases).
-- **کلاینت‌های استاندارد** مثل v2rayNG، Hiddify یا NekoBox: از لینک‌های `vless://` استفاده کنید که پنل کنار هر کانفیگ VLESS نمایش می‌دهد.
+</div>
 
 ```bash
-sudo rovunet export-clients --user USER --format rovunet
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.sh | sudo bash
 ```
 
-## پیش‌نیازها
+<div dir="rtl">
 
-- سرور لینوکسی (Ubuntu 20.04 به بالا، Debian 10 به بالا یا مشابه) با دسترسی root
-- یک دامنه که DNS آن دست شماست و به سرور اشاره می‌کند (بخش [Domain Layout](docs/GUIDE.md#domain-layout) را ببینید)
-- پورت‌های باز برای پروتکل‌هایی که فعال می‌کنید: حداقل 53/udp، 80/tcp و 443/tcp
+نصب‌کننده می‌پرسد کدام پروتکل‌ها فعال شوند، آن‌ها را راه‌اندازی می‌کند، اولین کاربر را می‌سازد و کانفیگ‌های او را چاپ می‌کند. بعد:
+
+</div>
+
+```bash
+sudo rovunet                 # interactive menu
+sudo rovunet users add       # add a user
+sudo rovunet users configs   # print every user's configurations
+sudo rovunet diag            # check services, ports, keys and DNS
+```
+
+<div dir="rtl">
+
+پیش‌نیازها: دسترسی root، دامنه‌ای که DNS آن را در اختیار دارید، و پورت‌های باز برای پروتکل‌هایی که فعال می‌کنید (دست‌کم ⁦53/udp⁩، ⁦80/tcp⁩ و ⁦443/tcp⁩). [شروع به کار](docs/fa/getting-started.md) را ببینید.
 
 ## مستندات
 
-- [راهنمای کامل](docs/GUIDE.md): نصب، پروتکل‌ها، چیدمان دامنه و همهٔ دستورها (انگلیسی)
-- [راهنمای کاربر](docs/USER_GUIDE.md) (انگلیسی و فارسی)
-- [راهنمای فارسی VLESS](docs/VLESS_FA.md)
-- [یادداشت‌های خروجی](ROVUNET-EXPORT.txt) و [یادداشت‌های Xray](VEYRA-MANAGER.md)
-- [فهرست تغییرات](CHANGELOG.md)
+| | |
+|---|---|
+| [شروع به کار](docs/fa/getting-started.md) | پیش‌نیازها، رکوردهای DNS، نصب، اولین تونل |
+| [پروتکل‌ها](docs/fa/protocols.md) | همهٔ پروتکل‌ها، پورت‌ها، چیدمان دامنه، مسیریابی |
+| [کاربران و کانفیگ‌ها](docs/fa/users-and-configs.md) | کاربران، اشتراک، قالب‌های خروجی، اپ‌های کلاینت |
+| [هسته‌های Xray](docs/fa/xray-cores.md) | VLESS + REALITY، VLESS + XHTTP، Hysteria 2، WireGuard |
+| [عملیات و نگهداری](docs/fa/operations.md) | به‌روزرسانی، بکاپ و بازیابی، پایش، فایل‌ها و سرویس‌ها |
+| [مرجع دستورها](docs/fa/commands.md) | همهٔ دستورها و گزینه‌ها |
+| [عیب‌یابی](docs/fa/troubleshooting.md) | نشانه‌ها، علت‌ها و راه‌حل‌ها |
+
+> **وضعیت:** انتشار اولیه و در حال توسعه. پیش از تکیه بر پروتکل‌ها، آن‌ها را در محیط خودتان آزمایش کنید و بکاپ داشته باشید (⁦`sudo rovunet backup`⁩). [وضعیت یکپارچگی](docs/ROVUNET-STATUS.md) را ببینید.
 
 ## حمایت
 
-رووُنت کاری داوطلبانه و بدون درآمد است. اگر به کارتان آمده، می‌توانید حمایت مالی کنید:
-
-- **USDT (شبکهٔ Tron، استاندارد TRC20):** `TG3Mhou3pdq9KaFgJSHjDiDx2ahhJuHvbJ`
-
-به این آدرس فقط USDT روی شبکهٔ Tron (TRC20) بفرستید.
-
-پرسش و اخبار: [t.me/RovunetVPN](https://t.me/RovunetVPN)
+رووُنت کاری داوطلبانه و بدون درآمد است. حمایت مالی با سپاس پذیرفته می‌شود: **USDT روی شبکهٔ Tron (TRC20)** به آدرس ⁦`TG3Mhou3pdq9KaFgJSHjDiDx2ahhJuHvbJ`⁩ (فقط USDT روی TRC20 بفرستید). پرسش‌ها و اخبار: [t.me/RovunetVPN](https://t.me/RovunetVPN).
 
 ## مجوز
 
-مجوز AGPL-3.0. پنل رووُنت بر پایهٔ [SlipGate](https://github.com/anonvector/slipgate) ساختهٔ Anonvector است و وابستگی رسمی به آن ندارد؛ فایل [NOTICE](NOTICE.md) را ببینید. نام دستور `rovunet` است و سروری که با نام قبلی نصب شده، هنگام آپدیت خودکار مهاجرت می‌کند.
+AGPL-3.0. پنل رووُنت بر پایهٔ [SlipGate](https://github.com/anonvector/slipgate) ساختهٔ Anonvector است و وابستگی رسمی به آن ندارد؛ انتساب‌های upstream و اجزای ثالث در [NOTICE](NOTICE.md) آمده است.
 
 </div>
