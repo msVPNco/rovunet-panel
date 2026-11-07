@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/anonvector/slipgate/internal/actions"
+	"github.com/anonvector/slipgate/internal/certs"
 	"github.com/anonvector/slipgate/internal/config"
 	"github.com/anonvector/slipgate/internal/coreinstall"
 	"github.com/anonvector/slipgate/internal/service"
@@ -147,6 +149,10 @@ func showTunnelDetail(out actions.OutputWriter, tunnel *config.TunnelConfig) {
 				out.Print(fmt.Sprintf("  Priv Key  : %s", privKey))
 			}
 		}
+	case config.TransportSlipstream:
+		if tunnel.Slipstream != nil {
+			out.Print(fmt.Sprintf("  Cert info : %s", certs.Describe(tunnel.Slipstream.Cert, time.Now())))
+		}
 	case config.TransportNaive:
 		if tunnel.Naive != nil {
 			out.Print(fmt.Sprintf("  Email     : %s", tunnel.Naive.Email))
@@ -156,6 +162,7 @@ func showTunnelDetail(out actions.OutputWriter, tunnel *config.TunnelConfig) {
 		if tunnel.StunTLS != nil {
 			out.Print(fmt.Sprintf("  TLS Port  : %d", tunnel.StunTLS.Port))
 			out.Print(fmt.Sprintf("  Cert      : %s", tunnel.StunTLS.Cert))
+			out.Print(fmt.Sprintf("  Cert info : %s", certs.Describe(tunnel.StunTLS.Cert, time.Now())))
 		}
 	case config.TransportVLESS:
 		if v := tunnel.VLESS; v != nil {
@@ -166,6 +173,9 @@ func showTunnelDetail(out actions.OutputWriter, tunnel *config.TunnelConfig) {
 			out.Print(fmt.Sprintf("  Port      : %d", v.Port))
 			out.Print(fmt.Sprintf("  WS Path   : %s", v.Path))
 			out.Print(fmt.Sprintf("  Security  : %s", security))
+			if v.TLS {
+				out.Print(fmt.Sprintf("  Cert info : %s", certs.Describe(v.Cert, time.Now())))
+			}
 			out.Print(fmt.Sprintf("  Behind CDN: %v", v.CDN))
 			out.Print(fmt.Sprintf("  Client to : %s:%d", v.ClientAddress(tunnel.Domain), v.Port))
 			out.Print(fmt.Sprintf("  Blocked   : ports %s", v.ResolvedBlockPorts()))
