@@ -24,6 +24,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/service"
 	"github.com/msVPNco/rovunet-panel/internal/system"
 	"github.com/msVPNco/rovunet-panel/internal/transport"
+	"github.com/msVPNco/rovunet-panel/internal/usage"
 	"github.com/msVPNco/rovunet-panel/internal/version"
 	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
@@ -175,6 +176,11 @@ func handleSystemRestore(ctx *actions.Context) error {
 		return actions.NewError(actions.SystemRestore, "failed to save config", err)
 	}
 	out.Success("Config, keys and users restored")
+	if len(b.Usage) > 0 {
+		if err := usage.Restore(b.Usage); err != nil {
+			out.Warning("Failed to restore traffic usage: " + err.Error())
+		}
+	}
 
 	openTunnelPorts(cfg, out)
 
@@ -285,6 +291,7 @@ func encodeBackup(cfg *config.Config) (string, []string, error) {
 	if err := b.AddCores(coreinstall.Root); err != nil {
 		return "", nil, err
 	}
+	b.Usage = usage.Totals()
 	text, err := b.Encode()
 	return text, b.Skipped, err
 }

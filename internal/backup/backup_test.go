@@ -360,3 +360,22 @@ func TestAddCoresWithoutCoreDir(t *testing.T) {
 		t.Fatalf("got %v, %v", b.Cores, err)
 	}
 }
+
+func TestBackupRoundTripsUsage(t *testing.T) {
+	b, err := Create(&config.Config{}, t.TempDir(), "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.Usage = map[string]int64{"alice": 12345}
+	text, err := b.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Decode(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Usage["alice"] != 12345 {
+		t.Fatalf("usage %v", got.Usage)
+	}
+}

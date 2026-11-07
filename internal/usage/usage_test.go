@@ -36,3 +36,31 @@ func TestCountersPersistAndSum(t *testing.T) {
 		t.Fatalf("after restart alice=%d, want 180", got)
 	}
 }
+
+func TestRestoreAddsOnlyWhatIsMissing(t *testing.T) {
+	Dir = t.TempDir()
+	c := NewCounter("vless")
+	c.Add("alice", 100)
+	if err := c.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	saved := map[string]int64{"alice": 300, "bob": 50}
+	for i := 0; i < 2; i++ { // twice: must not double
+		if err := Restore(saved); err != nil {
+			t.Fatal(err)
+		}
+		got := Totals()
+		if got["alice"] != 300 || got["bob"] != 50 {
+			t.Fatalf("round %d: totals %v", i, got)
+		}
+	}
+	// A server that already counted more keeps its own number.
+	c.Add("alice", 500)
+	_ = c.Flush()
+	if err := Restore(saved); err != nil {
+		t.Fatal(err)
+	}
+	if got := Totals()["alice"]; got != 600 {
+		t.Fatalf("alice=%d, want 600", got)
+	}
+}

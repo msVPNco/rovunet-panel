@@ -59,6 +59,10 @@ type Bundle struct {
 	// relative path. Additive: an older panel ignores it and still restores
 	// the tunnels, so formatVersion stays the same.
 	Cores map[string]map[string]File `json:"cores,omitempty"`
+	// Usage is each user's traffic counted so far (see package usage), so a
+	// restored server doesn't give limited users their quota again. Additive
+	// like Cores.
+	Usage map[string]int64 `json:"usage,omitempty"`
 
 	// Skipped lists files left out of a new backup (too large to be keys).
 	Skipped []string `json:"-"`
