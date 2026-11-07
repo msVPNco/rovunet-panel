@@ -25,11 +25,18 @@ func handleTunnelShare(ctx *actions.Context) error {
 
 	// Direct-backend Soar has no login: one config serves everyone
 	if tunnel.Transport == config.TransportSoar && tunnel.Backend == config.BackendDirect {
-		uri, err := clientcfg.GeneratePortableURI(tunnel, nil, cfg, clientcfg.URIOptions{}, "rovunet")
-		if err != nil {
-			return actions.NewError(actions.TunnelShare, "failed to generate URI", err)
+		// No login needed, but the app groups configs by user: print one per
+		// user so each lands in that user's group (see printSoarLinks).
+		for _, u := range soarRecipients(cfg) {
+			uri, err := clientcfg.GeneratePortableURI(tunnel, nil, cfg, clientcfg.URIOptions{Username: u.Username, Password: u.Password}, "rovunet")
+			if err != nil {
+				return actions.NewError(actions.TunnelShare, "failed to generate URI", err)
+			}
+			if u.Username != "" {
+				ctx.Output.Print("# " + u.Username)
+			}
+			ctx.Output.Print(uri)
 		}
-		ctx.Output.Print(uri)
 		if tunnel.Soar != nil {
 			ctx.Output.Info(fmt.Sprintf("Other Soar clients: zone %s, server key %s", tunnel.Domain, tunnel.Soar.PublicKey))
 		}

@@ -133,3 +133,31 @@ func TestRovunetV33CredentialsSurvivePipeCharacter(t *testing.T) {
 		t.Fatalf("lossless credentials mismatch: got %+v, want user=%q pass=%q", creds, user, pass)
 	}
 }
+
+// TestSoarJoinsTheUsersCollection: the app groups imported configs by
+// FCollectionID, so a user's login-free Soar config must carry the same one
+// as that user's other configs; made without the user, it gets a group of
+// its own.
+func TestSoarJoinsTheUsersCollection(t *testing.T) {
+	cfg := &config.Config{PublicAddress: "192.0.2.1", Backends: config.DefaultBackends()}
+	soar := &config.TunnelConfig{Tag: "soar", Transport: config.TransportSoar, Backend: config.BackendDirect, Domain: "r.example.com", Soar: &config.SoarConfig{PublicKey: testSoarKey}}
+	ssh := &config.TunnelConfig{Tag: "soar-ssh", Transport: config.TransportSoar, Backend: config.BackendSSH, Domain: "r.example.com", Soar: &config.SoarConfig{PublicKey: testSoarKey}}
+	collection := func(tun *config.TunnelConfig, opts URIOptions) string {
+		uri, err := GeneratePortableURI(tun, cfg.GetBackend(tun.Backend), cfg, opts, "rovunet")
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(uri, "rovunet://"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.Split(string(raw), "|")[FCollectionID]
+	}
+	alice := URIOptions{Username: "alice", Password: "pw"}
+	if collection(soar, alice) != collection(ssh, alice) {
+		t.Fatal("alice's Soar config is in a different group from her other configs")
+	}
+	if collection(soar, URIOptions{}) == collection(ssh, alice) {
+		t.Fatal("a config made without a user must not claim alice's group")
+	}
+}
