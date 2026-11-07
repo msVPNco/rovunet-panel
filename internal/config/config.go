@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -48,6 +50,18 @@ type UserConfig struct {
 	ExpiresAt string `json:"expires_at,omitempty"`
 	// QuotaGB is the traffic limit in GB; 0 means unlimited.
 	QuotaGB int `json:"quota_gb,omitempty"`
+	// SubToken is the unguessable name of the user's subscription file. It is
+	// replaced when the password changes, which retires the old link.
+	SubToken string `json:"sub_token,omitempty"`
+}
+
+// NewSubToken returns a fresh 128-bit random subscription token (32 hex).
+func NewSubToken() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(b)
 }
 
 // Expired reports whether the user has an expiry that has passed.

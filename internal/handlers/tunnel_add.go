@@ -595,6 +595,10 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 	if err := cfg.Save(); err != nil {
 		return actions.NewError(actions.TunnelAdd, "failed to save config", err)
 	}
+	// A new tunnel adds a config to every user's subscription.
+	if err := WriteSubscriptions(cfg, out); err != nil {
+		out.Warning("Failed to update subscription files: " + err.Error())
+	}
 
 	// Ensure DNS infrastructure is ready for DNS tunnels
 	if tunnel.IsDNSTunnel() {

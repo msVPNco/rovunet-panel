@@ -40,6 +40,17 @@ func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 	if err := os.WriteFile(caddyfilePath, []byte(caddyfile), 0600); err != nil {
 		return fmt.Errorf("write Caddyfile: %w", err)
 	}
+	// If this Caddy rejects the subscription route, NaïveProxy must still
+	// come up: fall back to the Caddyfile without it.
+	if bin := filepath.Join(config.DefaultBinDir, "caddy-naive"); fileExists(bin) {
+		if outB, err := exec.Command(bin, "validate", "--config", caddyfilePath, "--adapter", "caddyfile").CombinedOutput(); err != nil {
+			fallback := buildCaddyfileSub(tunnel, cfg.Users, vlessRoutes(cfg, tunnel.Tag), false)
+			if werr := os.WriteFile(caddyfilePath, []byte(fallback), 0600); werr != nil {
+				return fmt.Errorf("write Caddyfile: %w", werr)
+			}
+			fmt.Fprintf(os.Stderr, "Caddy rejected the subscription route (%s); NaïveProxy runs without subscription links\n", lastLine(string(outB)))
+		}
+	}
 
 	binPath := filepath.Join(config.DefaultBinDir, "caddy-naive")
 
@@ -111,6 +122,12 @@ func vlessRoutes(cfg *config.Config, naiveTag string) []vlessRoute {
 }
 
 func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vless []vlessRoute) string {
+	return buildCaddyfileSub(tunnel, users, vless, true)
+}
+
+// buildCaddyfileSub builds the Caddyfile, with or without the /sub/ file
+// route (the route is left out only as a fallback if Caddy rejects it).
+func buildCaddyfileSub(tunnel *config.TunnelConfig, users []config.UserConfig, vless []vlessRoute, withSub bool) string {
 	naiveCfg := tunnel.Naive
 
 	// No built-in default login: a well-known default credential (the upstream panel once had one)
@@ -131,6 +148,11 @@ func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vles
 		port = 443
 	}
 
+	subLines := ""
+	if withSub {
+		subLines = subscriptionRouteLines()
+	}
+
 	return fmt.Sprintf(`{
   admin off
   log {
@@ -147,7 +169,7 @@ func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vles
 :%d, %s {
   tls %s
   route {
-%s    forward_proxy {
+%s%s    forward_proxy {
 %s      hide_ip
       hide_via
       probe_resistance
@@ -157,7 +179,20 @@ func buildCaddyfile(tunnel *config.TunnelConfig, users []config.UserConfig, vles
     }
   }
 }
-`, port, tunnel.Domain, naiveCfg.Email, vlessRouteLines(vless), auth, decoy)
+`, port, tunnel.Domain, naiveCfg.Email, vlessRouteLines(vless), subLines, auth, decoy)
+}
+
+// SubscriptionDir is where the panel writes each user's subscription file.
+// Files sit under sub/ and are named by an unguessable token. Variable for tests.
+var SubscriptionDir = "/var/lib/rovunet/subscriptions"
+
+// subscriptionRouteLines serves /sub/<token>.json from SubscriptionDir as
+// plain static files, before the proxy and the decoy. There is no listing and
+// no application behind it: a path that is not a token's file is a 404.
+func subscriptionRouteLines() string {
+	return "    @rovunet_sub path /sub/*\n" +
+		"    root @rovunet_sub " + SubscriptionDir + "\n" +
+		"    file_server @rovunet_sub\n"
 }
 
 // vlessRouteLines sends each fronted VLESS WebSocket path to its local
@@ -287,4 +322,9 @@ func randomToken(n int) string {
 		panic(err)
 	}
 	return hex.EncodeToString(b)
+}
+
+func fileExists(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }

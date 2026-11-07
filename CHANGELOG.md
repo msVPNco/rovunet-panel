@@ -2,6 +2,16 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.13.0
+
+### Subscription link for every user
+
+- **Each user gets one link that delivers all of their configs to the app**, whether the user is unlimited or limited. `users configs` prints it under the configs: `https://<naive-domain>/sub/<token>.json`. Paste it into the app's Subscriptions menu and the app imports (and later refreshes) every config in one step.
+- **It is served on port 443 by the NaïveProxy Caddy**, with the domain's real certificate, as plain static files: no new service, no new port, no application behind it. The app requires HTTPS, so port 22 (SSH) or any plain-HTTP port cannot carry it. Without a NaïveProxy tunnel there is no link.
+- **The file holds exactly what `users configs` prints** (rovunet:// configs), in the one JSON shape the app accepts, so the two cannot disagree. It is rewritten whenever users or tunnels change and on `rovunet update`.
+- **The link is an unguessable 128-bit name, like a share link:** anyone who has it can read that user's configs, so treat it like the password. Changing the user's password makes a new link and retires the old one; removing or expiring the user deletes the file. The directory can be entered but not listed, so a local SSH account cannot enumerate the files.
+- A NaïveProxy Caddy restarts once on update to start serving `/sub/`.
+
 ## v1.12.1
 
 - **REALITY picks its disguise at random.** When no `--target` is given, `core-install` and the installer choose a random site from a built-in list of 16 (Microsoft, Amazon and its image servers, Apple, Cloudflare, Google download and font hosts, NVIDIA, Samsung, Intel, Oracle, Mozilla). Each candidate is first checked from your server for TLS 1.3 and HTTP/2, which REALITY needs, and only working ones are drawn. The server name follows the chosen site. If none can be reached the installer falls back to `www.microsoft.com`; `core-install` stops and asks for `--target`. Cores installed earlier keep their target.

@@ -76,3 +76,16 @@ func TestCaddyfileDisablesHTTP3(t *testing.T) {
 		t.Fatalf("Caddy must not open UDP 443 for HTTP/3:\n%s", c)
 	}
 }
+
+func TestCaddyfileServesSubscriptionsBeforeProxy(t *testing.T) {
+	tun := &config.TunnelConfig{Tag: "naive", Domain: "n.example.com", Naive: &config.NaiveConfig{Email: "a@b.c", Port: 443, DecoyURL: "https://example.org"}}
+	c := buildCaddyfile(tun, nil, nil)
+	sub := strings.Index(c, "file_server @rovunet_sub")
+	fp := strings.Index(c, "forward_proxy")
+	if sub < 0 || fp < 0 || sub > fp {
+		t.Fatalf("subscription files must be served before forward_proxy:\n%s", c)
+	}
+	if !strings.Contains(c, "path /sub/*") || strings.Contains(c, "browse") {
+		t.Fatalf("only /sub/* is served and never listed:\n%s", c)
+	}
+}
