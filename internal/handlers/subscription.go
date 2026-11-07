@@ -103,6 +103,7 @@ func buildFeed(cfg *config.Config, u config.UserConfig) ([]byte, error) {
 	if len(items) == 0 {
 		return nil, nil
 	}
+	items = addExtraAddressItems(cfg, u, items)
 	return json.MarshalIndent(subFeed{Version: 1, Name: u.Username, Items: items}, "", "  ")
 }
 
@@ -174,4 +175,36 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 		}
 	}
 	return firstErr
+}
+
+// addExtraAddressItems repeats the configs that connect by the server's
+// address once per extra address. Configs that don't (domain-based ones such
+// as NaïveProxy) come out identical and are skipped, so only the address-based
+// ones are added, with the address number in their id.
+func addExtraAddressItems(cfg *config.Config, u config.UserConfig, items []subItem) []subItem {
+	have := map[string]bool{}
+	ids := map[string]bool{}
+	for _, it := range items {
+		have[it.Link] = true
+		ids[it.ID] = true
+	}
+	for n, addr := range cfg.ExtraAddresses {
+		alt := *cfg
+		alt.PublicAddress = addr
+		c := &captureOutput{}
+		printUserConfigs(&alt, u.Username, u.Password, c)
+		for _, it := range subscriptionItems(c.lines) {
+			if have[it.Link] {
+				continue
+			}
+			have[it.Link] = true
+			id := fmt.Sprintf("%s-ip%d", it.ID, n+2)
+			for ids[id] {
+				id += "x"
+			}
+			ids[id] = true
+			items = append(items, subItem{ID: id, Link: it.Link})
+		}
+	}
+	return items
 }
