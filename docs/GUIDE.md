@@ -2,7 +2,7 @@
 
 > Based on [SlipGate](https://github.com/anonvector/slipgate) by Anonvector; not affiliated. See [NOTICE](../NOTICE.md).
 
-Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar), HTTPS proxies (NaiveProxy, StunTLS) and VLESS over WebSocket, with systemd services, multi-tunnel DNS routing, and user management. Designed for use with the [Rovunet](https://github.com/msVPNco/rovunet-android) Android VPN app.
+Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, Slipstream, VayDNS, Soar), HTTPS proxies (NaiveProxy, StunTLS), VLESS over WebSocket and Xray cores (VLESS REALITY, VLESS XHTTP, Hysteria2, WireGuard), with systemd services, multi-tunnel DNS routing, and user management. Designed for use with the [Rovunet](https://github.com/msVPNco/rovunet-android) Android VPN app.
 
 
 ## Changes compared with SlipGate
@@ -16,6 +16,9 @@ Unified tunnel manager for Linux servers. Manages DNS tunnels (DNSTT, NoizDNS, S
 | **SOCKS5** | The direct SOCKS5 tunnel listens publicly again after user changes |
 | **Soar** | Direct (no-login) Soar configs appear in `users configs` |
 | **Install** | One command sets up every selected protocol and prints all configs at the end. Running it again on a configured server keeps existing tunnels (no clashing copies) and still prints every config. `/run/sshd` is created on systems with socket-activated SSH; firewall rules are inserted ahead of REJECT rules |
+| **Xray cores** | `core-install` / `core-remove` / `core-list` run REALITY, XHTTP, Hysteria2 or WireGuard as managed services: free-port check, Xray verified against the release checksums, `xray run -test` before deploy, TCP/UDP port opened, one client file per device, included in backups |
+| **Name** | Command, binary, services, users, `/etc/rovunet` and files use the Rovunet name; a server on the old names is migrated in place by its next update |
+| **Security** | SOCKS5 with no users refuses connections; EDNS0 sizes are clamped; `config.json` is 0600; updates are checksum-verified and roll back on failure; only the panel's own firewall ports are restored at boot |
 | **VLESS links** | SNI fragmentation stays off when Rovunet imports either the `rovunet://` config or the `vless://` link (it slowed connections to time-outs behind Cloudflare); it can be turned on in the app |
 
 ### Which protocol where
@@ -95,14 +98,14 @@ sudo cp /tmp/rovunet/rovunet-linux-amd64 /usr/local/bin/rovunet
 sudo rovunet install --bin-dir /tmp/rovunet
 ```
 
-**Switch a server running SlipGate to Rovunet Panel** (config, tunnels and users are kept; use `arm64` on ARM servers):
+**Switch a server running SlipGate (or Rovunet Panel v1.7.0 or older) to Rovunet Panel** (config, tunnels and users are kept and moved to the Rovunet names: `/etc/rovunet`, `rovunet-*` services and users, same UIDs; use `arm64` on ARM servers). Rovunet Panel v1.7.0 can simply run `sudo slipgate update` instead:
 
 ```bash
 # Download beside the running binary, then swap it in (writing over a running
 # binary fails with "Text file busy" / curl error 23)
 curl -fsSL -o /tmp/rovunet https://github.com/msVPNco/rovunet-panel/releases/latest/download/rovunet-linux-amd64
 sudo install -m 755 /tmp/rovunet /usr/local/bin/rovunet
-sudo rovunet post-update      # refreshes transport binaries and regenerates services
+sudo rovunet post-update      # migrates the old names, refreshes transport binaries, regenerates services
 rovunet --version
 ```
 
@@ -133,6 +136,13 @@ rovunet users configs          # Show every config (all tunnels and users, incl.
 rovunet stats                  # Live dashboard (CPU, RAM, traffic, connections, tunnels)
 rovunet diag                   # Run diagnostics (services, ports, keys, DNS, boot status)
 rovunet mtu [value]            # Set MTU for all DNSTT/NoizDNS/VayDNS tunnels at once
+
+# Xray cores (REALITY, XHTTP, Hysteria2, WireGuard)
+rovunet core-install           # Install a core as a service (--name --protocol --host --port --devices ...)
+rovunet core-list              # List installed cores with protocol and port
+rovunet core-remove <name>     # Stop and delete a core
+rovunet core-plan              # Only write a core's files for manual deployment
+rovunet export-clients         # Print every user's links (--annotated labels each with its tunnel)
 
 # Tunnel management
 rovunet tunnel add             # Add tunnel(s) — supports multi-select and "both" backend
@@ -387,6 +397,7 @@ Everything HTTPS arrives on one domain and port 443. Caddy (NaiveProxy) holds th
 | **NaiveProxy** | HTTPS | 443/tcp | Caddy with forwardproxy plugin. Auto-TLS via Let's Encrypt. Probe-resistant with decoy site |
 | **StunTLS** | TLS/WSS | 8443/tcp, or 443 fronted | SSH over TLS + WebSocket proxy. Auto-detects WebSocket, HTTP CONNECT, raw TLS, and payload (DPI bypass) modes. Self-signed TLS cert, no domain required. Fronted by NaiveProxy (`--front`), clients reach it as SSH over WebSocket on the Naive domain, port 443, real certificate |
 | **VLESS** | WS/WSS | 443 fronted; or 2053, 2083, 2087, 2096, 8443/tcp | VLESS over WebSocket, served by rovunet itself, with Rovunet's VLESS profiles and any VLESS client (v2rayNG, Hiddify, NekoBox…). **Fronted by NaiveProxy** (recommended): Caddy carries it on 443 with its Let's Encrypt certificate, so links need no `allowInsecure` (which Xray clients drop from 2026-08). **Behind Cloudflare**: clients reach a Cloudflare IP and the server's IP stays hidden; set SSL/TLS mode to **Full**. **Direct**: its own port with a self-signed certificate. Each user's UUID is derived from their credentials and a server-wide secret: removing a user or changing the password revokes it within seconds, and a shared config never carries the password. Streams reach public addresses only, port 25 blocked by default; TCP and plain UDP (no mux/XUDP). Other paths answer like a stock nginx. Outbound traffic doesn't go through WARP |
+| **Xray cores** | REALITY/XHTTP (TCP), Hysteria2/WireGuard (UDP) | any free port | Pinned Xray core per `core-install`, outside `config.json` under `/etc/rovunet/core/<name>/`. REALITY needs no certificate (`--target` is the site it imitates); XHTTP and Hysteria2 need `--cert`/`--key`. Each device gets distinct credentials. Cores are listed in `tunnel status` and included in backups |
 | **External** | DNS | 53/udp | Routes DNS queries for a domain to a user-specified UDP port. No managed service — use for custom/private protocol testing |
 
 ### Domain Layout
@@ -496,6 +507,9 @@ Users are **global**, not scoped to specific tunnels or transports. `rovunet use
 | `/usr/local/bin/slipstream-server` | Slipstream transport binary |
 | `/usr/local/bin/vaydns-server` | VayDNS transport binary |
 | `/usr/local/bin/caddy-naive` | Caddy with NaiveProxy plugin |
+| `/usr/local/bin/xray` | Pinned Xray core for `core-install`, verified against the release checksums |
+| `/etc/rovunet/core/<name>/` | An Xray core: `server.json`, `meta` and per-device `clients/` |
+| `/etc/iptables/rovunet-ports` | Ports the panel opened; only these are inserted again at boot |
 
 ## Building
 

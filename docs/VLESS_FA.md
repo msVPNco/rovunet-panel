@@ -148,7 +148,7 @@ sudo rovunet tunnel edit --tag vless --cdn-address 104.16.0.1
 
 ## محدودیت‌ها
 
-- **فقط WebSocket:** Reality و XHTTP در این تونل نیستند، چون Rovunet فقط VLESS روی WebSocket را پشتیبانی می‌کند.
+- **فقط WebSocket:** این تونل فقط VLESS روی WebSocket است. برای REALITY و XHTTP (و Hysteria2 و WireGuard) از هستهٔ Xray با `sudo rovunet core-install` استفاده کنید؛ [راهنمای کاربر، بخش ۱۶](USER_GUIDE.md) را ببینید.
 - **UDP ساده:** Mux و XUDP پشتیبانی نمی‌شوند؛ اگر v2rayNG خطا داد، Mux را خاموش کنید.
 - **WARP:** خروجی VLESS از مسیر WARP رد نمی‌شود.
 - **Slipstream:** در تست ما اتصال برقرار نشد و هنوز بررسی نشده است.

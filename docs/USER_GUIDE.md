@@ -23,7 +23,7 @@
 13. Daily operations: stats, logs, diagnostics
 14. Updating Rovunet Panel
 15. Backup & migration
-16. A note on VLESS
+16. VLESS and Xray cores
 17. Troubleshooting
 18. File locations & systemd reference
 19. Uninstalling
@@ -220,7 +220,7 @@ sudo rovunet diag
 
 ## 8. Tunnel transports — when to use which
 
-Rovunet Panel manages six transports. Pick based on the network your users have to escape from.
+Rovunet Panel manages the transports below, plus direct SSH and SOCKS5 and the Xray cores in [section 16](#16-vless-and-xray-cores). Pick based on the network your users have to escape from.
 
 | Transport | Port | What it is | Use when |
 |-----------|------|------------|----------|
@@ -230,6 +230,8 @@ Rovunet Panel manages six transports. Pick based on the network your users have 
 | **Slipstream** | 53/udp | QUIC over DNS, very fast | Clean networks; users want speed |
 | **NaiveProxy** | 443/tcp | Caddy + forwardproxy plugin, real Let's Encrypt cert, decoy site | DNS-tunneling banned; HTTPS still works |
 | **StunTLS** | 443/tcp | SSH-over-TLS / SSH-over-WebSocket, self-signed cert | No domain available; or want CDN-friendly WS layer |
+| **Soar** | 53/udp | Multipath DNS tunnel with resolver discovery | DNS resolvers are filtered unevenly |
+| **VLESS** | 443 fronted, or 2053/tcp etc. | VLESS over WebSocket, one UUID per user | Standard clients too; behind NaiveProxy or Cloudflare |
 
 **Backends** for each transport:
 - `socks` — built-in Go SOCKS5 proxy. Simple, fast, no SSH overhead.
@@ -429,7 +431,9 @@ Pulls the latest binary from GitHub releases and restarts services:
 sudo rovunet update
 ```
 
-The update is in-place — your tunnels, users, and keys are untouched. Existing client links (`rovunet://`, and older `slipnet://` ones) keep working.
+The update is in-place — your tunnels, users, and keys are untouched. Existing client links (`rovunet://`, and older `slipnet://` ones) keep working. The download is verified against the release's SHA256SUMS, and a failed install rolls back to the previous binary.
+
+A server still installed under the panel's old name (`slipgate`, `/etc/slipgate`) updates with `sudo slipgate update` once and is migrated automatically: services, users, groups and paths move to the Rovunet names with the same UIDs, and the command becomes `rovunet`. Take a `backup` first.
 
 ---
 
@@ -466,16 +470,31 @@ ssh root@old-server rovunet backup - | ssh root@new-server rovunet restore - --y
 
 ---
 
-## 16. A note on VLESS
+## 16. VLESS and Xray cores
 
-The Rovunet client supports **VLESS** (over WebSocket / TLS, typically fronted through Cloudflare). **Rovunet Panel does not run a VLESS server itself** — VLESS is part of the [Xray / V2Ray](https://github.com/XTLS/Xray-core) ecosystem.
+Rovunet Panel serves **VLESS over WebSocket** itself: add it with
+`sudo rovunet tunnel add` (transport `vless`), optionally fronted by NaiveProxy
+on 443 or behind Cloudflare. Each user gets their own UUID, so `users configs`
+prints a native `rovunet://` link and a standard `vless://` link per user.
 
-If you want to give your users a VLESS option, you have two paths:
+For **VLESS REALITY, VLESS XHTTP, Hysteria2 and WireGuard**, the panel installs
+an Xray core as its own service:
 
-1. **Run Xray separately on the same VPS.** Standard Xray installers (e.g., `Xray-install`, `x-ui`, `3x-ui`) work fine alongside Rovunet Panel, since they typically listen on a different port (or on 443 if Rovunet Panel isn't using NaiveProxy/StunTLS). Your users build a manual VLESS profile in Rovunet using the UUID, domain, and CDN settings from your Xray panel.
-2. **Skip VLESS** — Rovunet Panel's six transports already cover most censorship environments. NaiveProxy and StunTLS solve the "443 is the only port left" problem.
+```bash
+sudo rovunet core-install --name r1 --protocol reality --host SERVER_IP \
+  --target www.microsoft.com:443 --sni www.microsoft.com --port 8443 --devices 5
+sudo rovunet core-list          # installed cores, port and protocol
+sudo rovunet tunnel status      # cores appear with their service state
+sudo rovunet core-remove r1
+```
 
-VLESS support may land in Rovunet Panel in the future. Track the channel for updates.
+- The port must be free; REALITY and XHTTP use TCP, Hysteria2 and WireGuard UDP.
+- XHTTP and Hysteria2 need `--cert` and `--key` for a certificate valid for `--sni`.
+- Each device gets its own file in `/etc/rovunet/core/<name>/clients/`; never
+  use one WireGuard file on two devices at once.
+- Cores are included in `rovunet backup` and started again by `restore`.
+  Certificates passed with `--cert`/`--key` live outside the panel and must
+  exist at the same paths on the new server.
 
 ---
 
@@ -515,11 +534,15 @@ journalctl -u rovunet-socks5 -n 200 --no-pager
 | `/usr/local/bin/vaydns-server` | VayDNS transport |
 | `/usr/local/bin/caddy-naive` | NaiveProxy (Caddy + forwardproxy plugin) |
 | `/etc/caddy/Caddyfile` | Caddy config (managed by Rovunet Panel) |
+| `/etc/rovunet/core/<name>/` | Xray core: `server.json`, `meta`, per-device `clients/` |
+| `/usr/local/bin/xray` | Xray core, verified against the release checksums |
+| `/etc/iptables/rovunet-ports` | Ports the panel opened; only these are restored at boot |
 
 **systemd units:**
 - `rovunet-dnsrouter` — port 53 DNS dispatcher
 - `rovunet-socks5` — built-in SOCKS5 proxy
 - `rovunet-<tag>` — one per tunnel you create
+- `rovunet-core-<name>` — one per Xray core
 
 ---
 
@@ -565,7 +588,7 @@ App source: https://github.com/msVPNco/rovunet-android
 ۱۳. عملیات روزمره
 ۱۴. به‌روزرسانی Rovunet Panel
 ۱۵. بکاپ و مهاجرت
-۱۶. درباره‌ی VLESS
+۱۶. VLESS و هسته‌های Xray
 ۱۷. عیب‌یابی
 ۱۸. مسیر فایل‌ها و systemd
 ۱۹. حذف نصب
@@ -762,7 +785,7 @@ sudo rovunet diag
 
 ## ۸. transportها — کدام برای چه شبکه‌ای
 
-Rovunet Panel شش transport را مدیریت می‌کند. بر اساس شبکه‌ای که کاربران از آن می‌خواهند فرار کنند انتخاب کنید.
+Rovunet Panel ترنسپورت‌های زیر را مدیریت می‌کند، به‌علاوهٔ SSH مستقیم، SOCKS5 و هسته‌های Xray در بخش ۱۶. بر اساس شبکه‌ای که کاربران از آن می‌خواهند فرار کنند انتخاب کنید.
 
 | Transport | پورت | چیست | کاربرد |
 |-----------|------|------|--------|
@@ -772,6 +795,8 @@ Rovunet Panel شش transport را مدیریت می‌کند. بر اساس شب
 | **Slipstream** | 53/udp | QUIC روی DNS، خیلی سریع | شبکه سالم؛ کاربر سرعت می‌خواهد |
 | **NaiveProxy** | 443/tcp | Caddy + forwardproxy، گواهی Let's Encrypt واقعی، سایت decoy | تونل DNS بسته است؛ HTTPS باز است |
 | **StunTLS** | 443/tcp | SSH روی TLS / SSH روی WebSocket، گواهی self-signed | دامنه نداری؛ یا لایه‌ی WS سازگار با CDN می‌خواهی |
+| **Soar** | 53/udp | تونل DNS چندمسیره با کشف resolver | resolverها ناهمسان فیلتر شده‌اند |
+| **VLESS** | 443 پشت Naive، یا 2053/tcp و… | VLESS روی WebSocket، یک UUID برای هر کاربر | کلاینت‌های استاندارد هم؛ پشت NaiveProxy یا Cloudflare |
 
 **Backendها:**
 - `socks` — پراکسی SOCKS5 داخلی (Go). ساده، سریع، بدون اوورهد SSH.
@@ -971,7 +996,9 @@ sudo rovunet tunnel status --tag mydnstt                    # کلید، پور�
 sudo rovunet update
 ```
 
-به‌روزرسانی in-place است — تونل‌ها، کاربران و کلیدها دست‌نخورده می‌مانند. URIهای کلاینت موجود کار می‌کنند.
+به‌روزرسانی in-place است — تونل‌ها، کاربران و کلیدها دست‌نخورده می‌مانند. URIهای کلاینت موجود کار می‌کنند. فایل دانلودی با SHA256SUMS همان release تأیید می‌شود و اگر نصب خطا بدهد، باینری قبلی برمی‌گردد.
+
+سروری که هنوز با نام قبلی پنل (`slipgate` و `/etc/slipgate`) نصب است، یک بار با `sudo slipgate update` آپدیت می‌شود و خودکار مهاجرت می‌کند: سرویس‌ها، کاربرها، گروه‌ها و مسیرها با همان UIDها به نام Rovunet منتقل می‌شوند و دستور `rovunet` می‌شود. قبلش `backup` بگیرید.
 
 ---
 
@@ -1008,16 +1035,30 @@ ssh root@old-server rovunet backup - | ssh root@new-server rovunet restore - --y
 
 ---
 
-## ۱۶. درباره‌ی VLESS
+## ۱۶. VLESS و هسته‌های Xray
 
-اپ Rovunet از **VLESS** پشتیبانی می‌کند (روی WebSocket / TLS، معمولاً پشت Cloudflare). **اما Rovunet Panel خودش سرور VLESS اجرا نمی‌کند** — VLESS بخشی از اکوسیستم [Xray / V2Ray](https://github.com/XTLS/Xray-core) است.
+Rovunet Panel خودش **VLESS روی WebSocket** را سرو می‌کند: با `sudo rovunet tunnel add`
+(ترنسپورت `vless`) اضافه‌اش کنید؛ می‌تواند پشت NaiveProxy روی ۴۴۳ یا پشت Cloudflare
+باشد. هر کاربر UUID خودش را دارد، پس `users configs` برای هر کاربر یک لینک
+`rovunet://` و یک لینک استاندارد `vless://` چاپ می‌کند.
 
-اگر می‌خواهید به کاربران گزینه‌ی VLESS بدهید، دو راه دارید:
+برای **VLESS REALITY، VLESS XHTTP، Hysteria2 و WireGuard**، پنل یک هستهٔ Xray را
+به‌صورت سرویس جدا نصب می‌کند:
 
-۱. **Xray را جدا روی همان VPS اجرا کنید.** نصاب‌های استاندارد Xray (مثل `Xray-install`، `x-ui`، `3x-ui`) در کنار Rovunet Panel خوب کار می‌کنند، چون معمولاً روی پورت متفاوتی گوش می‌دهند (یا روی ۴۴۳ اگر Rovunet Panel از NaiveProxy/StunTLS استفاده نمی‌کند). کاربر شما در Rovunet به‌صورت دستی پروفایل VLESS می‌سازد با UUID، دامنه، و تنظیمات CDN از پنل Xray شما.
-۲. **VLESS را رها کنید** — شش transport Rovunet Panel برای اکثر محیط‌های سانسوری کافی است. NaiveProxy و StunTLS مشکل «فقط ۴۴۳ باز است» را حل می‌کنند.
+```bash
+sudo rovunet core-install --name r1 --protocol reality --host SERVER_IP \
+  --target www.microsoft.com:443 --sni www.microsoft.com --port 8443 --devices 5
+sudo rovunet core-list          # هسته‌های نصب‌شده با پورت و پروتکل
+sudo rovunet tunnel status      # هسته‌ها با وضعیت سرویسشان
+sudo rovunet core-remove r1
+```
 
-ممکن است در آینده پشتیبانی VLESS به Rovunet Panel اضافه شود. کانال را برای اپدیت دنبال کنید.
+- پورت باید آزاد باشد؛ REALITY و XHTTP روی TCP و Hysteria2 و WireGuard روی UDP‌اند.
+- XHTTP و Hysteria2 به `--cert` و `--key` برای گواهی معتبرِ `--sni` نیاز دارند.
+- هر دستگاه فایل خودش را در `/etc/rovunet/core/<name>/clients/` می‌گیرد؛ یک فایل
+  WireGuard را هم‌زمان روی دو دستگاه استفاده نکنید.
+- هسته‌ها در `rovunet backup` ذخیره و با `restore` دوباره راه‌اندازی می‌شوند. گواهی‌هایی
+  که با `--cert`/`--key` داده‌اید بیرون از پنل‌اند و باید روی سرور جدید در همان مسیر باشند.
 
 ---
 
@@ -1057,11 +1098,15 @@ journalctl -u rovunet-socks5 -n 200 --no-pager
 | `/usr/local/bin/vaydns-server` | باینری VayDNS |
 | `/usr/local/bin/caddy-naive` | NaiveProxy (Caddy + پلاگین forwardproxy) |
 | `/etc/caddy/Caddyfile` | کانفیگ Caddy (مدیریت‌شده توسط Rovunet Panel) |
+| `/etc/rovunet/core/<name>/` | هستهٔ Xray: `server.json`، `meta` و `clients/` هر دستگاه |
+| `/usr/local/bin/xray` | هستهٔ Xray، تأییدشده با چک‌سام release |
+| `/etc/iptables/rovunet-ports` | پورت‌هایی که پنل باز کرده؛ فقط همین‌ها هنگام بوت برمی‌گردند |
 
 **یونیت‌های systemd:**
 - `rovunet-dnsrouter` — دیسپچر DNS روی پورت ۵۳
 - `rovunet-socks5` — پراکسی SOCKS5 داخلی
 - `rovunet-<tag>` — یکی به ازای هر تونل
+- `rovunet-core-<name>` — یکی به ازای هر هستهٔ Xray
 
 ---
 

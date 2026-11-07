@@ -19,11 +19,11 @@
 
 **Rovunet Panel is an open-source, self-hosted tool for deploying and managing multi-protocol internet access on compatible Linux servers.** It is designed to provide several connection paths for each user, so access does not depend on a single protocol or a fixed set of network conditions.
 
-The panel brings installation and configuration of managed protocols, user creation, client configuration export and systemd service management into a command-line workflow with an interactive menu. Available paths include VLESS over WebSocket, NaiveProxy, direct SSH, SSH over TLS, SOCKS5 and DNS tunnel families such as DNSTT, NoizDNS, VayDNS, Slipstream and Soar. Diagnostics and backup tools support ongoing server maintenance and troubleshooting.
+The panel brings installation and configuration of managed protocols, user creation, client configuration export and systemd service management into a command-line workflow with an interactive menu. Available paths include VLESS over WebSocket, NaiveProxy, direct SSH, SSH over TLS, SOCKS5, DNS tunnel families such as DNSTT, NoizDNS, VayDNS, Slipstream and Soar, and Xray cores (VLESS REALITY, VLESS XHTTP, Hysteria2 and WireGuard). Diagnostics and backup tools support ongoing server maintenance and troubleshooting.
 
 Designed to work with the [Rovunet Android app](https://github.com/msVPNco/rovunet-android), the panel's native export can carry collection metadata alongside related connection paths. The app tests connectivity through the actual tunnel and asks before proceeding to DNS fallback. Standard VLESS links are also available for other compatible clients.
 
-**Scope of support:** `core-plan` can generate configurations for additional paths for manual deployment; this does not mean that all such paths are installed and managed automatically. Connection quality and availability depend on the network, server configuration and selected protocol. See [integration status and development priorities](docs/ROVUNET-STATUS.md) for the distinction between available functionality and remaining work.
+**Scope of support:** Xray cores are installed and managed with `rovunet core-install` (`core-plan` still only writes files for manual deployment). Connection quality and availability depend on the network, server configuration and selected protocol. See [integration status and development priorities](docs/ROVUNET-STATUS.md) for the distinction between available functionality and remaining work.
 
 > **Project status: early release under active development.** Test the required protocols in your own environment before operational use, and back up configuration with `rovunet backup`.
 
@@ -39,10 +39,10 @@ The installer asks which protocols to enable, sets them up, creates the first
 user and prints all of that user's configs. Then:
 
 ```bash
-sudo rovunet                 # interactive menu
-sudo rovunet users add       # add a user
-sudo rovunet users configs   # print every user's configs again
-sudo rovunet diag            # check services, ports, keys and DNS
+sudo rovunet                # interactive menu
+sudo rovunet users add      # add a user
+sudo rovunet users configs  # print every user's configs again
+sudo rovunet diag           # check services, ports, keys and DNS
 ```
 
 Coming from SlipGate? See [switching a server](docs/GUIDE.md#quick-start);
@@ -62,10 +62,26 @@ your config, tunnels and users are kept.
 | **Slipstream** | QUIC over DNS | 53/udp | Experimental |
 | **Soar** | Multipath DNS with resolver discovery | 53/udp | When DNS resolvers are filtered unevenly |
 | **SOCKS5** | Plain SOCKS5 | 1080/tcp | Open networks only (not encrypted) |
+| **VLESS REALITY** (Xray core) | TLS that looks like a real site, no certificate needed | any free TCP port | When TLS to well-known sites passes |
+| **VLESS XHTTP** (Xray core) | VLESS over HTTP requests, real certificate | any free TCP port | Behind a CDN or where WebSocket is blocked |
+| **Hysteria2** (Xray core) | QUIC with its own congestion control, real certificate | any free UDP port | Lossy or unstable networks where UDP passes |
+| **WireGuard** (Xray core) | Standard WireGuard, one file per device | any free UDP port | Where WireGuard is not blocked |
 
-Protocol suitability depends on the server, operator and current network. These are usage guidelines, not guaranteed availability or comparative benchmark results. The Rovunet app tests connection paths. Xray protocols (REALITY,
-XHTTP, Hysteria2, WireGuard) can already be generated with `rovunet core-plan`
-for manual deployment; managed support is in progress.
+Protocol suitability depends on the server, operator and current network. These are usage guidelines, not guaranteed availability or comparative benchmark results. The Rovunet app tests connection paths.
+
+Xray cores run as their own services beside the tunnels:
+
+```bash
+sudo rovunet core-install --name r1 --protocol reality --host SERVER_IP \
+  --target www.microsoft.com:443 --sni www.microsoft.com --port 8443 --devices 5
+sudo rovunet core-list
+sudo rovunet core-remove r1
+```
+
+The port is checked first, Xray is verified against the release checksums and
+tests the config before it goes live, and the TCP or UDP port is opened. Each
+device gets its own file under `/etc/rovunet/core/<name>/clients/`. XHTTP and
+Hysteria2 need `--cert` and `--key` for a certificate valid for `--sni`.
 
 ## Client apps
 
