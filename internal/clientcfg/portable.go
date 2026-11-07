@@ -68,17 +68,19 @@ func GeneratePortableURI(t *config.TunnelConfig, b *config.BackendConfig, cfg *c
 	}
 	fields[FCollectionName] = b64(label)
 
-	// v33: carry SOCKS/SSH credentials losslessly in one more field instead
-	// of relying solely on the plain fields below, which the "|" join a few
-	// lines down can't let a credential contain without desynchronizing
-	// every field after it (see FCredentialsV33). Build this from the
-	// fields' current values before sanitizing them in place.
-	credentials, err := json.Marshal(map[string]string{
-		"socksUser": fields[FSOCKSUser],
-		"socksPass": fields[FSOCKSPass],
-		"sshUser":   fields[FSSHUser],
-		"sshPass":   fields[FSSHPass],
-	})
+	// v33: carry the SOCKS/SSH credentials losslessly in one more field.
+	// GenerateURI already stripped "|" from the plain copies (it must, or
+	// the split above would have misaligned every later field), so take the
+	// originals from the source, blanking exactly what GenerateURI blanked.
+	user, pass := credentialsFor(t, b, opts)
+	creds := map[string]string{"socksUser": user, "socksPass": pass, "sshUser": "", "sshPass": ""}
+	if t.Backend == config.BackendSSH {
+		creds["sshUser"], creds["sshPass"] = user, pass
+	}
+	if t.Transport == config.TransportVLESS {
+		creds["socksUser"], creds["socksPass"] = "", ""
+	}
+	credentials, err := json.Marshal(creds)
 	if err != nil {
 		return "", err
 	}
@@ -86,14 +88,6 @@ func GeneratePortableURI(t *config.TunnelConfig, b *config.BackendConfig, cfg *c
 		fields = append(fields, "")
 	}
 	fields[FCredentialsV33] = base64.StdEncoding.EncodeToString(credentials)
-	// The app's v33 importer overwrites these four from FCredentialsV33
-	// above, so their only remaining job is to keep the "|"-delimited wire
-	// string itself parseable — strip "|" the same way the app's own
-	// exporter's sanitize() does, rather than leave it to corrupt the split.
-	fields[FSOCKSUser] = stripFieldDelimiter(fields[FSOCKSUser])
-	fields[FSOCKSPass] = stripFieldDelimiter(fields[FSOCKSPass])
-	fields[FSSHUser] = stripFieldDelimiter(fields[FSSHUser])
-	fields[FSSHPass] = stripFieldDelimiter(fields[FSSHPass])
 	fields[0] = "33"
 
 	return "rovunet://" + base64.StdEncoding.EncodeToString([]byte(strings.Join(fields, "|"))), nil
