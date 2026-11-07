@@ -122,3 +122,28 @@ func TestShowUserConfigsNaiveBothModes(t *testing.T) {
 		t.Fatalf("want naive-socks and naive-ssh:\n%s", all)
 	}
 }
+
+// TestPlainSOCKSHiddenByDefault: the unencrypted direct SOCKS5 tunnel is left
+// out of the default output, with a note, and listed with ROVUNET_ALL_CONFIGS=1.
+func TestPlainSOCKSHiddenByDefault(t *testing.T) {
+	cfg := &config.Config{
+		PublicAddress: "203.0.113.7",
+		Backends:      config.DefaultBackends(),
+		Users:         []config.UserConfig{{Username: "alice", Password: "a"}},
+		Tunnels: []config.TunnelConfig{
+			{Tag: "socks", Transport: config.TransportSOCKS, Backend: config.BackendSOCKS, Enabled: true},
+		},
+	}
+	t.Setenv("ROVUNET_ALL_CONFIGS", "")
+	out := &printOutput{}
+	showUserConfigs(cfg, "alice", "a", out)
+	if out.count("[socks]") != 0 || out.count("plain SOCKS5 config(s) hidden") != 1 {
+		t.Fatalf("default output:\n%s", strings.Join(out.lines, "\n"))
+	}
+	t.Setenv("ROVUNET_ALL_CONFIGS", "1")
+	out = &printOutput{}
+	showUserConfigs(cfg, "alice", "a", out)
+	if out.count("[socks]") != 1 || out.count("hidden") != 0 {
+		t.Fatalf("with ROVUNET_ALL_CONFIGS=1:\n%s", strings.Join(out.lines, "\n"))
+	}
+}

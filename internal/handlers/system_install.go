@@ -961,14 +961,20 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 		// Show configs without credentials when no user was created
 		users = []config.UserConfig{{}}
 	}
+	hidden := 0
 	for _, u := range users {
 		// Fastest first: this user's Xray cores are slotted in by rank.
 		flushCores := func(int) int { return 0 }
 		if u.Username != "" {
 			flushCores = coreProfilePrinter(cfg, u, out)
 		}
+		hidden = 0
 		for _, t := range clientcfg.SortByRank(tunnels, tunnelRank) {
 			printed += flushCores(clientcfg.TunnelRank(t.Transport))
+			if skipPlainSOCKS(&t) {
+				hidden++
+				continue
+			}
 			// VLESS has one UUID per user and no shared backend
 			if t.Transport == config.TransportVLESS {
 				if u.Username == "" {
@@ -1030,6 +1036,7 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 		}
 		printed += flushCores(1 << 30)
 	}
+	noteHidden(out, hidden)
 	return printed + printSoarLinks(cfg, out, tunnels)
 }
 

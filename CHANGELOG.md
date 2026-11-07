@@ -2,6 +2,10 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.11.0
+
+- **Plain SOCKS5 is no longer in the default output.** The direct SOCKS5 server is unencrypted and was blocked on the mobile network we measured, so `users configs`, the install summary and `export-clients` leave it out and say how many they hid. List it with `ROVUNET_ALL_CONFIGS=1` (menus) or `export-clients --all`. Nothing is removed: the server keeps running and existing tunnels are unchanged. NaïveProxy's SOCKS variant is not affected.
+
 ## v1.10.2
 
 - **NaïveProxy now gives both configs everywhere.** One NaïveProxy tunnel serves SOCKS and SSH clients, and the install summary printed both, but `users configs` and `export-clients` printed only the SOCKS one. They now print `<name>-socks` and `<name>-ssh`.

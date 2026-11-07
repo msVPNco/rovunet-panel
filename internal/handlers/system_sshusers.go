@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -413,10 +414,15 @@ func showUserConfigs(cfg *config.Config, username, password string, out actions.
 	ensureServerAddress(cfg, out, cfg.Tunnels)
 	// Fastest first: Xray cores are slotted in among the tunnels by rank.
 	flushCores := coreProfilePrinter(cfg, config.UserConfig{Username: username, Password: password}, out)
+	hidden := 0
 	for _, t := range clientcfg.SortByRank(cfg.Tunnels, tunnelRank) {
 		flushCores(clientcfg.TunnelRank(t.Transport))
 		if t.Transport == config.TransportVLESS {
 			printVLESSLinks(out, cfg, &t, username, password)
+			continue
+		}
+		if skipPlainSOCKS(&t) {
+			hidden++
 			continue
 		}
 		// A NaiveProxy tunnel serves SOCKS and SSH clients alike: print both.
@@ -428,6 +434,21 @@ func showUserConfigs(cfg *config.Config, username, password string, out actions.
 		}
 	}
 	flushCores(1 << 30)
+	noteHidden(out, hidden)
+}
+
+// showAllConfigs lists plain SOCKS5 tunnels too (ROVUNET_ALL_CONFIGS=1).
+func showAllConfigs() bool { return os.Getenv("ROVUNET_ALL_CONFIGS") == "1" }
+
+// skipPlainSOCKS reports whether the default output leaves this tunnel out.
+func skipPlainSOCKS(t *config.TunnelConfig) bool {
+	return clientcfg.PlainSOCKS(t) && !showAllConfigs()
+}
+
+func noteHidden(out actions.OutputWriter, n int) {
+	if n > 0 {
+		out.Print("  " + fmt.Sprintf(clientcfg.HiddenNote, n))
+	}
 }
 
 // printTunnelConfig prints one tunnel's config(s) for a user: its public key

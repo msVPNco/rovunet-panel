@@ -25,3 +25,14 @@ func Variants(t *config.TunnelConfig) []Variant {
 		{Backend: config.BackendSSH, Tag: base + "-ssh"},
 	}
 }
+
+// PlainSOCKS reports whether a tunnel is the unencrypted direct SOCKS5 server.
+// It is left out of the default ("essential") output: it is readable by
+// anyone on the path, and was blocked on the filtered network we measured.
+// Pass --all (export-clients) or set ROVUNET_ALL_CONFIGS=1 to list it.
+func PlainSOCKS(t *config.TunnelConfig) bool {
+	return t.Transport == config.TransportSOCKS
+}
+
+// HiddenNote is printed when PlainSOCKS tunnels were left out.
+const HiddenNote = "# %d plain SOCKS5 config(s) hidden (unencrypted). Show them with: ROVUNET_ALL_CONFIGS=1 rovunet users, or export-clients --all"
