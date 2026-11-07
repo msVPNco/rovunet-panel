@@ -104,6 +104,9 @@ type VLESSServer struct {
 	usersStat atomic.Value                        // fileStamp of the last load
 
 	httpSrv *http.Server
+
+	sessMu   sync.Mutex
+	sessions map[*wsConn][16]byte // live sessions → the id they authenticated with
 }
 
 type fileStamp struct {
@@ -182,6 +185,7 @@ func (s *VLESSServer) ReloadUsers() (int, error) {
 	}
 	s.users.Store(&users)
 	s.usersStat.Store(fileStamp{st.ModTime(), st.Size()})
+	s.dropRevoked(users)
 	return len(users), nil
 }
 
@@ -210,6 +214,39 @@ func (s *VLESSServer) watchUsers(ctx context.Context) {
 			log.Printf("vless: users reloaded (%d)", n)
 		}
 	}
+}
+
+// dropRevoked closes every live session whose id is no longer valid, so a
+// removed or re-keyed user is cut off at once and not only at the next
+// connection. Sessions of other users are left alone.
+func (s *VLESSServer) dropRevoked(valid map[[16]byte]string) {
+	s.sessMu.Lock()
+	var gone []*wsConn
+	for ws, id := range s.sessions {
+		if _, ok := valid[id]; !ok {
+			gone = append(gone, ws)
+		}
+	}
+	s.sessMu.Unlock()
+	for _, ws := range gone {
+		_ = ws.conn.Close()
+	}
+	if len(gone) > 0 {
+		log.Printf("vless: closed %d session(s) of removed users", len(gone))
+	}
+}
+
+func (s *VLESSServer) trackSession(ws *wsConn, id [16]byte, add bool) {
+	s.sessMu.Lock()
+	defer s.sessMu.Unlock()
+	if !add {
+		delete(s.sessions, ws)
+		return
+	}
+	if s.sessions == nil {
+		s.sessions = make(map[*wsConn][16]byte)
+	}
+	s.sessions[ws] = id
 }
 
 func (s *VLESSServer) lookupUser(id [16]byte) (string, bool) {
@@ -339,6 +376,7 @@ func isWebSocketUpgrade(r *http.Request) bool {
 }
 
 type vlessRequest struct {
+	id      [16]byte
 	user    string
 	command byte
 	host    string // IP literal or domain name
@@ -375,7 +413,7 @@ func (s *VLESSServer) readVLESSRequest(r io.Reader) (*vlessRequest, error) {
 	if _, err := io.ReadFull(r, cmd[:]); err != nil {
 		return nil, err
 	}
-	req := &vlessRequest{user: user, command: cmd[0]}
+	req := &vlessRequest{id: id, user: user, command: cmd[0]}
 	switch req.command {
 	case vlessCmdTCP, vlessCmdUDP:
 	case vlessCmdMux:
@@ -448,6 +486,15 @@ func (s *VLESSServer) handleSession(ws *wsConn, early []byte, remote string) {
 		return
 	}
 	ws.readTimeout = vlessReadTimeout
+
+	// Register before checking again, so a reload between the two cannot
+	// leave a removed user's session unnoticed.
+	s.trackSession(ws, req.id, true)
+	defer s.trackSession(ws, req.id, false)
+	if _, ok := s.lookupUser(req.id); !ok {
+		ws.writeClose(1008)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), vlessDialTimeout)
 	network := "tcp"

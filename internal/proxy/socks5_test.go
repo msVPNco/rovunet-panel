@@ -128,3 +128,47 @@ func TestStrictServerDropsLiveSessionWhenCredsEmptied(t *testing.T) {
 		t.Fatal("already-authenticated session was not dropped when the credential set was emptied")
 	}
 }
+
+// Removing one user must end that user's open connection and leave the
+// others running.
+func TestSetCredentialsDropsOnlyRemovedUsersSessions(t *testing.T) {
+	srv := NewServerMultiStrict("ignored", map[string]string{"a": "pa", "b": "pb"})
+
+	login := func(user, pass string) (net.Conn, chan struct{}) {
+		client, serverSide := net.Pipe()
+		done := make(chan struct{})
+		go func() {
+			srv.handleConn(serverSide)
+			close(done)
+		}()
+		client.SetDeadline(time.Now().Add(3 * time.Second))
+		client.Write([]byte{0x05, 0x01, 0x02})
+		reply := make([]byte, 2)
+		if _, err := io.ReadFull(client, reply); err != nil {
+			t.Fatalf("method reply: %v", err)
+		}
+		msg := append([]byte{0x01, byte(len(user))}, user...)
+		msg = append(msg, byte(len(pass)))
+		msg = append(msg, pass...)
+		client.Write(msg)
+		if _, err := io.ReadFull(client, reply); err != nil || reply[1] != 0x00 {
+			t.Fatalf("login %s: %v %v", user, reply, err)
+		}
+		return client, done
+	}
+	_, aDone := login("a", "pa")
+	_, bDone := login("b", "pb")
+
+	srv.SetCredentials(map[string]string{"b": "pb"})
+
+	select {
+	case <-aDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("removed user's session was not dropped")
+	}
+	select {
+	case <-bDone:
+		t.Fatal("another user's session was dropped")
+	case <-time.After(300 * time.Millisecond):
+	}
+}

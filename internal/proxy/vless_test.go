@@ -389,6 +389,46 @@ func TestVLESSUsersReload(t *testing.T) {
 	}
 }
 
+func TestVLESSReloadClosesRemovedUsersSessions(t *testing.T) {
+	e := startVLESS(t, false, true, nil)
+	host, port := startEchoTCP(t)
+
+	open := func(user, pass string) *testWSClient {
+		c, _ := dialWS(t, e, testWSPath, "")
+		t.Cleanup(func() { c.conn.Close() })
+		c.writeFrame(0x2, append(buildVLESSRequest(e.userID(user, pass), vlessCmdTCP, host, port), 'x'))
+		if op, p, err := c.readFrame(); err != nil || op != 0x2 || len(p) < 2 || p[0] != 0 {
+			t.Fatalf("%s not accepted: op=%x err=%v", user, op, err)
+		}
+		return c
+	}
+	alice := open("alice", "pw-alice")
+	writeUsers(t, e.usersFile,
+		config.UserConfig{Username: "alice", Password: "pw-alice"},
+		config.UserConfig{Username: "bob", Password: "pw-bob"})
+	if _, err := e.srv.ReloadUsers(); err != nil {
+		t.Fatal(err)
+	}
+	bob := open("bob", "pw-bob")
+
+	// Remove alice: her open stream must end, bob's must keep working.
+	writeUsers(t, e.usersFile, config.UserConfig{Username: "bob", Password: "pw-bob"})
+	if _, err := e.srv.ReloadUsers(); err != nil {
+		t.Fatal(err)
+	}
+	_ = alice.conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	for {
+		if _, _, err := alice.readFrame(); err != nil {
+			break // closed, as wanted
+		}
+	}
+	bob.writeFrame(0x2, []byte("still here"))
+	_ = bob.conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	if got := readUntil(t, bob, nil, len("still here")); string(got) != "still here" {
+		t.Fatalf("bob's stream disturbed: %q", got)
+	}
+}
+
 func TestVLESSDestinationPolicy(t *testing.T) {
 	e := startVLESS(t, false, false, nil) // production policy
 	host, port := startEchoTCP(t)
