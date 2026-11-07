@@ -1191,7 +1191,14 @@ func installCores(cfg *config.Config, out actions.OutputWriter, protocols []stri
 		o := coreplan.Options{Protocol: protocol, Host: host}
 		switch protocol {
 		case "reality":
-			o.RealityTarget, o.SNI = "www.microsoft.com:443", "www.microsoft.com"
+			// A random working site from the built-in bank, checked from
+			// this server; Microsoft is the fallback if none can be checked.
+			if host, err := coreplan.AutoReality(&o); err != nil {
+				out.Warning("REALITY target: " + err.Error() + "; using www.microsoft.com")
+				o.RealityTarget, o.SNI = "www.microsoft.com:443", "www.microsoft.com"
+			} else {
+				out.Info("REALITY disguise: " + host)
+			}
 		case "wireguard":
 			ports = []int{51820, 51821, 51822}
 		case "xhttp", "hysteria2":
