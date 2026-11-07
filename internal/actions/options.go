@@ -13,7 +13,11 @@ var TransportOptions = []SelectOption{
 	{Value: "vless", Label: "VLESS — VLESS over WebSocket, Cloudflare CDN ready"},
 	{Value: "external", Label: "External — Route DNS to a custom port"},
 	{Value: "direct-ssh", Label: "SSH — Direct SSH tunnel"},
-	{Value: "direct-socks5", Label: "SOCKS5 — Direct SOCKS5 proxy"},
+	{Value: "direct-socks5", Label: "SOCKS5 — Direct SOCKS5 proxy (unencrypted: open networks only)"},
+	{Value: "xray-reality", Label: "VLESS + REALITY — Xray core, fast, no domain or certificate needed (recommended)"},
+	{Value: "xray-xhttp", Label: "VLESS + XHTTP — Xray core, HTTPS-like over TCP, uses NaiveProxy's domain and certificate (recommended)"},
+	{Value: "xray-hysteria2", Label: "Hysteria 2 — Xray core, QUIC over UDP, uses NaiveProxy's certificate (blocked on some networks)"},
+	{Value: "xray-wireguard", Label: "WireGuard — Xray core, UDP, one configuration per user (blocked on some networks)"},
 }
 
 // QuickTransportOptions is the subset shown in the quick wizard.

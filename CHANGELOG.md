@@ -2,6 +2,15 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.10.0
+
+### Fastest first, and every protocol the app supports from one install
+
+- **Configurations are listed from the fastest to the slowest:** VLESS over WebSocket, XHTTP, REALITY, NaïveProxy, SSH over TLS, SSH, then Hysteria 2, WireGuard and SOCKS5, and the DNS tunnels last. `users configs`, the install summary and `export-clients` follow it, with Xray cores slotted in among the tunnels.
+- **The installer sets up VLESS + XHTTP and Hysteria 2** with the certificate Caddy obtained for the NaïveProxy domain, next to REALITY and WireGuard. REALITY and XHTTP are marked as recommended; Hysteria 2, WireGuard and SOCKS5 are marked as blocked on some networks, which a test on a filtered mobile network confirmed.
+- **A renewed TLS certificate is served without any action.** A timer runs `rovunet core-certs` twice a day and restarts XHTTP and Hysteria 2 cores whose certificate file changed. `rovunet update` sets the timer up for cores installed earlier.
+- Docs in four languages: a "Choosing" section with the measured result, and the order of the configurations.
+
 ## v1.9.3
 
 - The WireGuard file printed by `users configs` no longer has indented lines. The official WireGuard app does not recognise an indented `[Peer]` section and rejected the file with "Missing attribute in Peer's PublicKey".

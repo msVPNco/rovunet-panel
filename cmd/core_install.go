@@ -85,5 +85,17 @@ func init() {
 			return nil
 		},
 	}
-	rootCmd.AddCommand(install, remove, list)
+	certs := &cobra.Command{
+		Use:   "core-certs",
+		Short: "Restart Xray cores whose TLS certificate was renewed (run daily by a timer)",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			restarted, err := coreinstall.RestartIfCertChanged()
+			for _, name := range restarted {
+				fmt.Printf("Restarted core %q: its certificate was renewed\n", name)
+			}
+			return err
+		},
+	}
+	rootCmd.AddCommand(install, remove, list, certs)
 }

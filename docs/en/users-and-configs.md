@@ -32,6 +32,11 @@ For DNSTT tunnels, sharing asks for a **DNSTT** or **NoizDNS** profile. Both use
 
 A configuration contains the user's credentials. Send it over a private channel, never in a public group.
 
+<a id="order"></a>
+## Order of the configurations
+
+`users configs`, the install summary and `export-clients` list each user's configurations from the fastest, most dependable way in to the slowest: VLESS over WebSocket, XHTTP, REALITY, NaïveProxy, SSH over TLS, SSH, then the UDP-based and unencrypted ones that depend on the network (Hysteria 2, WireGuard, SOCKS5), and the DNS tunnels last: slow, but often the only thing that works during a shutdown. The order is fixed; the app's own latency test then ranks what you imported on your network.
+
 ## Export formats
 
 | Format | Scheme | Used by |
