@@ -60,6 +60,13 @@ func startEchoBackendAt(t *testing.T, addr string) net.PacketConn {
 // for both UDP and TCP, and waits until it accepts TCP connections.
 func startRouter(t *testing.T, backend string) string {
 	t.Helper()
+	return startRouterWith(t, backend, nil)
+}
+
+// startRouterWith is startRouter with a hook to adjust the Router before it
+// starts serving.
+func startRouterWith(t *testing.T, backend string, configure func(*Router)) string {
+	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -69,6 +76,9 @@ func startRouter(t *testing.T, backend string) string {
 
 	r := New(addr)
 	r.AddRoute("t.example.com", backend)
+	if configure != nil {
+		configure(r)
+	}
 	go r.ListenAndServe()
 
 	deadline := time.Now().Add(5 * time.Second)
@@ -138,11 +148,7 @@ func TestTCPPipelinedQueries(t *testing.T) {
 // A client that pipelines queries but never reads must be disconnected once
 // its answers back up, not left waiting on answers that were dropped.
 func TestTCPClosesClientNotReading(t *testing.T) {
-	saved := tcpWriteQueue
-	tcpWriteQueue = 4
-	t.Cleanup(func() { tcpWriteQueue = saved })
-
-	addr := startRouter(t, startEchoBackend(t))
+	addr := startRouterWith(t, startEchoBackend(t), func(r *Router) { r.tcpWriteQueue = 4 })
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		t.Fatal(err)

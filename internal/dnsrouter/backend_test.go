@@ -57,11 +57,9 @@ func TestTXIDNotReusedOnConnection(t *testing.T) {
 }
 
 func TestRetiredBackendClosedOnceDrained(t *testing.T) {
-	defer func(d time.Duration) { cleanInterval = d }(cleanInterval)
-	cleanInterval = 20 * time.Millisecond
-
 	addr := startEchoBackend(t)
 	r := New("127.0.0.1:0")
+	r.cleanInterval = 20 * time.Millisecond
 	answered := make(chan struct{}, 1)
 	if err := r.forward(addr, buildQuery(9, "x.t.example.com"), func([]byte) { answered <- struct{}{} }); err != nil {
 		t.Fatal(err)

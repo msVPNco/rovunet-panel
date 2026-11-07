@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/anonvector/slipgate/internal/config"
 	"github.com/anonvector/slipgate/internal/network"
@@ -29,6 +30,9 @@ type Router struct {
 	// Persistent backend connections and pending query tracking (backend.go)
 	backends   map[string]*backendConn
 	backendsMu sync.Mutex
+
+	cleanInterval time.Duration // see defaultCleanInterval
+	tcpWriteQueue int           // see defaultTCPWriteQueue
 }
 
 // replyFunc delivers a response to the client that sent the query, over
@@ -41,6 +45,9 @@ func New(listenAddr string) *Router {
 		listenAddr: listenAddr,
 		routes:     make(map[string]string),
 		backends:   make(map[string]*backendConn),
+
+		cleanInterval: defaultCleanInterval,
+		tcpWriteQueue: defaultTCPWriteQueue,
 	}
 }
 

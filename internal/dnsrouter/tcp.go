@@ -19,9 +19,10 @@ const (
 	tcpMaxConns = 1024
 )
 
-// tcpWriteQueue is how many responses may wait for one connection's writer
-// before the connection is closed. A variable so tests can shrink it.
-var tcpWriteQueue = 256
+// defaultTCPWriteQueue is how many responses may wait for one connection's
+// writer before the connection is closed. Kept per Router
+// (Router.tcpWriteQueue) so tests can shrink it without a data race.
+const defaultTCPWriteQueue = 256
 
 // serveTCP accepts DNS-over-TCP connections (RFC 7766). Queries are forwarded
 // to backends over the same UDP sockets as UDP queries, so tunnel servers only
@@ -60,7 +61,7 @@ func (r *Router) handleTCPConn(conn net.Conn) {
 
 	// Responses arrive on backend reader goroutines shared by all clients. A
 	// per-connection writer keeps one slow client from stalling them.
-	out := make(chan []byte, tcpWriteQueue)
+	out := make(chan []byte, r.tcpWriteQueue)
 	done := make(chan struct{})
 	defer close(done)
 	go func() {
@@ -99,7 +100,7 @@ func (r *Router) handleTCPConn(conn net.Conn) {
 			// time out; closing fails them all at once and the client retries
 			// on a new connection (RFC 7766), or on other paths (soar).
 			overflow.Do(func() {
-				log.Printf("tcp %s: client not reading, %d answers queued; resetting", from, tcpWriteQueue)
+				log.Printf("tcp %s: client not reading, %d answers queued; resetting", from, r.tcpWriteQueue)
 				abort(conn)
 			})
 		}

@@ -27,8 +27,7 @@ jobs:
         run: go vet ./...
       - name: Test
         run: go test ./...
-      # internal/dnsrouter's tests race on upstream main too; check the rest
       - name: Race
-        run: go test -race $(go list ./... | grep -v /internal/dnsrouter)
+        run: go test -race ./...
       - name: Build
         run: make build-linux

@@ -22,9 +22,10 @@ const (
 	udpBufferSize = 4 << 20
 )
 
-// cleanInterval is how often cleanPending sweeps a connection. A variable so
-// tests can shrink it.
-var cleanInterval = 5 * time.Second
+// defaultCleanInterval is how often cleanPending sweeps a connection. Each
+// Router keeps its own copy (Router.cleanInterval) so a test can shrink it
+// without racing the sweep goroutines of routers other tests left running.
+const defaultCleanInterval = 5 * time.Second
 
 // backendConn is a persistent UDP connection to a backend (dnstt-server).
 //
@@ -175,7 +176,7 @@ func (r *Router) readBackendResponses(bc *backendConn, addr string) {
 // has been retired and nothing is left pending, it closes bc, which also
 // stops readBackendResponses.
 func (r *Router) cleanPending(bc *backendConn) {
-	ticker := time.NewTicker(cleanInterval)
+	ticker := time.NewTicker(r.cleanInterval)
 	defer ticker.Stop()
 	// A query can still be storing its TXID at the moment bc is retired, so
 	// closing waits for one sweep after the retirement was first seen.
