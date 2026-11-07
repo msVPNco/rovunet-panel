@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/spf13/cobra"
 )
 
@@ -42,6 +43,32 @@ func init() {
 					}
 					if annotated {
 						fmt.Fprintf(cmd.OutOrStdout(), "%s (%s): %s\n", t.Tag, mode, link)
+					} else {
+						fmt.Fprintln(cmd.OutOrStdout(), link)
+					}
+					count++
+				}
+			}
+			// Xray cores: wrapped into the user's collection for the app, or
+			// the standard link itself. A WireGuard file spans several lines,
+			// so it has no standard one-line form here.
+			if format == "auto" || format == "rovunet" || format == "standard" {
+				profiles, err := coreinstall.Profiles(*u)
+				if err != nil {
+					fmt.Fprintf(cmd.ErrOrStderr(), "xray cores: %v\n", err)
+				}
+				for _, p := range profiles {
+					link := p.Link
+					if format == "standard" {
+						if p.Protocol == "wireguard" {
+							continue
+						}
+					} else if link, err = clientcfg.GenerateCoreURI(p.Core, p.Link, cfg, clientcfg.URIOptions{Username: u.Username}); err != nil {
+						fmt.Fprintf(cmd.ErrOrStderr(), "%s: %v\n", p.Core, err)
+						continue
+					}
+					if annotated {
+						fmt.Fprintf(cmd.OutOrStdout(), "%s (%s): %s\n", p.Core, p.Protocol, link)
 					} else {
 						fmt.Fprintln(cmd.OutOrStdout(), link)
 					}

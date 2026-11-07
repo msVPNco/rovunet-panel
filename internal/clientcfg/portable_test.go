@@ -161,3 +161,48 @@ func TestSoarJoinsTheUsersCollection(t *testing.T) {
 		t.Fatal("a config made without a user must not claim alice's group")
 	}
 }
+
+// TestCoreProfileJoinsTheUsersCollection: an Xray core profile is wrapped as
+// a native "xray" profile in the same collection as the user's tunnels.
+func TestCoreProfileJoinsTheUsersCollection(t *testing.T) {
+	cfg := &config.Config{PublicAddress: "192.0.2.1", Backends: config.DefaultBackends()}
+	soar := &config.TunnelConfig{Tag: "soar", Transport: config.TransportSoar, Backend: config.BackendDirect, Domain: "r.example.com", Soar: &config.SoarConfig{PublicKey: testSoarKey}}
+	alice := URIOptions{Username: "alice", Password: "pw"}
+	fieldsOf := func(uri string) []string {
+		raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(uri, "rovunet://"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.Split(string(raw), "|")
+	}
+	tunnel, err := GeneratePortableURI(soar, nil, cfg, alice, "rovunet")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, link := range []string{
+		"vless://0b6a3a1e-5c1b-4c3e-9f1a-2b3c4d5e6f70@192.0.2.1:9443?encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=AAAA&security=reality&sid=00&sni=www.example.com&type=tcp#Rovunet-reality-alice",
+		"[Interface]\nPrivateKey = a\nAddress = 10.77.0.2/32\n\n[Peer]\nPublicKey = b\nEndpoint = 192.0.2.1:51820\nAllowedIPs = 0.0.0.0/0\n",
+	} {
+		uri, err := GenerateCoreURI("reality1 | xray", link, cfg, alice)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f := fieldsOf(uri)
+		if len(f) != TotalFieldsV33 || f[FVersion] != "33" || f[FTunnelType] != "xray" {
+			t.Fatalf("not a v33 xray profile: len=%d version=%q type=%q", len(f), f[FVersion], f[FTunnelType])
+		}
+		if f[FName] != "reality1  xray" {
+			t.Fatalf("name %q: the field delimiter must be stripped", f[FName])
+		}
+		got, err := base64.StdEncoding.DecodeString(f[FCoreLink])
+		if err != nil || string(got) != strings.TrimSpace(link) {
+			t.Fatalf("core link not carried losslessly: %q", got)
+		}
+		if f[FCollectionID] != fieldsOf(tunnel)[FCollectionID] {
+			t.Fatal("core profile is not in the user's collection")
+		}
+	}
+	if _, err := GenerateCoreURI("x", " ", cfg, alice); err == nil {
+		t.Fatal("empty core link accepted")
+	}
+}

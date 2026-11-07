@@ -14,6 +14,8 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/certs"
 	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
+	"github.com/msVPNco/rovunet-panel/internal/coreplan"
 	"github.com/msVPNco/rovunet-panel/internal/dnsrouter"
 	"github.com/msVPNco/rovunet-panel/internal/keys"
 	"github.com/msVPNco/rovunet-panel/internal/network"
@@ -45,7 +47,19 @@ func handleSystemInstall(ctx *actions.Context) error {
 	if err != nil {
 		return err
 	}
-	if len(transports) == 0 {
+	// Xray cores are not tunnels: they are installed after the users exist,
+	// so every user gets a configuration on them (see installCores).
+	var cores []string
+	tunnels := transports[:0]
+	for _, t := range transports {
+		if strings.HasPrefix(t, "xray-") {
+			cores = append(cores, strings.TrimPrefix(t, "xray-"))
+		} else {
+			tunnels = append(tunnels, t)
+		}
+	}
+	transports = tunnels
+	if len(transports) == 0 && len(cores) == 0 {
 		return actions.NewError(actions.SystemInstall, "no transports selected", nil)
 	}
 
@@ -823,6 +837,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 	}
 
 	ensureServerAddress(cfg, out, allTunnels)
+	installCores(cfg, out, cores)
 
 	// ── Step 7: Summary ────────────────────────────────────────────
 	out.Print("")
@@ -1010,6 +1025,9 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 				}
 			}
 		}
+		if u.Username != "" {
+			printed += printCoreProfiles(cfg, u, out)
+		}
 	}
 	return printed + printSoarLinks(cfg, out, tunnels)
 }
@@ -1137,4 +1155,60 @@ func containsTag(tunnels []config.TunnelConfig, tag string) bool {
 		}
 	}
 	return false
+}
+
+// installCores sets up the Xray cores chosen in the install wizard, each
+// serving every panel user, on the first free port of a few defaults. A core
+// that already exists (the installer run again) is kept as it is.
+func installCores(cfg *config.Config, out actions.OutputWriter, protocols []string) {
+	if len(protocols) == 0 {
+		return
+	}
+	host, ok := clientcfg.ServerAddress(cfg)
+	if !ok || host == "" {
+		out.Warning("Xray cores skipped: the server's public address is unknown; set it with 'rovunet config address' and run 'rovunet core-install'")
+		return
+	}
+	existing := map[string]bool{}
+	if list, err := coreinstall.List(); err == nil {
+		for _, c := range list {
+			existing[c.Name] = true
+		}
+	}
+	for _, protocol := range protocols {
+		name, ports := protocol, []int{9443, 2096, 8880}
+		o := coreplan.Options{Protocol: protocol, Host: host}
+		switch protocol {
+		case "reality":
+			o.RealityTarget, o.SNI = "www.microsoft.com:443", "www.microsoft.com"
+		case "wireguard":
+			ports = []int{51820, 51821, 51822}
+		default:
+			continue
+		}
+		if existing[name] {
+			out.Info(fmt.Sprintf("Xray core %q already installed, kept", name))
+			continue
+		}
+		for _, p := range ports {
+			if coreinstall.PortFree(p, coreinstall.Proto(protocol)) == nil {
+				o.Port = p
+				break
+			}
+		}
+		if o.Port == 0 {
+			out.Warning(fmt.Sprintf("Xray core %q skipped: ports %v are all in use", name, ports))
+			continue
+		}
+		out.Info(fmt.Sprintf("Installing Xray core %s (%s) on %d/%s...", name, coreProtocolName(protocol), o.Port, coreinstall.Proto(protocol)))
+		dir, err := coreinstall.InstallForUsers(name, o, cfg.Users)
+		switch {
+		case dir == "" && err != nil:
+			out.Warning(fmt.Sprintf("Xray core %q not installed: %v", name, err))
+		case err != nil:
+			out.Warning(err.Error())
+		default:
+			out.Success(fmt.Sprintf("Xray core %q running", name))
+		}
+	}
 }

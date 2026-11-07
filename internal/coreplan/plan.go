@@ -4,20 +4,124 @@ package coreplan
 
 import (
 	"crypto/ecdh"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/url"
+	"sort"
 	"strconv"
 )
 
 type Options struct {
-	Protocol, Host, SNI, Cert, Key, RealityTarget string
-	Port, Devices                                 int
+	Protocol      string `json:"protocol"`
+	Host          string `json:"host"`
+	SNI           string `json:"sni"`
+	Cert          string `json:"cert,omitempty"`
+	Key           string `json:"key,omitempty"`
+	RealityTarget string `json:"realityTarget,omitempty"`
+	Port          int    `json:"port"`
+	Devices       int    `json:"-"`
 }
+
+// State is what must stay the same across regenerations of one core, so that
+// adding or removing a client never changes another client's configuration:
+// the server keys and paths, the seed client credentials are derived from,
+// and each WireGuard client's address.
+type State struct {
+	ServerPrivate string            `json:"serverPrivate"` // X25519, standard base64
+	ShortID       string            `json:"shortId"`
+	Path          string            `json:"path"`
+	Seed          string            `json:"seed"` // hex, 32 bytes
+	WGAddrs       map[string]string `json:"wgAddrs,omitempty"`
+}
+
+// Client is one credential holder. Secret takes part in the derivation, so a
+// changed password revokes the client's previous credentials.
+type Client struct {
+	Name, Secret string
+}
+
+// NewState creates fresh server keys and a fresh seed.
+func NewState() (State, error) {
+	private, _, err := keypair()
+	if err != nil {
+		return State{}, err
+	}
+	sid, err := token(8)
+	if err != nil {
+		return State{}, err
+	}
+	pathToken, err := token(12)
+	if err != nil {
+		return State{}, err
+	}
+	seed, err := token(32)
+	if err != nil {
+		return State{}, err
+	}
+	return State{ServerPrivate: private, ShortID: sid, Path: "/" + pathToken, Seed: seed}, nil
+}
+
+// derive returns n bytes bound to the core's seed, the protocol and the client.
+func (st *State) derive(protocol string, c Client, n int) ([]byte, error) {
+	seed, err := hex.DecodeString(st.Seed)
+	if err != nil || len(seed) == 0 {
+		return nil, fmt.Errorf("invalid core state seed")
+	}
+	m := hmac.New(sha256.New, seed)
+	m.Write([]byte(protocol + "\x00" + c.Name + "\x00" + c.Secret))
+	return m.Sum(nil)[:n], nil
+}
+
+// assignWGAddrs keeps every existing client's address and gives new clients
+// the lowest free one, so addresses never move between clients.
+func (st *State) assignWGAddrs(clients []Client) error {
+	if st.WGAddrs == nil {
+		st.WGAddrs = map[string]string{}
+	}
+	want := map[string]bool{}
+	for _, c := range clients {
+		want[c.Name] = true
+	}
+	used := map[string]bool{}
+	for name, addr := range st.WGAddrs {
+		if !want[name] {
+			delete(st.WGAddrs, name)
+			continue
+		}
+		used[addr] = true
+	}
+	names := make([]string, 0, len(clients))
+	for _, c := range clients {
+		names = append(names, c.Name)
+	}
+	sort.Strings(names)
+	next := 2
+	for _, name := range names {
+		if _, ok := st.WGAddrs[name]; ok {
+			continue
+		}
+		for ; next < 65534; next++ {
+			a := fmt.Sprintf("10.77.%d.%d", next/256, next%256)
+			if !used[a] && next%256 != 0 && next%256 != 255 {
+				st.WGAddrs[name] = a
+				used[a] = true
+				next++
+				break
+			}
+		}
+		if _, ok := st.WGAddrs[name]; !ok {
+			return fmt.Errorf("no free WireGuard address")
+		}
+	}
+	return nil
+}
+
 type Bundle struct {
 	Server    json.RawMessage
 	Clients   []string
@@ -39,62 +143,92 @@ func keypair() (string, string, error) {
 	}
 	return base64.StdEncoding.EncodeToString(k.Bytes()), base64.StdEncoding.EncodeToString(k.PublicKey().Bytes()), nil
 }
+
+// Generate makes a one-off bundle with o.Devices random credentials.
 func Generate(o Options) (Bundle, error) {
-	if o.Port < 1 || o.Port > 65535 || o.Devices < 1 || o.Devices > 1000 || o.Host == "" {
+	if o.Devices < 1 || o.Devices > 1000 {
 		return Bundle{}, fmt.Errorf("host, port 1..65535 and devices 1..1000 required")
 	}
+	st, err := NewState()
+	if err != nil {
+		return Bundle{}, err
+	}
+	clients := make([]Client, o.Devices)
+	for i := range clients {
+		secret, err := token(16)
+		if err != nil {
+			return Bundle{}, err
+		}
+		clients[i] = Client{Name: fmt.Sprintf("device-%03d", i+1), Secret: secret}
+	}
+	return GenerateFor(o, &st, clients)
+}
+
+// Validate checks the options a core is generated from.
+func Validate(o *Options) error {
+	if o.Port < 1 || o.Port > 65535 || o.Host == "" {
+		return fmt.Errorf("host, port 1..65535 and devices 1..1000 required")
+	}
 	if _, err := url.ParseRequestURI("https://" + net.JoinHostPort(o.Host, strconv.Itoa(o.Port))); err != nil {
-		return Bundle{}, fmt.Errorf("invalid host")
+		return fmt.Errorf("invalid host")
 	}
 	switch o.Protocol {
 	case "reality", "xhttp", "hysteria2", "wireguard":
 	default:
-		return Bundle{}, fmt.Errorf("unsupported protocol")
+		return fmt.Errorf("unsupported protocol")
 	}
 	if o.SNI == "" {
 		o.SNI = o.Host
 	}
 	if (o.Protocol == "xhttp" || o.Protocol == "hysteria2") && (o.Cert == "" || o.Key == "") {
-		return Bundle{}, fmt.Errorf("TLS certificate and key paths required")
+		return fmt.Errorf("TLS certificate and key paths required")
 	}
 	if o.Protocol == "reality" {
 		if _, _, err := net.SplitHostPort(o.RealityTarget); err != nil {
-			return Bundle{}, fmt.Errorf("REALITY target must be host:port")
+			return fmt.Errorf("REALITY target must be host:port")
+		}
+	}
+	return nil
+}
+
+// GenerateFor builds the server config and one client profile per client,
+// in order, from st. It is deterministic for the same options, state and
+// clients; st's WireGuard addresses are updated for the client set.
+func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
+	if err := Validate(&o); err != nil {
+		return Bundle{}, err
+	}
+	private, err := ecdh.X25519().NewPrivateKey(mustDecode(st.ServerPrivate))
+	if err != nil {
+		return Bundle{}, fmt.Errorf("invalid core state key: %w", err)
+	}
+	serverPrivate := st.ServerPrivate
+	serverPublic := base64.StdEncoding.EncodeToString(private.PublicKey().Bytes())
+	sid, path := st.ShortID, st.Path
+	if o.Protocol == "wireguard" {
+		if err := st.assignWGAddrs(clients); err != nil {
+			return Bundle{}, err
 		}
 	}
 	inbound := object{"listen": "0.0.0.0", "port": o.Port}
 	stream := object{}
 	users := []object{}
-	clients := []string{}
+	profiles := []string{}
 	extension := "txt"
-	var serverPrivate, serverPublic string
-	if o.Protocol == "reality" || o.Protocol == "wireguard" {
-		var err error
-		serverPrivate, serverPublic, err = keypair()
-		if err != nil {
-			return Bundle{}, err
-		}
-	}
-	sid, err := token(8)
-	if err != nil {
-		return Bundle{}, err
-	}
-	pathToken, err := token(12)
-	if err != nil {
-		return Bundle{}, err
-	}
-	path := "/" + pathToken
 	peers := []object{}
-	for i := 0; i < o.Devices; i++ {
-		name := fmt.Sprintf("Rovunet-%s-device-%03d", o.Protocol, i+1)
+	for _, c := range clients {
+		name := fmt.Sprintf("Rovunet-%s-%s", o.Protocol, c.Name)
 		q := url.Values{}
 		var scheme, credential string
 		switch o.Protocol {
 		case "reality", "xhttp":
-			raw, err := token(16)
+			b, err := st.derive(o.Protocol, c, 16)
 			if err != nil {
 				return Bundle{}, err
 			}
+			b[6] = b[6]&0x0f | 0x40 // RFC 4122 version 4 layout
+			b[8] = b[8]&0x3f | 0x80
+			raw := hex.EncodeToString(b)
 			id := raw[:8] + "-" + raw[8:12] + "-" + raw[12:16] + "-" + raw[16:20] + "-" + raw[20:]
 			u := object{"id": id}
 			q.Set("encryption", "none")
@@ -118,25 +252,32 @@ func Generate(o Options) (Bundle, error) {
 			scheme = "vless"
 			credential = id
 		case "hysteria2":
-			credential, err = token(24)
+			b, err := st.derive(o.Protocol, c, 24)
 			if err != nil {
 				return Bundle{}, err
 			}
+			credential = hex.EncodeToString(b)
 			users = append(users, object{"auth": credential})
 			scheme = "hysteria2"
 			q.Set("sni", o.SNI)
 		case "wireguard":
-			private, public, err := keypair()
+			b, err := st.derive(o.Protocol, c, 32)
 			if err != nil {
 				return Bundle{}, err
 			}
-			address := fmt.Sprintf("10.77.%d.%d", (i+2)/256, (i+2)%256)
+			k, err := ecdh.X25519().NewPrivateKey(b)
+			if err != nil {
+				return Bundle{}, err
+			}
+			private := base64.StdEncoding.EncodeToString(k.Bytes())
+			public := base64.StdEncoding.EncodeToString(k.PublicKey().Bytes())
+			address := st.WGAddrs[c.Name]
 			peers = append(peers, object{"publicKey": public, "allowedIPs": []string{address + "/32"}})
-			clients = append(clients, fmt.Sprintf("[Interface]\nPrivateKey = %s\nAddress = %s/32\nDNS = 1.1.1.1\nMTU = 1280\n\n[Peer]\nPublicKey = %s\nEndpoint = %s\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n", private, address, serverPublic, net.JoinHostPort(o.Host, strconv.Itoa(o.Port))))
+			profiles = append(profiles, fmt.Sprintf("[Interface]\nPrivateKey = %s\nAddress = %s/32\nDNS = 1.1.1.1\nMTU = 1280\n\n[Peer]\nPublicKey = %s\nEndpoint = %s\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n", private, address, serverPublic, net.JoinHostPort(o.Host, strconv.Itoa(o.Port))))
 			continue
 		}
 		link := url.URL{Scheme: scheme, User: url.User(credential), Host: net.JoinHostPort(o.Host, strconv.Itoa(o.Port)), RawQuery: q.Encode(), Fragment: name}
-		clients = append(clients, link.String())
+		profiles = append(profiles, link.String())
 	}
 	switch o.Protocol {
 	case "reality":
@@ -167,6 +308,6 @@ func Generate(o Options) (Bundle, error) {
 		inbound["streamSettings"] = stream
 	}
 	server, err := json.MarshalIndent(object{"log": object{"loglevel": "warning"}, "inbounds": []object{inbound}, "outbounds": []object{{"protocol": "freedom"}}}, "", "  ")
-	return Bundle{Server: server, Clients: clients, Extension: extension}, err
+	return Bundle{Server: server, Clients: profiles, Extension: extension}, err
 }
 func mustDecode(s string) []byte { b, _ := base64.StdEncoding.DecodeString(s); return b }
