@@ -1,19 +1,19 @@
-<p align="center">
-  <img src="assets/rovunet-logo.png" alt="Rovunet" width="180">
-</p>
+<p align="center"><img src="assets/rovunet-logo.png" alt="Rovunet" width="140"></p>
 
 <h1 align="center">Rovunet Panel</h1>
 
-<p align="center">
-  自托管的多协议抗审查服务器。<br>
-  一次安装，涵盖所有托管协议，并为每个用户生成现成的客户端配置。
-</p>
+<p align="center"><b>自托管的多协议抗封锁服务器</b><br>一次安装，管理全部协议，为每位用户提供现成配置和订阅链接。</p>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.fa.md">فارسی</a> · <a href="README.ru.md">Русский</a> · <b>简体中文</b>
-  <br>
-  <a href="docs/zh-CN/README.md">文档</a> · <a href="https://github.com/msVPNco/rovunet-android">Android 应用</a> · <a href="CHANGELOG.md">更新日志</a> · <a href="https://t.me/RovunetVPN">Telegram</a>
+  <a href="https://github.com/msVPNco/rovunet-panel/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/msVPNco/rovunet-panel?sort=date&display_name=tag&label=release&color=0E7C86"></a>
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Linux-14304D">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0-6D4AFF"></a>
+  <a href="https://t.me/RovunetVPN"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-RovunetVPN-2F6FEB?logo=telegram&logoColor=white"></a>
 </p>
+
+<p align="center"><a href="README.md">English</a> · <a href="README.fa.md">فارسی</a> · <a href="README.ru.md">Русский</a> · <b>简体中文</b></p>
+
+<p align="center">📘 <a href="docs/guides/Rovunet-Panel-Guide-ZH.pdf">完整指南（PDF）</a> · <a href="docs/zh-CN/README.md">文档</a> · <a href="https://github.com/msVPNco/rovunet-android">Android 应用</a> · <a href="CHANGELOG.md">更新日志</a></p>
 
 ---
 
@@ -75,6 +75,7 @@ sudo rovunet diag            # check services, ports, keys and DNS
 
 | | |
 |---|---|
+| 📘 [完整指南（PDF）](docs/guides/Rovunet-Panel-Guide-ZH.pdf) | 图解指南：架构、协议选择、安装流程、用户与限额、运维。另有 [English](docs/guides/Rovunet-Panel-Guide-EN.pdf) · [فارسی](docs/guides/Rovunet-Panel-Guide-FA.pdf) · [Русский](docs/guides/Rovunet-Panel-Guide-RU.pdf) |
 | [快速开始](docs/zh-CN/getting-started.md) | 要求、DNS 记录、安装、第一个隧道 |
 | [协议](docs/zh-CN/protocols.md) | 所有协议、端口、域名布局、路由 |
 | [用户与配置](docs/zh-CN/users-and-configs.md) | 用户、分享、导出格式、客户端应用 |

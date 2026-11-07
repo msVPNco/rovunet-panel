@@ -1,19 +1,19 @@
-<p align="center">
-  <img src="assets/rovunet-logo.png" alt="Rovunet" width="180">
-</p>
+<p align="center"><img src="assets/rovunet-logo.png" alt="Rovunet" width="140"></p>
 
 <h1 align="center">Rovunet Panel</h1>
 
-<p align="center">
-  Self-hosted, multi-protocol censorship-circumvention server.<br>
-  One install, every managed protocol, ready-made client configurations for each user.
-</p>
+<p align="center"><b>Self-hosted, multi-protocol censorship-circumvention server</b><br>One install, every managed protocol, ready-made configurations and a subscription link for each user.</p>
 
 <p align="center">
-  <b>English</b> · <a href="README.fa.md">فارسی</a> · <a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a>
-  <br>
-  <a href="docs/en/README.md">Documentation</a> · <a href="https://github.com/msVPNco/rovunet-android">Android app</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="https://t.me/RovunetVPN">Telegram</a>
+  <a href="https://github.com/msVPNco/rovunet-panel/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/msVPNco/rovunet-panel?sort=date&display_name=tag&label=release&color=0E7C86"></a>
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Linux-14304D">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0-6D4AFF"></a>
+  <a href="https://t.me/RovunetVPN"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-RovunetVPN-2F6FEB?logo=telegram&logoColor=white"></a>
 </p>
+
+<p align="center"><b>English</b> · <a href="README.fa.md">فارسی</a> · <a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
+
+<p align="center">📘 <a href="docs/guides/Rovunet-Panel-Guide-EN.pdf">Complete guide (PDF)</a> · <a href="docs/en/README.md">Documentation</a> · <a href="https://github.com/msVPNco/rovunet-android">Android app</a> · <a href="CHANGELOG.md">Changelog</a></p>
 
 ---
 
@@ -75,6 +75,7 @@ Requirements: root access, a domain whose DNS you control, and open ports for th
 
 | | |
 |---|---|
+| 📘 [Complete guide (PDF)](docs/guides/Rovunet-Panel-Guide-EN.pdf) | Illustrated guide: architecture, protocol chooser, install flow, users and limits, operations. Also in [فارسی](docs/guides/Rovunet-Panel-Guide-FA.pdf) · [Русский](docs/guides/Rovunet-Panel-Guide-RU.pdf) · [简体中文](docs/guides/Rovunet-Panel-Guide-ZH.pdf) |
 | [Getting started](docs/en/getting-started.md) | Requirements, DNS records, installation, first tunnel |
 | [Protocols](docs/en/protocols.md) | Every protocol, ports, domain layout, routing |
 | [Users and configurations](docs/en/users-and-configs.md) | Users, sharing, export formats, client apps |

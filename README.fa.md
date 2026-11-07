@@ -1,21 +1,21 @@
 <div dir="rtl">
 
-<p align="center">
-  <img src="assets/rovunet-logo.png" alt="Rovunet" width="180">
-</p>
+<p align="center"><img src="assets/rovunet-logo.png" alt="Rovunet" width="140"></p>
 
 <h1 align="center">پنل رووُنت (Rovunet Panel)</h1>
 
-<p align="center">
-  سرور خودمیزبان و چندپروتکلی برای عبور از فیلترینگ.<br>
-  یک نصب، همهٔ پروتکل‌های تحت مدیریت، و کانفیگ آماده برای هر کاربر.
-</p>
+<p align="center"><b>سرور خودمیزبان و چندپروتکلی برای عبور از فیلترینگ</b><br>یک نصب، همهٔ پروتکل‌های تحت مدیریت، و برای هر کاربر کانفیگ آماده و لینک اشتراک.</p>
 
 <p align="center">
-  <a href="README.md">English</a> · <b>فارسی</b> · <a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a>
-  <br>
-  <a href="docs/fa/README.md">مستندات</a> · <a href="https://github.com/msVPNco/rovunet-android">اپ اندروید</a> · <a href="CHANGELOG.md">تغییرات</a> · <a href="https://t.me/RovunetVPN">تلگرام</a>
+  <a href="https://github.com/msVPNco/rovunet-panel/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/msVPNco/rovunet-panel?sort=date&display_name=tag&label=release&color=0E7C86"></a>
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Linux-14304D">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0-6D4AFF"></a>
+  <a href="https://t.me/RovunetVPN"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-RovunetVPN-2F6FEB?logo=telegram&logoColor=white"></a>
 </p>
+
+<p align="center"><a href="README.md">English</a> · <b>فارسی</b> · <a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
+
+<p align="center">📘 <a href="docs/guides/Rovunet-Panel-Guide-FA.pdf">راهنمای جامع (PDF)</a> · <a href="docs/fa/README.md">مستندات</a> · <a href="https://github.com/msVPNco/rovunet-android">اپ اندروید</a> · <a href="CHANGELOG.md">تغییرات</a></p>
 
 ---
 
@@ -85,6 +85,7 @@ sudo rovunet diag            # check services, ports, keys and DNS
 
 | | |
 |---|---|
+| 📘 [راهنمای جامع (PDF)](docs/guides/Rovunet-Panel-Guide-FA.pdf) | راهنمای مصور: معماری، انتخاب پروتکل، روند نصب، کاربران و سهمیه، نگهداری. به [English](docs/guides/Rovunet-Panel-Guide-EN.pdf) · [Русский](docs/guides/Rovunet-Panel-Guide-RU.pdf) · [简体中文](docs/guides/Rovunet-Panel-Guide-ZH.pdf) هم هست |
 | [شروع به کار](docs/fa/getting-started.md) | پیش‌نیازها، رکوردهای DNS، نصب، اولین تونل |
 | [پروتکل‌ها](docs/fa/protocols.md) | همهٔ پروتکل‌ها، پورت‌ها، چیدمان دامنه، مسیریابی |
 | [کاربران و کانفیگ‌ها](docs/fa/users-and-configs.md) | کاربران، اشتراک، قالب‌های خروجی، اپ‌های کلاینت |
