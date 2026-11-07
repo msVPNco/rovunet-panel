@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/binary"
@@ -965,7 +966,13 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 		users = []config.UserConfig{{}}
 	}
 	for _, u := range users {
-		for _, t := range tunnels {
+		// Fastest first: this user's Xray cores are slotted in by rank.
+		flushCores := func(int) int { return 0 }
+		if u.Username != "" {
+			flushCores = coreProfilePrinter(cfg, u, out)
+		}
+		for _, t := range clientcfg.SortByRank(tunnels, tunnelRank) {
+			printed += flushCores(clientcfg.TunnelRank(t.Transport))
 			// VLESS has one UUID per user and no shared backend
 			if t.Transport == config.TransportVLESS {
 				if u.Username == "" {
@@ -1025,9 +1032,7 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 				}
 			}
 		}
-		if u.Username != "" {
-			printed += printCoreProfiles(cfg, u, out)
-		}
+		printed += flushCores(1 << 30)
 	}
 	return printed + printSoarLinks(cfg, out, tunnels)
 }
@@ -1159,7 +1164,9 @@ func containsTag(tunnels []config.TunnelConfig, tag string) bool {
 
 // installCores sets up the Xray cores chosen in the install wizard, each
 // serving every panel user, on the first free port of a few defaults. A core
-// that already exists (the installer run again) is kept as it is.
+// of a protocol that already exists (the installer run again) is kept as it is.
+// XHTTP and Hysteria 2 need a TLS certificate: they use the one Caddy obtained
+// for the NaïveProxy domain.
 func installCores(cfg *config.Config, out actions.OutputWriter, protocols []string) {
 	if len(protocols) == 0 {
 		return
@@ -1173,6 +1180,7 @@ func installCores(cfg *config.Config, out actions.OutputWriter, protocols []stri
 	if list, err := coreinstall.List(); err == nil {
 		for _, c := range list {
 			existing[c.Name] = true
+			existing[c.Protocol] = true
 		}
 	}
 	for _, protocol := range protocols {
@@ -1183,10 +1191,31 @@ func installCores(cfg *config.Config, out actions.OutputWriter, protocols []stri
 			o.RealityTarget, o.SNI = "www.microsoft.com:443", "www.microsoft.com"
 		case "wireguard":
 			ports = []int{51820, 51821, 51822}
+		case "xhttp", "hysteria2":
+			if protocol == "hysteria2" {
+				ports = []int{8443, 4443, 2096}
+			} else {
+				ports = []int{2096, 2087, 8880}
+			}
+			if existing[name] || existing[protocol] {
+				out.Info(fmt.Sprintf("Xray core %q already installed, kept", name))
+				continue
+			}
+			domain := naiveDomain(cfg)
+			if domain == "" {
+				out.Warning(fmt.Sprintf("Xray core %q skipped: it needs the NaïveProxy domain and its certificate; install NaïveProxy first, then 'rovunet core-install'", name))
+				continue
+			}
+			crt, key, found := waitCaddyCert(out, domain, 90*time.Second)
+			if !found {
+				out.Warning(fmt.Sprintf("Xray core %q skipped: no certificate for %s yet (check that its DNS record points here), then run 'rovunet core-install'", name, domain))
+				continue
+			}
+			o.Host, o.SNI, o.Cert, o.Key = domain, domain, crt, key
 		default:
 			continue
 		}
-		if existing[name] {
+		if existing[name] || existing[protocol] {
 			out.Info(fmt.Sprintf("Xray core %q already installed, kept", name))
 			continue
 		}
@@ -1210,5 +1239,35 @@ func installCores(cfg *config.Config, out actions.OutputWriter, protocols []stri
 		default:
 			out.Success(fmt.Sprintf("Xray core %q running", name))
 		}
+	}
+}
+
+// naiveDomain is the domain of the first enabled NaïveProxy tunnel, "" if none.
+func naiveDomain(cfg *config.Config) string {
+	for _, t := range cfg.Tunnels {
+		if t.Transport == config.TransportNaive && t.Enabled && t.Domain != "" {
+			return t.Domain
+		}
+	}
+	return ""
+}
+
+// waitCaddyCert waits up to timeout for Caddy to obtain the certificate of
+// domain (it does so in the background shortly after it starts).
+func waitCaddyCert(out actions.OutputWriter, domain string, timeout time.Duration) (crt, key string, ok bool) {
+	deadline := time.Now().Add(timeout)
+	announced := false
+	for {
+		if crt, key, ok = certs.FindCaddy(domain); ok {
+			return crt, key, true
+		}
+		if time.Now().After(deadline) {
+			return "", "", false
+		}
+		if !announced {
+			out.Info(fmt.Sprintf("Waiting for the certificate of %s (up to %s)...", domain, timeout))
+			announced = true
+		}
+		time.Sleep(3 * time.Second)
 	}
 }

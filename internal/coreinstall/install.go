@@ -213,6 +213,8 @@ func Install(name string, o coreplan.Options) (dir string, err error) {
 	if err = service.Start(unitName); err != nil {
 		return "", err
 	}
+	RecordCert(name)
+	_ = EnsureCertTimer() // best effort; the post-update step retries it
 	if ferr := network.AllowPort(o.Port, proto); ferr != nil {
 		// The service is up; a firewall failure is reported, not rolled back.
 		return dir, fmt.Errorf("core started, but opening %d/%s failed: %w", o.Port, proto, ferr)
@@ -247,6 +249,7 @@ func Activate(name string) error {
 	} else if err := service.Start(unitName); err != nil {
 		return err
 	}
+	RecordCert(name)
 	return network.AllowPort(m.Port, m.Proto)
 }
 

@@ -32,6 +32,11 @@ sudo rovunet users remove                           # remove a user
 
 配置包含用户凭据。请通过私密渠道发送，切勿发到公开群组。
 
+<a id="order"></a>
+## 配置的顺序
+
+`users configs`、安装摘要和 `export-clients` 按从最快、最可靠到最慢的顺序列出每个用户的配置：基于 WebSocket 的 VLESS、XHTTP、REALITY、NaïveProxy、基于 TLS 的 SSH、SSH，然后是依赖网络的 UDP 类和未加密协议（Hysteria 2、WireGuard、SOCKS5），最后是 DNS 隧道：很慢，但在断网时往往是唯一可用的。顺序是固定的；之后应用自带的延迟测试会按你所在网络对导入的配置重新排名。
+
 ## 导出格式
 
 | 格式 | 协议头 | 适用于 |

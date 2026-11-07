@@ -11,9 +11,13 @@ An Xray core is a separate Xray server installed and managed by the panel, besid
 | **Hysteria 2** | UDP (QUIC) | Required, valid for `--sni` | Lossy or unstable networks where UDP passes |
 | **WireGuard** | UDP | None | Networks that do not block WireGuard |
 
+## Choosing
+
+Which protocols pass depends on the network. On one filtered mobile network we measured: VLESS over WebSocket, **XHTTP** and **REALITY** connected fastest, NaïveProxy, SSH over TLS and SSH followed, and **WireGuard, Hysteria 2 and SOCKS5 did not connect at all** (UDP and unencrypted traffic was dropped). That is one network, not a rule: test each on yours. The installer therefore recommends REALITY and XHTTP, and the output lists configurations from the fastest to the slowest (see [Users and configurations](users-and-configs.md#order)).
+
 ## Installing a core
 
-The installer (`sudo rovunet install`) offers **VLESS + REALITY** and **WireGuard** next to the other protocols and sets them up after the first user, on the first free default port (REALITY: 9443, 2096 or 8880/tcp; WireGuard: 51820–51822/udp). Any core can also be added later:
+The installer (`sudo rovunet install`) offers **VLESS + REALITY**, **VLESS + XHTTP**, **Hysteria 2** and **WireGuard** next to the other protocols and sets them up after the first user, on the first free default port (REALITY: 9443, 2096 or 8880/tcp; XHTTP: 2096, 2087 or 8880/tcp; Hysteria 2: 8443, 4443 or 2096/udp; WireGuard: 51820–51822/udp). XHTTP and Hysteria 2 use the TLS certificate Caddy obtained for the NaïveProxy domain, so they need NaïveProxy selected too; if the certificate is not ready within 90 seconds they are skipped with a message and can be added later. Any core can also be added later:
 
 ```bash
 # VLESS + REALITY
@@ -78,7 +82,7 @@ Cores are included in `rovunet backup` and started again by `restore`. Certifica
 
 ## Limitations
 
-- XHTTP and Hysteria 2 read their certificate at start. When the certificate is renewed, restart the core (`systemctl restart rovunet-core-<name>`).
+- XHTTP and Hysteria 2 read their certificate at start. A timer (`rovunet-core-certs.timer`, twice a day) runs `rovunet core-certs`, which restarts a core whose certificate file changed, so a renewed certificate is served without any action. Run `sudo rovunet core-certs` to do it now.
 - Cores installed before v1.9.0 (per device) keep working as they are; reinstall them to serve the panel's users.
 
 Next: [Operations](operations.md)

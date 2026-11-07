@@ -11,10 +11,14 @@ Xray 内核是由面板在隧道旁安装和管理的独立 Xray 服务器，提
 | **Hysteria 2** | UDP（QUIC） | 需要，且对 `--sni` 有效 | UDP 可通过的高丢包或不稳定网络 |
 | **WireGuard** | UDP | 无需 | 不封锁 WireGuard 的网络 |
 
+## 如何选择
+
+哪些协议能通过取决于网络。在一个受过滤的移动网络上我们测得：基于 WebSocket 的 VLESS、**XHTTP** 和 **REALITY** 连接最快，其次是 NaïveProxy、基于 TLS 的 SSH 和 SSH，而 **WireGuard、Hysteria 2 和 SOCKS5 完全无法连接**（UDP 和未加密流量被丢弃）。这只是一个网络的结果，而不是规律：请在自己的网络上逐个测试。因此安装程序推荐 REALITY 和 XHTTP，输出也按从最快到最慢的顺序列出配置（见[用户与配置](users-and-configs.md#order)）。
+
 <a id="installing-a-core"></a>
 ## 安装内核
 
-安装程序（`sudo rovunet install`）会在其他协议旁提供 **VLESS + REALITY** 和 **WireGuard**，并在创建第一个用户后，在第一个空闲的默认端口上配置它们（REALITY：9443、2096 或 8880/tcp；WireGuard：51820–51822/udp）。任何内核也都可以稍后添加：
+安装程序（`sudo rovunet install`）会在其他协议旁提供 **VLESS + REALITY**、**VLESS + XHTTP**、**Hysteria 2** 和 **WireGuard**，并在创建第一个用户后，在第一个空闲的默认端口上配置它们（REALITY：9443、2096 或 8880/tcp；XHTTP：2096、2087 或 8880/tcp；Hysteria 2：8443、4443 或 2096/udp；WireGuard：51820–51822/udp）。XHTTP 和 Hysteria 2 使用 Caddy 为 NaïveProxy 域名获取的 TLS 证书，因此也需要选择 NaïveProxy；如果证书在 90 秒内未就绪，它们会被跳过并给出提示，之后可再添加。任何内核也可以稍后添加：
 
 ```bash
 # VLESS + REALITY
@@ -79,7 +83,7 @@ sudo rovunet core-remove r1       # stop and delete
 
 ## 限制
 
-- XHTTP 和 Hysteria 2 在启动时读取证书。证书续期后，请重启内核（`systemctl restart rovunet-core-<名称>`）。
+- XHTTP 和 Hysteria 2 在启动时读取证书。定时器（`rovunet-core-certs.timer`，每天两次）会运行 `rovunet core-certs`，在证书文件变化时重启对应内核，因此续期后的证书无需任何操作即可生效。立即执行：`sudo rovunet core-certs`。
 - v1.9.0 之前（按设备）安装的内核会照常工作；要让它们服务面板用户，请重新安装。
 
 下一页：[运维](operations.md)

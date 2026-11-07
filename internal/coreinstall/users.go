@@ -164,6 +164,8 @@ func InstallForUsers(name string, o coreplan.Options, users []config.UserConfig)
 	if err = service.Start(unitName); err != nil {
 		return "", err
 	}
+	RecordCert(name)
+	_ = EnsureCertTimer() // best effort; the post-update step retries it
 	if ferr := network.AllowPort(o.Port, proto); ferr != nil {
 		return dir, fmt.Errorf("core started, but opening %d/%s failed: %w", o.Port, proto, ferr)
 	}

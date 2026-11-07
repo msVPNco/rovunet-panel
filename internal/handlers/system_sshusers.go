@@ -411,7 +411,10 @@ func nextUsernameIndex(cfg *config.Config, prefix string) int {
 
 func showUserConfigs(cfg *config.Config, username, password string, out actions.OutputWriter) {
 	ensureServerAddress(cfg, out, cfg.Tunnels)
-	for _, t := range cfg.Tunnels {
+	// Fastest first: Xray cores are slotted in among the tunnels by rank.
+	flushCores := coreProfilePrinter(cfg, config.UserConfig{Username: username, Password: password}, out)
+	for _, t := range clientcfg.SortByRank(cfg.Tunnels, tunnelRank) {
+		flushCores(clientcfg.TunnelRank(t.Transport))
 		if t.Transport == config.TransportVLESS {
 			printVLESSLinks(out, cfg, &t, username, password)
 			continue
@@ -460,41 +463,64 @@ func showUserConfigs(cfg *config.Config, username, password string, out actions.
 			out.Print("")
 		}
 	}
-	printCoreProfiles(cfg, config.UserConfig{Username: username, Password: password}, out)
+	flushCores(1 << 30)
 }
 
-// printCoreProfiles prints a user's Xray core profiles, each wrapped so the
-// app files it in the user's collection with their tunnels.
-func printCoreProfiles(cfg *config.Config, user config.UserConfig, out actions.OutputWriter) int {
+// tunnelRank orders tunnels for output, fastest first.
+func tunnelRank(t config.TunnelConfig) int { return clientcfg.TunnelRank(t.Transport) }
+
+// coreProfilePrinter returns a function that prints the user's Xray core
+// profiles whose rank is at most the given limit, in rank order, each once.
+// Calling it with each tunnel's rank before the tunnel, and with a huge limit
+// at the end, interleaves cores and tunnels from fastest to slowest.
+func coreProfilePrinter(cfg *config.Config, user config.UserConfig, out actions.OutputWriter) func(limit int) int {
 	profiles, err := coreinstall.Profiles(user)
 	if err != nil {
 		out.Warning("Xray cores: " + err.Error())
 	}
-	printed := 0
-	for _, p := range profiles {
-		uri, err := clientcfg.GenerateCoreURI(p.Core, p.Link, cfg, clientcfg.URIOptions{Username: user.Username})
-		if err != nil {
-			out.Warning(fmt.Sprintf("Xray core %s: %v", p.Core, err))
-			continue
-		}
-		out.Print(fmt.Sprintf("  [%s] %s, user=%s", p.Core, coreProtocolName(p.Protocol), user.Username))
-		out.Print(fmt.Sprintf("  %s", uri))
-		// The same profile for other clients: a one-line link, or the
-		// WireGuard file to save and import.
-		if p.Protocol == "wireguard" {
-			out.Print("  # WireGuard file for other apps (save as rovunet.conf);")
-			out.Print("  # its lines must start at the left edge, with no indentation:")
-			for _, line := range strings.Split(strings.TrimRight(p.Link, "\n"), "\n") {
-				out.Print(line)
+	profiles = clientcfg.SortByRank(profiles, func(p coreinstall.Profile) int { return clientcfg.CoreRank(p.Protocol) })
+	next := 0
+	return func(limit int) int {
+		printed := 0
+		for next < len(profiles) && clientcfg.CoreRank(profiles[next].Protocol) <= limit {
+			if printCoreProfile(cfg, user, profiles[next], out) {
+				printed++
 			}
-		} else {
-			out.Print("  # Standard link for other apps:")
-			out.Print("  " + p.Link)
+			next++
 		}
-		out.Print("")
-		printed++
+		return printed
 	}
-	return printed
+}
+
+// printCoreProfiles prints all of a user's Xray core profiles, each wrapped so
+// the app groups it with the user's tunnels, followed by the same profile for
+// other apps. It returns how many it printed.
+func printCoreProfiles(cfg *config.Config, user config.UserConfig, out actions.OutputWriter) int {
+	return coreProfilePrinter(cfg, user, out)(1 << 30)
+}
+
+func printCoreProfile(cfg *config.Config, user config.UserConfig, p coreinstall.Profile, out actions.OutputWriter) bool {
+	uri, err := clientcfg.GenerateCoreURI(p.Core, p.Link, cfg, clientcfg.URIOptions{Username: user.Username})
+	if err != nil {
+		out.Warning(fmt.Sprintf("Xray core %s: %v", p.Core, err))
+		return false
+	}
+	out.Print(fmt.Sprintf("  [%s] %s, user=%s", p.Core, coreProtocolName(p.Protocol), user.Username))
+	out.Print(fmt.Sprintf("  %s", uri))
+	// The same profile for other clients: a one-line link, or the
+	// WireGuard file to save and import.
+	if p.Protocol == "wireguard" {
+		out.Print("  # WireGuard file for other apps (save as rovunet.conf);")
+		out.Print("  # its lines must start at the left edge, with no indentation:")
+		for _, line := range strings.Split(strings.TrimRight(p.Link, "\n"), "\n") {
+			out.Print(line)
+		}
+	} else {
+		out.Print("  # Standard link for other apps:")
+		out.Print("  " + p.Link)
+	}
+	out.Print("")
+	return true
 }
 
 // coreProtocolName is a core protocol's standard name.

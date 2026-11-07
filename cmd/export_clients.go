@@ -26,11 +26,49 @@ func init() {
 				return fmt.Errorf("invalid format")
 			}
 			count := 0
-			for i := range cfg.Tunnels {
-				t := &cfg.Tunnels[i]
+			// Fastest first: Xray cores are slotted in among the tunnels by
+			// rank (see clientcfg.TunnelRank).
+			var cores []coreinstall.Profile
+			if format == "auto" || format == "rovunet" || format == "standard" {
+				var perr error
+				cores, perr = coreinstall.Profiles(*u)
+				if perr != nil {
+					fmt.Fprintf(cmd.ErrOrStderr(), "xray cores: %v\n", perr)
+				}
+			}
+			cores = clientcfg.SortByRank(cores, func(p coreinstall.Profile) int { return clientcfg.CoreRank(p.Protocol) })
+			nextCore := 0
+			emitCores := func(limit int) {
+				for nextCore < len(cores) && clientcfg.CoreRank(cores[nextCore].Protocol) <= limit {
+					p := cores[nextCore]
+					nextCore++
+					link := p.Link
+					if format == "standard" {
+						if p.Protocol == "wireguard" {
+							continue // a multi-line file has no one-line form
+						}
+					} else {
+						var gerr error
+						if link, gerr = clientcfg.GenerateCoreURI(p.Core, p.Link, cfg, clientcfg.URIOptions{Username: u.Username}); gerr != nil {
+							fmt.Fprintf(cmd.ErrOrStderr(), "%s: %v\n", p.Core, gerr)
+							continue
+						}
+					}
+					if annotated {
+						fmt.Fprintf(cmd.OutOrStdout(), "%s (%s): %s\n", p.Core, p.Protocol, link)
+					} else {
+						fmt.Fprintln(cmd.OutOrStdout(), link)
+					}
+					count++
+				}
+			}
+			sorted := clientcfg.SortByRank(cfg.Tunnels, func(t config.TunnelConfig) int { return clientcfg.TunnelRank(t.Transport) })
+			for i := range sorted {
+				t := &sorted[i]
 				if !t.Enabled {
 					continue
 				}
+				emitCores(clientcfg.TunnelRank(t.Transport))
 				modes := []string{"dnstt"}
 				if t.Transport == config.TransportDNSTT {
 					modes = append(modes, "noizdns")
@@ -49,32 +87,7 @@ func init() {
 					count++
 				}
 			}
-			// Xray cores: wrapped into the user's collection for the app, or
-			// the standard link itself. A WireGuard file spans several lines,
-			// so it has no standard one-line form here.
-			if format == "auto" || format == "rovunet" || format == "standard" {
-				profiles, err := coreinstall.Profiles(*u)
-				if err != nil {
-					fmt.Fprintf(cmd.ErrOrStderr(), "xray cores: %v\n", err)
-				}
-				for _, p := range profiles {
-					link := p.Link
-					if format == "standard" {
-						if p.Protocol == "wireguard" {
-							continue
-						}
-					} else if link, err = clientcfg.GenerateCoreURI(p.Core, p.Link, cfg, clientcfg.URIOptions{Username: u.Username}); err != nil {
-						fmt.Fprintf(cmd.ErrOrStderr(), "%s: %v\n", p.Core, err)
-						continue
-					}
-					if annotated {
-						fmt.Fprintf(cmd.OutOrStdout(), "%s (%s): %s\n", p.Core, p.Protocol, link)
-					} else {
-						fmt.Fprintln(cmd.OutOrStdout(), link)
-					}
-					count++
-				}
-			}
+			emitCores(1 << 30)
 			if count == 0 {
 				return fmt.Errorf("no compatible enabled tunnels exported")
 			}

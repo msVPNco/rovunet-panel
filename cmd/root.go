@@ -6,6 +6,7 @@ import (
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/msVPNco/rovunet-panel/internal/handlers"
 	"github.com/msVPNco/rovunet-panel/internal/menu"
 	"github.com/msVPNco/rovunet-panel/internal/migrate"
@@ -85,6 +86,10 @@ func init() {
 			} else if len(fixed) > 0 {
 				migrate.Restart(fixed)
 				fmt.Printf("Repaired %d service(s) that still ran the old command\n", len(fixed))
+			}
+			// Cores that serve a TLS certificate must restart after it renews.
+			if err := coreinstall.EnsureCertTimer(); err != nil {
+				fmt.Fprintln(os.Stderr, "Warning: certificate renewal timer:", err)
 			}
 			return nil
 		},
