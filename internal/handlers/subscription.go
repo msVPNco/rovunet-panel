@@ -188,11 +188,14 @@ func addExtraAddressItems(cfg *config.Config, u config.UserConfig, items []subIt
 		have[it.Link] = true
 		ids[it.ID] = true
 	}
+	main := cfg.PublicAddress
+	defer func() { cfg.PublicAddress = main }()
 	for n, addr := range cfg.ExtraAddresses {
-		alt := *cfg
-		alt.PublicAddress = addr
+		// A Config holds a lock and can't be copied, so the address is
+		// swapped for the print and put back.
+		cfg.PublicAddress = addr
 		c := &captureOutput{}
-		printUserConfigs(&alt, u.Username, u.Password, c)
+		printUserConfigs(cfg, u.Username, u.Password, c)
 		for _, it := range subscriptionItems(c.lines) {
 			if have[it.Link] {
 				continue
