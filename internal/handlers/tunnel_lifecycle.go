@@ -7,6 +7,7 @@ import (
 
 	"github.com/anonvector/slipgate/internal/actions"
 	"github.com/anonvector/slipgate/internal/config"
+	"github.com/anonvector/slipgate/internal/coreinstall"
 	"github.com/anonvector/slipgate/internal/service"
 )
 
@@ -69,7 +70,21 @@ func handleTunnelStatus(ctx *actions.Context) error {
 			showNoizDNSStatus(ctx.Output, &cfg.Tunnels[i])
 		}
 	}
-	if len(cfg.Tunnels) == 0 {
+	// Xray cores (core-install) live outside config.json; list them too so
+	// status shows everything this server serves.
+	cores, err := coreinstall.List()
+	if err != nil {
+		ctx.Output.Warning("Failed to list Xray cores: " + err.Error())
+	}
+	for _, c := range cores {
+		status, err := service.Status(coreinstall.ServiceName(c.Name))
+		if err != nil {
+			status = "unknown"
+		}
+		ctx.Output.Print(fmt.Sprintf("  %-15s %-12s %-8s %-25s %s",
+			c.Name, "xray-"+c.Protocol, "core", fmt.Sprintf("%d/%s", c.Port, c.Proto), status))
+	}
+	if len(cfg.Tunnels) == 0 && len(cores) == 0 {
 		ctx.Output.Info("No tunnels configured. Run 'slipgate tunnel add' to create one.")
 	}
 	return nil
