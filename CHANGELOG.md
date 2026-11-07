@@ -2,6 +2,13 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.8.2
+
+### Fixes
+
+- **Services failing after updating from v1.7.0.** The old updater starts the new version from the old command's path, so the SOCKS5 proxy, Soar, SSH over TLS and VLESS services were regenerated to run `/usr/local/bin/slipgate`, which the migration had removed, and failed with `203/EXEC`. Services now always run the installed `rovunet`, and the next update repairs any unit still pointing at the old command.
+- `tunnel status` showed every non-running state as `unknown`, which hid those failures. It now shows systemd's own state (`activating`, `failed`, `inactive`), and direct SSH and SOCKS5 tunnels show the state of sshd and the shared SOCKS5 proxy.
+
 ## v1.8.1
 
 ### Fixes
