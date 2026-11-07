@@ -13,6 +13,7 @@ import (
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/msVPNco/rovunet-panel/internal/service"
 	"github.com/msVPNco/rovunet-panel/internal/version"
 	"github.com/msVPNco/rovunet-panel/internal/warp"
@@ -311,13 +312,61 @@ func handleSystemDiag(ctx *actions.Context) error {
 
 	}
 
+	// ── Xray cores ──────────────────────────────────────────
+	cores, _ := coreinstall.List()
+	if len(cores) > 0 {
+		out.Print("")
+		out.Print(fmt.Sprintf("  Xray cores (%d installed)", len(cores)))
+		out.Print("  ──────────")
+		certCores := 0
+		for _, c := range cores {
+			svc := coreinstall.ServiceName(c.Name)
+			status := "missing"
+			if service.Exists(svc) {
+				status, _ = service.Status(svc)
+			}
+			check(fmt.Sprintf("[%s] %s service", c.Name, c.Protocol), status == "active", boolStr(status == "active", "active", status))
+			if status != "active" && service.Exists(svc) {
+				showRecentLogs(out, svc)
+			}
+			if service.Exists(svc) {
+				en := isServiceEnabled(svc)
+				check(fmt.Sprintf("[%s] enabled at boot", c.Name), en, boolStr(en, "yes", "no — will not start after reboot"))
+			}
+			listening := isPortListening(c.Port, c.Proto)
+			check(fmt.Sprintf("[%s] listening on %s/%d", c.Name, c.Proto, c.Port), listening, boolStr(listening, "yes", "nothing listens"))
+
+			exp, has, err := coreinstall.CertExpiry(c.Name)
+			if !has {
+				continue
+			}
+			certCores++
+			switch {
+			case err != nil:
+				check(fmt.Sprintf("[%s] TLS certificate", c.Name), false, err.Error())
+			default:
+				days := int(time.Until(exp).Hours() / 24)
+				check(fmt.Sprintf("[%s] TLS certificate", c.Name), days >= 7,
+					boolStr(days >= 7, fmt.Sprintf("valid %d more days", days), fmt.Sprintf("expires in %d days — renewal not working", days)))
+			}
+		}
+		if certCores > 0 {
+			ok := coreinstall.CertTimerEnabled()
+			check("Certificate-renewal timer", ok, boolStr(ok, "enabled", "off — run 'rovunet update' to set it up"))
+		}
+	}
+
 	// ── Orphaned Services ───────────────────────────────────
 	allSvc := service.ListRovunetServices()
 	knownSvc := map[string]bool{
-		"rovunet-dnsrouter": true,
-		"rovunet-socks5":    true,
-		"rovunet-warp":      true,
-		"rovunet-iptables":  true,
+		"rovunet-dnsrouter":  true,
+		"rovunet-socks5":     true,
+		"rovunet-warp":       true,
+		"rovunet-iptables":   true,
+		"rovunet-core-certs": true,
+	}
+	for _, c := range cores {
+		knownSvc[coreinstall.ServiceName(c.Name)] = true
 	}
 	for _, t := range cfg.Tunnels {
 		knownSvc[service.TunnelServiceName(t.Tag)] = true
@@ -515,4 +564,3 @@ func lookupSystemUID(username string) int {
 	}
 	return uid
 }
-

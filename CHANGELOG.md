@@ -2,6 +2,11 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.11.1
+
+- **`rovunet diag` now checks the Xray cores.** For each installed core (REALITY, XHTTP, Hysteria 2, WireGuard) it reports whether the service is active and enabled at boot, whether the port is listening, how many days its TLS certificate has left, and whether the renewal timer is on. A certificate with under 7 days left is a failure.
+- **Fixed false "Orphaned Services" warnings:** `diag` listed every Xray core and the certificate check as orphaned, because it only knew the tunnels.
+
 ## v1.11.0
 
 - **Plain SOCKS5 is no longer in the default output.** The direct SOCKS5 server is unencrypted and was blocked on the mobile network we measured, so `users configs`, the install summary and `export-clients` leave it out and say how many they hid. List it with `ROVUNET_ALL_CONFIGS=1` (menus) or `export-clients --all`. Nothing is removed: the server keeps running and existing tunnels are unchanged. NaïveProxy's SOCKS variant is not affected.
