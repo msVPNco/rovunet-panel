@@ -14,3 +14,13 @@ func TestOwnerFromSS(t *testing.T) {
 		t.Fatalf("hidden owner gave %q", got)
 	}
 }
+
+func TestPidFromSS(t *testing.T) {
+	line := `udp UNCONN 0 0 0.0.0.0:5312 0.0.0.0:* users:(("slipstream-serv",pid=1234,fd=7))`
+	if got := pidFromSS(line); got != 1234 {
+		t.Fatalf("got %d", got)
+	}
+	if got := pidFromSS("udp UNCONN 0 0 0.0.0.0:53 0.0.0.0:*"); got != 0 {
+		t.Fatalf("no pid gave %d", got)
+	}
+}
