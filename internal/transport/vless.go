@@ -2,7 +2,6 @@ package transport
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
@@ -47,7 +46,7 @@ func buildVLESSExecStart(tunnel *config.TunnelConfig, cfg *config.Config) (strin
 	}
 
 	// rovunet binary itself serves VLESS — no external binary needed
-	execPath, err := os.Executable()
+	execPath, err := config.SelfPath()
 	if err != nil {
 		return "", fmt.Errorf("resolve executable: %w", err)
 	}

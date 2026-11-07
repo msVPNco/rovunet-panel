@@ -2,7 +2,6 @@ package transport
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/service"
@@ -43,7 +42,7 @@ func buildSoarExecStart(tunnel *config.TunnelConfig, cfg *config.Config) (string
 	}
 
 	// rovunet binary itself serves soar — no external binary needed
-	execPath, err := os.Executable()
+	execPath, err := config.SelfPath()
 	if err != nil {
 		return "", fmt.Errorf("resolve executable: %w", err)
 	}

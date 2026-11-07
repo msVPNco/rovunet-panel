@@ -79,10 +79,7 @@ func handleTunnelStatus(ctx *actions.Context) error {
 		ctx.Output.Warning("Failed to list Xray cores: " + err.Error())
 	}
 	for _, c := range cores {
-		status, err := service.Status(coreinstall.ServiceName(c.Name))
-		if err != nil {
-			status = "unknown"
-		}
+		status := unitState(coreinstall.ServiceName(c.Name))
 		ctx.Output.Print(fmt.Sprintf("  %-15s %-12s %-8s %-25s %s",
 			c.Name, "xray-"+c.Protocol, "core", fmt.Sprintf("%d/%s", c.Port, c.Proto), status))
 	}
@@ -93,22 +90,14 @@ func handleTunnelStatus(ctx *actions.Context) error {
 }
 
 func showTunnelStatus(out actions.OutputWriter, tunnel *config.TunnelConfig) error {
-	svcName := service.TunnelServiceName(tunnel.Tag)
-	status, err := service.Status(svcName)
-	if err != nil {
-		status = "unknown"
-	}
+	status := tunnelState(tunnel)
 	out.Print(fmt.Sprintf("  %-15s %-12s %-8s %-25s %s",
 		tunnel.Tag, tunnel.Transport, tunnel.Backend, tunnel.Domain, status))
 	return nil
 }
 
 func showTunnelDetail(out actions.OutputWriter, tunnel *config.TunnelConfig) {
-	svcName := service.TunnelServiceName(tunnel.Tag)
-	status, err := service.Status(svcName)
-	if err != nil {
-		status = "unknown"
-	}
+	status := tunnelState(tunnel)
 
 	out.Print(fmt.Sprintf("  Tag       : %s", tunnel.Tag))
 	out.Print(fmt.Sprintf("  Transport : %s", tunnel.Transport))
@@ -197,11 +186,7 @@ func readKeyFile(path string) string {
 // showNoizDNSStatus displays the noizdns variant for a DNSTT tunnel.
 // NoizDNS shares the same server process, so it mirrors the DNSTT tunnel's status.
 func showNoizDNSStatus(out actions.OutputWriter, tunnel *config.TunnelConfig) {
-	svcName := service.TunnelServiceName(tunnel.Tag)
-	status, err := service.Status(svcName)
-	if err != nil {
-		status = "unknown"
-	}
+	status := tunnelState(tunnel)
 	tag := strings.ReplaceAll(tunnel.Tag, "dnstt", "noizdns")
 	out.Print(fmt.Sprintf("  %-15s %-12s %-8s %-25s %s",
 		tag, "noizdns", tunnel.Backend, tunnel.Domain, status))
@@ -228,4 +213,31 @@ func handleTunnelLogs(ctx *actions.Context) error {
 	}
 	ctx.Output.Print(output)
 	return nil
+}
+
+// tunnelState is the state of the service that actually carries a tunnel.
+// Direct SSH and SOCKS5 tunnels have no unit of their own: they are served by
+// the system's sshd and by the shared SOCKS5 proxy.
+func tunnelState(t *config.TunnelConfig) string {
+	switch t.Transport {
+	case config.TransportSSH:
+		if s := unitState("ssh"); s == "active" {
+			return s
+		}
+		return unitState("sshd")
+	case config.TransportSOCKS:
+		return unitState("rovunet-socks5")
+	}
+	return unitState(service.TunnelServiceName(t.Tag))
+}
+
+// unitState reports systemd's own word for a unit (active, activating,
+// inactive, failed). systemctl exits non-zero for every state but active,
+// so the error alone must not turn a failed service into "unknown".
+func unitState(name string) string {
+	status, _ := service.Status(name)
+	if status == "" {
+		return "unknown"
+	}
+	return status
 }

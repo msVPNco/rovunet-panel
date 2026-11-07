@@ -78,6 +78,14 @@ func init() {
 			if err := handlers.HandlePostUpdate(ctx); err != nil {
 				fmt.Fprintln(os.Stderr, "Warning: post-update:", err)
 			}
+			// Units written by v1.8.0/v1.8.1 from the removed old command's
+			// path fail with 203/EXEC; point them at the installed binary.
+			if fixed, err := migrate.RepairUnits(); err != nil {
+				fmt.Fprintln(os.Stderr, "Warning: repairing units:", err)
+			} else if len(fixed) > 0 {
+				migrate.Restart(fixed)
+				fmt.Printf("Repaired %d service(s) that still ran the old command\n", len(fixed))
+			}
 			return nil
 		},
 		SilenceUsage:  true,

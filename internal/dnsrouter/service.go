@@ -1,8 +1,6 @@
 package dnsrouter
 
 import (
-	"os"
-
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/service"
 )
@@ -11,7 +9,7 @@ const serviceName = "rovunet-dnsrouter"
 
 // CreateRouterService creates and enables the systemd service for the DNS router.
 func CreateRouterService() error {
-	execPath, err := os.Executable()
+	execPath, err := config.SelfPath()
 	if err != nil {
 		return err
 	}

@@ -307,3 +307,50 @@ func migrateSSHConfig() error {
 	}
 	return system.EnsureSSHConfig()
 }
+
+// RepairUnits fixes panel units that still run the removed old command,
+// written by a v1.8.0/v1.8.1 post-update that the old updater started from
+// the old path. It returns the units it changed; the caller restarts them.
+func RepairUnits() ([]string, error) {
+	old := filepath.Join(BinDir, legacy)
+	if _, err := os.Stat(old); err == nil {
+		return nil, nil // the old command still exists: units using it work
+	}
+	entries, err := os.ReadDir(SystemdDir)
+	if err != nil {
+		return nil, err
+	}
+	var fixed []string
+	for _, e := range entries {
+		n := e.Name()
+		if !strings.HasPrefix(n, "rovunet-") || !strings.HasSuffix(n, ".service") {
+			continue
+		}
+		path := filepath.Join(SystemdDir, n)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fixed, err
+		}
+		s := string(data)
+		repaired := strings.ReplaceAll(s, old+" ", filepath.Join(BinDir, "rovunet")+" ")
+		if repaired == s {
+			continue
+		}
+		if err := os.WriteFile(path, []byte(repaired), 0644); err != nil {
+			return fixed, err
+		}
+		fixed = append(fixed, strings.TrimSuffix(n, ".service"))
+	}
+	return fixed, nil
+}
+
+// Restart reloads systemd and restarts the given units.
+func Restart(units []string) {
+	if len(units) == 0 {
+		return
+	}
+	_ = run("systemctl", "daemon-reload")
+	for _, u := range units {
+		_ = run("systemctl", "restart", u+".service")
+	}
+}
