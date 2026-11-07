@@ -33,6 +33,7 @@ type Server struct {
 
 	connsMu sync.Mutex
 	conns   map[net.Conn]struct{}
+	logins  map[net.Conn][2]string // live connection → the login it used
 }
 
 // NewServer creates a SOCKS5 server with a single credential pair.
@@ -88,7 +89,36 @@ func (s *Server) SetCredentials(creds map[string]string) {
 
 	if emptyAndStrict {
 		s.closeAllConns()
+		return
 	}
+	s.dropRevoked()
+}
+
+// dropRevoked closes the open connections whose login is no longer in the
+// credential set (a user was removed or got a new password), so they end now
+// and not only when the client reconnects. Other users are not touched.
+func (s *Server) dropRevoked() {
+	s.connsMu.Lock()
+	var gone []net.Conn
+	for c, l := range s.logins {
+		if !s.checkCredential(l[0], l[1]) {
+			gone = append(gone, c)
+		}
+	}
+	s.connsMu.Unlock()
+	for _, c := range gone {
+		c.Close()
+	}
+}
+
+// noteLogin remembers which login a connection used.
+func (s *Server) noteLogin(conn net.Conn, user, pass string) {
+	s.connsMu.Lock()
+	defer s.connsMu.Unlock()
+	if s.logins == nil {
+		s.logins = make(map[net.Conn][2]string)
+	}
+	s.logins[conn] = [2]string{user, pass}
 }
 
 // hasAuth reports whether auth is currently required.
@@ -109,6 +139,7 @@ func (s *Server) trackConn(conn net.Conn, add bool) {
 		s.conns[conn] = struct{}{}
 	} else {
 		delete(s.conns, conn)
+		delete(s.logins, conn)
 	}
 }
 
@@ -311,6 +342,13 @@ func (s *Server) authenticate(conn net.Conn) bool {
 	pass := string(buf[:plen])
 
 	if s.checkCredential(user, pass) {
+		// Remember the login, then check again: a reload in between must
+		// not leave a removed user's connection running.
+		s.noteLogin(conn, user, pass)
+		if !s.checkCredential(user, pass) {
+			conn.Write([]byte{0x01, 0x01})
+			return false
+		}
 		conn.Write([]byte{0x01, 0x00}) // success
 		return true
 	}

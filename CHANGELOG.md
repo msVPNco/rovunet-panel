@@ -2,6 +2,10 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.10.1
+
+- **Removing a user now ends that user's open connections.** Until now only new logins were refused: a VLESS (WebSocket) or SOCKS5 connection that was already open kept working after `users remove`, or after a password change, until the app disconnected. Both servers now close the sessions of a removed or re-keyed user at once and leave other users' sessions alone. SSH, NaïveProxy and the Xray cores already dropped them.
+
 ## v1.10.0
 
 ### Fastest first, and every protocol the app supports from one install
