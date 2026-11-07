@@ -942,15 +942,11 @@ type naiveURIVariant struct {
 // produce a slipnet:// URI for the given tunnel. Naive tunnels emit two
 // (socks + ssh); everything else emits one (the tunnel's own backend+tag).
 func naiveAwareVariants(t *config.TunnelConfig) []naiveURIVariant {
-	if t.Transport != config.TransportNaive {
-		return []naiveURIVariant{{backend: t.Backend, tag: t.Tag}}
+	var out []naiveURIVariant
+	for _, v := range clientcfg.Variants(t) {
+		out = append(out, naiveURIVariant{backend: v.Backend, tag: v.Tag})
 	}
-	base := strings.TrimSuffix(t.Tag, "-socks")
-	base = strings.TrimSuffix(base, "-ssh")
-	return []naiveURIVariant{
-		{backend: config.BackendSOCKS, tag: base + "-socks"},
-		{backend: config.BackendSSH, tag: base + "-ssh"},
-	}
+	return out
 }
 
 // printClientConfigs prints every slipnet:// config of the given tunnels:
