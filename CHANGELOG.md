@@ -2,6 +2,11 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.15.1
+
+- **`rovunet diag` no longer lists the limits timer as an orphaned service** (v1.14.0 added `rovunet-user-expiry` and `diag` did not know it).
+- **`diag` checks each REALITY and XHTTP core's traffic statistics** and says whether they answer, since traffic limits on those cores depend on it. A core whose statistics do not answer is a warning, not a failure: limited users are simply not given that core.
+
 ## v1.15.0
 
 - **Traffic limits now cover REALITY and XHTTP too.** Those cores expose Xray's statistics on a loopback-only port (a statistics API, a counter per user named by the panel username, and a routing rule; WireGuard and Hysteria 2 have none and stay unmetered). The limits timer reads each core's counters every 5 minutes and adds them to the user's total together with VLESS and SOCKS5. A traffic-limited user is now given the VLESS, REALITY and XHTTP configs, and a core is given only if its statistics answer (checked when the configs are printed); otherwise the user keeps just VLESS.

@@ -14,6 +14,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
+	"github.com/msVPNco/rovunet-panel/internal/coreplan"
 	"github.com/msVPNco/rovunet-panel/internal/service"
 	"github.com/msVPNco/rovunet-panel/internal/version"
 	"github.com/msVPNco/rovunet-panel/internal/warp"
@@ -351,6 +352,14 @@ func handleSystemDiag(ctx *actions.Context) error {
 			listening := isPortListening(c.Port, c.Proto)
 			check(fmt.Sprintf("[%s] listening on %s/%d", c.Name, c.Proto, c.Port), listening, boolStr(listening, "yes"+portOwnerNote(c.Port, c.Proto), "nothing listens"))
 
+			if coreplan.Metered(c.Protocol) {
+				if coreinstall.StatsWorking(c.Name) {
+					check(fmt.Sprintf("[%s] traffic statistics", c.Name), true, "answering (traffic limits count this core)")
+				} else {
+					info(fmt.Sprintf("[%s] traffic statistics", c.Name), "no answer: traffic-limited users are not given this core's config")
+				}
+			}
+
 			exp, has, err := coreinstall.CertExpiry(c.Name)
 			if !has {
 				continue
@@ -379,6 +388,7 @@ func handleSystemDiag(ctx *actions.Context) error {
 		"rovunet-warp":       true,
 		"rovunet-iptables":   true,
 		"rovunet-core-certs": true,
+		"rovunet-user-expiry": true,
 	}
 	for _, c := range cores {
 		knownSvc[coreinstall.ServiceName(c.Name)] = true
