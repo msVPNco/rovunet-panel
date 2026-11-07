@@ -2,6 +2,10 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.9.2
+
+- `users configs` and the install summary also print, under each Xray core profile, the plain link or the WireGuard file for other apps, so a core can be tested with the official WireGuard app or any VLESS client.
+
 ## v1.9.1
 
 ### Core installs no longer accept pasted or placeholder addresses

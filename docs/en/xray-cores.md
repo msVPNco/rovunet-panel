@@ -69,7 +69,7 @@ Each user's credentials are derived from the core's own secret, the username and
 
 - `users add` gives the new user a configuration on every core; existing users' configurations do not change.
 - `users remove` and `passwd` revoke the old configuration within seconds. Xray validates every change first; if it rejects one, the previous configuration stays.
-- `users configs` and `export-clients --format rovunet` print each user's core profiles as native `rovunet://` profiles in the user's collection. `export-clients --format standard` prints the plain `vless://` and `hysteria2://` links for other clients.
+- `users configs` and `export-clients --format rovunet` print each user's core profiles as native `rovunet://` profiles in the user's collection. `export-clients --format standard` prints the plain `vless://` and `hysteria2://` links for other clients. `users configs` also prints, under each core profile, the plain link or the WireGuard file (save it as `rovunet.conf`) to import into any other app, such as the official WireGuard app.
 - Each user's plain profile is also in `/etc/rovunet/core/<name>/clients/<user>.txt` (`.conf` for WireGuard). Never use one WireGuard configuration on two devices at the same time.
 
 ## Backups

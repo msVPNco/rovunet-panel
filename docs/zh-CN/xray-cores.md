@@ -70,7 +70,7 @@ sudo rovunet core-remove r1       # stop and delete
 
 - `users add` 会在所有内核上为新用户生成配置；已有用户的配置保持不变。
 - `users remove` 和 `passwd` 会在几秒内撤销旧配置。Xray 会先验证每次变更；若被拒绝，则保留原有配置。
-- `users configs` 和 `export-clients --format rovunet` 会把每个用户的内核配置作为原生 `rovunet://` 配置输出到该用户的集合中。`export-clients --format standard` 会为其他客户端输出普通的 `vless://` 和 `hysteria2://` 链接。
+- `users configs` 和 `export-clients --format rovunet` 会把每个用户的内核配置作为原生 `rovunet://` 配置输出到该用户的集合中。`export-clients --format standard` 会为其他客户端输出普通的 `vless://` 和 `hysteria2://` 链接。`users configs` 还会在每个内核配置下输出普通链接或 WireGuard 文件（保存为 `rovunet.conf`），可导入任何其他应用，例如官方 WireGuard 应用。
 - 每个用户的普通配置也保存在 `/etc/rovunet/core/<名称>/clients/<用户>.txt`（WireGuard 为 `.conf`）。切勿在两台设备上同时使用同一份 WireGuard 配置。
 
 ## 备份

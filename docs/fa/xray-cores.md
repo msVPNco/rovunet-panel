@@ -80,7 +80,7 @@ sudo rovunet core-remove r1       # stop and delete
 
 - ⁦`users add`⁩ به کاربر جدید روی همهٔ هسته‌ها کانفیگ می‌دهد؛ کانفیگ کاربران فعلی عوض نمی‌شود.
 - ⁦`users remove`⁩ و ⁦`passwd`⁩ کانفیگ قبلی را ظرف چند ثانیه باطل می‌کنند. Xray هر تغییر را اول آزمایش می‌کند؛ اگر ردش کند، کانفیگ قبلی سر جایش می‌ماند.
-- ⁦`users configs`⁩ و ⁦`export-clients --format rovunet`⁩ کانفیگ‌های هسته‌ای هر کاربر را به‌صورت پروفایل بومی ⁦`rovunet://`⁩ در گروه همان کاربر چاپ می‌کنند. ⁦`export-clients --format standard`⁩ لینک‌های سادهٔ ⁦`vless://`⁩ و ⁦`hysteria2://`⁩ را برای کلاینت‌های دیگر چاپ می‌کند.
+- ⁦`users configs`⁩ و ⁦`export-clients --format rovunet`⁩ کانفیگ‌های هسته‌ای هر کاربر را به‌صورت پروفایل بومی ⁦`rovunet://`⁩ در گروه همان کاربر چاپ می‌کنند. ⁦`export-clients --format standard`⁩ لینک‌های سادهٔ ⁦`vless://`⁩ و ⁦`hysteria2://`⁩ را برای کلاینت‌های دیگر چاپ می‌کند. ⁦`users configs`⁩ زیر هر پروفایل هسته، لینک ساده یا فایل وایرگارد (با نام ⁦`rovunet.conf`⁩ ذخیره کنید) را هم چاپ می‌کند تا در هر اپ دیگری، مثل اپ رسمی WireGuard، وارد شود.
 - کانفیگ سادهٔ هر کاربر در ⁦`/etc/rovunet/core/<name>/clients/<user>.txt`⁩ هم هست (برای WireGuard پسوند ⁦`.conf`⁩). یک کانفیگ WireGuard را هرگز هم‌زمان روی دو دستگاه استفاده نکنید.
 
 ## بکاپ
