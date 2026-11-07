@@ -2,6 +2,14 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.8.1
+
+### Fixes
+
+- **Soar configs join each user's group in the app.** The install summary, `tunnel add` and `tunnel share` printed the login-free Soar config once without a user, so the app put it in a group of its own. It is now printed per user, like `users configs`.
+- **Updating from v1.7.0 is safer.** If a step after the migration fails, the update no longer makes the old updater rebuild old-named services on paths that were moved; the config directory is moved before users and groups are renamed, and a failed move restarts the stopped services.
+- The migration makes `config.json` owner-only (0600) right away; v1.7.0 wrote it readable by all local users.
+
 ## v1.8.0
 
 The panel is now **`rovunet`** everywhere. Updating from v1.7.0 migrates the server automatically.
