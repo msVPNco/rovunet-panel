@@ -383,11 +383,11 @@ func handleSystemDiag(ctx *actions.Context) error {
 	// ── Orphaned Services ───────────────────────────────────
 	allSvc := service.ListRovunetServices()
 	knownSvc := map[string]bool{
-		"rovunet-dnsrouter":  true,
-		"rovunet-socks5":     true,
-		"rovunet-warp":       true,
-		"rovunet-iptables":   true,
-		"rovunet-core-certs": true,
+		"rovunet-dnsrouter":   true,
+		"rovunet-socks5":      true,
+		"rovunet-warp":        true,
+		"rovunet-iptables":    true,
+		"rovunet-core-certs":  true,
 		"rovunet-user-expiry": true,
 	}
 	for _, c := range cores {
