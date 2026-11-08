@@ -29,7 +29,7 @@ Rovunet Panel is an open-source tool that turns a Linux server into a multi-prot
 - **Diagnostics**: live dashboard, health checks, certificate expiry and per-service logs.
 - **Limits and subscription links**: unlimited or limited users (days and/or GB, enforced every 5 minutes), and one `https://…/sub/<token>.json` link per user that carries all their configurations for the app's Subscriptions menu.
 - **Several addresses for one server**: add the server's other IPs and the links carry each address-based configuration once per address, so one blocked IP does not cut users off.
-- **Automatic REALITY target**: the camouflage site is chosen from a bank of high-traffic sites that are rarely blocked.
+- **Automatic REALITY target**: the camouflage site is chosen from a bank of high-traffic sites that are rarely blocked. A new install adds a second REALITY core on another port with a site of another company, so a user has two ways in.
 
 ## Protocols
 
