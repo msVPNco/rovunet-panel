@@ -14,7 +14,6 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
-	"github.com/msVPNco/rovunet-panel/internal/system"
 	"github.com/msVPNco/rovunet-panel/internal/usage"
 	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
@@ -114,7 +113,8 @@ func limitSummary(u config.UserConfig) string {
 // removeUserFully removes a user from the system, the config and every
 // service that holds credentials, and ends the user's open sessions.
 func removeUserFully(cfg *config.Config, out actions.OutputWriter, username string) error {
-	if err := system.RemoveSSHUser(username); err != nil {
+	// A traffic-limited user has no SSH account, so there may be nothing to remove.
+	if err := revokeSSH(username); err != nil {
 		return fmt.Errorf("failed to remove SSH user: %w", err)
 	}
 	cfg.RemoveUser(username)
@@ -182,7 +182,21 @@ func EnforceLimits(cfg *config.Config, out actions.OutputWriter, now time.Time) 
 		}
 		gone = append(gone, fmt.Sprintf("%s (%s)", u.Username, reason))
 	}
+	retryRevocations(cfg, out)
 	return gone, nil
+}
+
+// retryRevocations tries again whatever taking a user's access away could not
+// finish earlier (a core that would not restart, a Caddyfile that was
+// rejected), and removes the SSH account of any traffic-limited user who still
+// has one. It runs on every limits check, so a removal never waits for the
+// next user change.
+func retryRevocations(cfg *config.Config, out actions.OutputWriter) {
+	syncSSHAccess(cfg, out)
+	syncNaive(cfg, out)
+	if len(coreinstall.PendingRevocations()) > 0 {
+		syncCores(cfg, out)
+	}
 }
 
 // HasLimitedUsers reports whether any user has an expiry or a traffic limit.
@@ -253,7 +267,7 @@ func formatGB(b int64) string { return fmt.Sprintf("%.2f GB", float64(b)/float64
 
 // warnQuotaScope tells the operator what a traffic limit covers.
 func warnQuotaScope(cfg *config.Config, out actions.OutputWriter) {
-	out.Info("Traffic limit: only VLESS (WebSocket), REALITY and XHTTP traffic is counted, so this user is given only those configs. Counting updates every 15 seconds and the limit is checked every 5 minutes, so a little more than the limit can pass.")
+	out.Info("Traffic limit: only VLESS (WebSocket), REALITY and XHTTP traffic is counted, so this user is given only those configs, has no SSH account and no login on NaïveProxy, SOCKS5, Hysteria 2 or WireGuard. Counting updates every 15 seconds and the limit is checked every 5 minutes, so more than the limit can pass on a fast connection.")
 	for _, t := range cfg.Tunnels {
 		if t.Transport == config.TransportVLESS {
 			return
@@ -312,7 +326,7 @@ func renewUser(cfg *config.Config, out actions.OutputWriter, username, daysArg, 
 	if u.SubToken == "" {
 		u.SubToken = config.NewSubToken()
 	}
-	if err := system.AddSSHUser(username, u.Password); err != nil {
+	if err := grantSSH(u); err != nil {
 		return fmt.Errorf("failed to create SSH user: %w", err)
 	}
 	cfg.AddUser(u)

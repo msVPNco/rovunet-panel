@@ -2,6 +2,16 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.18.0
+
+- **A traffic-limited user can now use only the paths whose traffic is counted, and the server enforces it.** Before, "limited users get only VLESS, REALITY and XHTTP" was only what the panel printed: the server still accepted such a user on SSH, NaïveProxy, SOCKS5, Hysteria 2 and WireGuard, which are not counted. So a configuration a user saved while unlimited kept working after `users renew` gave them a quota (their credentials are derived from the same password), and their traffic never reached the quota. Now one rule (`MeteredOnly`) decides, everywhere: a limited user has no SSH account, no `basic_auth` line in NaïveProxy, no SOCKS5 login, and is left out of Hysteria 2 and WireGuard cores. It applies when a user is added, renewed, restored from a backup or after a password change, when a new core is made, and on `rovunet update`.
+- **What happens on update.** Users who are already traffic-limited lose their SSH account (open sessions end) and their Hysteria 2 and WireGuard credentials, and the cores that held them restart once. Their VLESS, REALITY and XHTTP configs, record, limit and subscription link are untouched.
+- **A core nobody may use is stopped, not left with an empty list.** It keeps its keys and settings and starts again when an unlimited user exists (this includes removing the last user of a core).
+- **A removal that could not be applied is never reported as done.** If Xray rejects the new configuration or will not restart, it is tried twice, 15 seconds apart. If it still fails, the core is stopped (running the old configuration would keep the user's access) and the failure is shown in `rovunet users list`. The 5-minute limits timer retries it. An addition that fails still keeps the previous configuration running. The cost: when this happens, other users of that core are disconnected too.
+- **Retiring a limited user no longer fails because they have no SSH account**, and removing a user no longer deletes a same-named account that Rovunet did not create.
+- **Not covered** (they cannot be tied to one user): Soar without a login, DNS tunnels with no SSH account behind them, and cores made with the old `--devices` option. The NaïveProxy service is kept running if its new Caddyfile is rejected (it also serves the subscription links and VLESS); the rejection is shown as a warning and retried every 5 minutes.
+- Tested with unit tests that replace systemd, Xray and the account commands; nothing here has been run against a real server yet. See `docs/testing/quota-access.md` for the checks to run on a throwaway server.
+
 ## v1.17.1
 
 - **Removing the extra addresses now refreshes the subscription links at once.** In v1.17.0 only adding them did, so after `rovunet config address auto` the links kept the extra addresses' configs until the next 5-minute run.

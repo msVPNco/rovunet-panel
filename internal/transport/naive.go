@@ -213,8 +213,9 @@ func vlessRouteLines(routes []vlessRoute) string {
 }
 
 // naiveAuthLines lists the tunnel's own credential (when set) plus one
-// basic_auth line per panel user, so every user's client config (which carries that
-// user's name and password) authenticates against the proxy.
+// basic_auth line per panel user allowed on uncounted services, so each such
+// user's client config (which carries that user's name and password)
+// authenticates against the proxy.
 func naiveAuthLines(user, pass string, users []config.UserConfig) string {
 	var b strings.Builder
 	seen := map[string]bool{}
@@ -225,8 +226,19 @@ func naiveAuthLines(user, pass string, users []config.UserConfig) string {
 		seen[u] = true
 		fmt.Fprintf(&b, "      basic_auth %s %s\n", caddyQuote(u), caddyQuote(p))
 	}
-	add(user, pass)
+	// The tunnel's own credential is the first panel user's name and password;
+	// it is dropped when that user has since been given a traffic limit.
+	tunnelCredentialLimited := false
 	for _, u := range users {
+		if u.Username == user && u.MeteredOnly() {
+			tunnelCredentialLimited = true
+		}
+	}
+	if !tunnelCredentialLimited {
+		add(user, pass)
+	}
+	// A traffic-limited user is left out: this proxy does not count traffic.
+	for _, u := range config.UnmeteredUsers(users) {
 		add(u.Username, u.Password)
 	}
 	return b.String()

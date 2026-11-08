@@ -221,29 +221,21 @@ func runPostUpdate(ctx *actions.Context) error {
 
 	// Recreate SOCKS5 proxy service to pick up new ExecStart format (e.g. --creds)
 	if service.Exists("rovunet-socks5") {
-		directSOCKS := false
-		for _, t := range cfg.Tunnels {
-			if t.Transport == config.TransportSOCKS {
-				directSOCKS = true
-			}
-		}
 		if cfg.Warp.Enabled {
 			proxy.RunAsUser = warp.SocksUser
 		}
-		var setupErr error
-		if directSOCKS {
-			setupErr = proxy.SetupSOCKSExternalWithUsers(cfg.Users)
-		} else if len(cfg.Users) > 0 {
-			setupErr = proxy.SetupSOCKSWithUsers(cfg.Users)
-		} else {
-			setupErr = proxy.SetupSOCKS()
-		}
-		if setupErr != nil {
+		if setupErr := setupSOCKS(cfg); setupErr != nil {
 			out.Warning("Failed to regenerate SOCKS5 proxy: " + setupErr.Error())
 		} else {
 			out.Success("  rovunet-socks5 regenerated and restarted")
 		}
 	}
+
+	// Apply the rule that a traffic-limited user may use only counted paths to
+	// users limited by an older version: no SSH account, no Hysteria 2 or
+	// WireGuard credential.
+	syncSSHAccess(cfg, out)
+	syncCores(cfg, out)
 
 	// Restart DNS router last so tunnels are ready
 	if service.Exists("rovunet-dnsrouter") {

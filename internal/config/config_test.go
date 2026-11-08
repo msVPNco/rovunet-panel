@@ -92,3 +92,19 @@ func TestValidatePublicAddress(t *testing.T) {
 		}
 	}
 }
+
+func TestTrafficLimitedUsersAreMeteredOnly(t *testing.T) {
+	free := UserConfig{Username: "alice"}
+	timed := UserConfig{Username: "bob", ExpiresAt: "2030-01-01T00:00:00Z"} // time limit only
+	limited := UserConfig{Username: "carol", QuotaGB: 5}
+	if free.MeteredOnly() || timed.MeteredOnly() || !limited.MeteredOnly() {
+		t.Fatal("only a traffic limit confines a user to counted paths")
+	}
+	got := UnmeteredUsers([]UserConfig{free, limited, timed})
+	if len(got) != 2 || got[0].Username != "alice" || got[1].Username != "bob" {
+		t.Fatalf("got %v", got)
+	}
+	if got := UnmeteredUsers(nil); got == nil || len(got) != 0 {
+		t.Fatalf("empty input must give an empty, non-nil list, got %#v", got)
+	}
+}

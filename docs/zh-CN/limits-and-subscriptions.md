@@ -24,6 +24,10 @@ sudo rovunet users renew    # 恢复已停用的用户：登录信息和订阅�
 | 基于 WebSocket 的 VLESS | SSH、TLS 上的 SSH、NaïveProxy |
 | VLESS + REALITY 和 VLESS + XHTTP（前提是该内核的统计接口有响应，可用 `sudo rovunet diag` 检查） | DNS 隧道、Soar、Hysteria 2、WireGuard |
 
+面板在服务器端也执行这一规则，而不只是在输出的配置里。限流用户**没有 SSH 账号**，也不能登录 NaïveProxy、SOCKS5、Hysteria 2 和 WireGuard，因此他之前保存的配置（例如不限流时拿到的）会失效，`users renew` 之后也一样。他的用户记录、限额和订阅链接保持不变。如果某个 Hysteria 2 或 WireGuard 内核的所有用户都被限流，该内核会停止，直到出现不限流的用户。
+
+有些访问无法绑定到某个用户，不受任何配额约束：无需登录的 Soar、背后没有 SSH 账号的 DNS 隧道，以及用旧的 `--devices` 选项创建的内核。
+
 ## 订阅链接
 
 每个用户（无论是否限量）都有**一条链接**，包含其所有配置：

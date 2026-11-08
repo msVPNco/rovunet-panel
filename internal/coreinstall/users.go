@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/coreplan"
@@ -29,6 +31,17 @@ const (
 // Profile is one user's client profile on one core.
 type Profile struct {
 	Core, Protocol, Link string
+}
+
+// usersFor is who may hold a credential on a core of this protocol. Cores whose
+// traffic the panel counts (REALITY, XHTTP) serve every user; the others
+// (Hysteria 2, WireGuard) would let a traffic-limited user move traffic that is
+// never counted, so those users are left out of them.
+func usersFor(protocol string, users []config.UserConfig) []config.UserConfig {
+	if coreplan.Metered(protocol) {
+		return users
+	}
+	return config.UnmeteredUsers(users)
 }
 
 func clientsFor(users []config.UserConfig) []coreplan.Client {
@@ -75,7 +88,8 @@ func loadUserCore(name string) (o coreplan.Options, st coreplan.State, ok bool, 
 // writeUserCore regenerates a user core's files for users. changed reports
 // whether the server configuration differs from what was on disk.
 func writeUserCore(dir string, o coreplan.Options, st *coreplan.State, users []config.UserConfig) (changed bool, err error) {
-	clients := clientsFor(users)
+	clients := clientsFor(usersFor(o.Protocol, users))
+	st.Paused = len(clients) == 0
 	if st.APIPort == 0 && coreplan.Metered(o.Protocol) {
 		st.APIPort = pickAPIPort(filepath.Base(dir))
 	}
@@ -158,6 +172,10 @@ func InstallForUsers(name string, o coreplan.Options, users []config.UserConfig)
 	if _, err = writeUserCore(dir, o, &st, users); err != nil {
 		return "", err
 	}
+	if len(users) > 0 && st.Paused {
+		err = fmt.Errorf("no user may use %s: every user has a traffic limit, and only VLESS, REALITY and XHTTP are counted", o.Protocol)
+		return "", err
+	}
 	if err = TestConfig(filepath.Join(dir, "server.json")); err != nil {
 		return "", err
 	}
@@ -192,6 +210,81 @@ func Sync(users []config.UserConfig) error {
 	return errors.Join(errs...)
 }
 
+// Seams for tests.
+var (
+	startUnit           = service.Start
+	stopUnit            = service.Stop
+	testXray            = TestConfig
+	xrayInstalled       = func() bool { _, err := os.Stat(XrayPath); return err == nil }
+	waitBetweenAttempts = func() { time.Sleep(applyWait) }
+)
+
+const (
+	// applyAttempts and applyWait bound how long a failed change is retried:
+	// two attempts, 15 seconds apart.
+	applyAttempts = 2
+	applyWait     = 15 * time.Second
+)
+
+// clientNames lists whose client files a core currently has.
+func clientNames(dir string) map[string]bool {
+	names := map[string]bool{}
+	entries, err := os.ReadDir(filepath.Join(dir, "clients"))
+	if err != nil {
+		return names
+	}
+	for _, e := range entries {
+		names[strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))] = true
+	}
+	return names
+}
+
+func saveState(dir string, st *coreplan.State) error {
+	return writeJSON(filepath.Join(dir, stateFile), st)
+}
+
+// applyOnce validates the new configuration and makes the core run it. retry
+// is false when trying again cannot help (Xray rejected the file).
+func applyOnce(name, serverPath string, start bool) (retry bool, err error) {
+	if xrayInstalled() {
+		if err := testXray(serverPath); err != nil {
+			return false, err
+		}
+	}
+	unit := ServiceName(name)
+	if start {
+		return true, startUnit(unit)
+	}
+	_ = collectCore(name) // Xray's counters restart at zero with the core
+	return true, restartCore(unit)
+}
+
+// applyCore deploys a core's new configuration, trying at most applyAttempts
+// times. When it still fails: a change that only adds users puts the previous
+// configuration back and the core keeps running; a change that takes a user's
+// access away stops the core, because running the old configuration would
+// leave that user's access in place. The new file stays on disk either way.
+func applyCore(name, serverPath string, previous []byte, revoking, start bool) error {
+	var err error
+	for attempt := 1; attempt <= applyAttempts; attempt++ {
+		if attempt > 1 {
+			waitBetweenAttempts()
+		}
+		var retry bool
+		if retry, err = applyOnce(name, serverPath, start); err == nil {
+			return nil
+		} else if !retry {
+			break
+		}
+	}
+	if revoking {
+		_ = stopUnit(ServiceName(name))
+		return fmt.Errorf("access removal was not applied, so core %s was stopped: %w", name, err)
+	}
+	_ = os.WriteFile(serverPath, previous, 0600)
+	return err
+}
+
 func syncCore(name string, users []config.UserConfig) error {
 	o, st, ok, err := loadUserCore(name)
 	if err != nil || !ok {
@@ -200,18 +293,61 @@ func syncCore(name string, users []config.UserConfig) error {
 	dir := filepath.Join(Root, name)
 	serverPath := filepath.Join(dir, "server.json")
 	previous, _ := os.ReadFile(serverPath)
+	wasPaused, wasPending := st.Paused, st.Revocation != ""
+	before := clientNames(dir)
 	changed, err := writeUserCore(dir, o, &st, users)
-	if err != nil || !changed {
+	if err != nil {
 		return err
 	}
-	if _, statErr := os.Stat(XrayPath); statErr == nil {
-		if err := TestConfig(serverPath); err != nil {
-			_ = os.WriteFile(serverPath, previous, 0600)
+	after := clientNames(dir)
+	revoking := wasPending
+	for n := range before {
+		if !after[n] {
+			revoking = true
+		}
+	}
+
+	if st.Paused {
+		// No user may use this core. server.json holds no credential, so
+		// stopping it ends every session; it is started again by the next
+		// allowed user.
+		if !wasPaused {
+			_ = collectCore(name)
+		}
+		_ = stopUnit(ServiceName(name))
+		st.Revocation = ""
+		return saveState(dir, &st)
+	}
+	if !changed && !wasPaused && !wasPending {
+		return nil
+	}
+	applyErr := applyCore(name, serverPath, previous, revoking, wasPaused || wasPending)
+	if revoking {
+		st.Revocation = ""
+		if applyErr != nil {
+			st.Revocation = applyErr.Error()
+		}
+		if err := saveState(dir, &st); err != nil && applyErr == nil {
 			return err
 		}
 	}
-	_ = collectCore(name) // Xray's counters restart at zero with the core
-	return service.Restart(ServiceName(name))
+	return applyErr
+}
+
+// PendingRevocations lists the cores where taking a user's access away has not
+// been confirmed, as "core: reason". The limits timer retries them.
+func PendingRevocations() []string {
+	cores, err := List()
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, c := range cores {
+		if _, st, ok, err := loadUserCore(c.Name); err == nil && ok && st.Revocation != "" {
+			out = append(out, c.Name+": "+st.Revocation)
+		}
+	}
+	return out
 }
 
 // Profiles returns user's profile on every user core, sorted by core name.

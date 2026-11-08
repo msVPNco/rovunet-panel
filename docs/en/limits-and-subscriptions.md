@@ -24,6 +24,10 @@ Traffic limits can only be enforced on traffic the panel can measure. A limited 
 | VLESS over WebSocket | SSH, SSH over TLS, NaïveProxy |
 | VLESS + REALITY and VLESS + XHTTP, while that core's statistics answer (`sudo rovunet diag` checks this) | DNS tunnels, Soar, Hysteria 2, WireGuard |
 
+The panel also enforces this on the server, not only in the configs it prints. A limited user has **no SSH account** and no login on NaïveProxy, SOCKS5, Hysteria 2 or WireGuard, so a configuration they saved earlier (for example while unlimited) stops working, including after `users renew`. Their record, limit and subscription link stay. If every user of a Hysteria 2 or WireGuard core is limited, that core is stopped until an unlimited user exists.
+
+Some access cannot be tied to one user and is outside any quota: Soar without a login, DNS tunnels without an SSH account behind them, and cores made with the older `--devices` option.
+
 ## Subscription links
 
 Every user, limited or not, gets **one link** that carries all of their configurations:
