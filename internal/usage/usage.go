@@ -165,3 +165,43 @@ func Restore(saved map[string]int64) error {
 	}
 	return os.Rename(tmp, path)
 }
+
+// Collection is when the Xray cores' counters were last read into the totals,
+// and whether every core answered. The VLESS and SOCKS5 servers write their
+// own totals every FlushEvery; Xray traffic is only added when the limits
+// check reads the cores, so this is how old a limited user's count can be.
+type Collection struct {
+	At       time.Time `json:"at"`
+	Complete bool      `json:"complete"`
+}
+
+// collectedName is the file that keeps the last Collection. It does not end
+// in .json, so Totals never reads it as a server's totals.
+const collectedName = "collected.state"
+
+// MarkCollected records a read of the cores' counters.
+func MarkCollected(at time.Time, complete bool) error {
+	data, err := json.Marshal(Collection{At: at.UTC(), Complete: complete})
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(Dir, 0755); err != nil {
+		return err
+	}
+	path := filepath.Join(Dir, collectedName)
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+// LastCollected returns the last recorded read, or false if there was none.
+func LastCollected() (Collection, bool) {
+	var c Collection
+	data, err := os.ReadFile(filepath.Join(Dir, collectedName))
+	if err != nil || json.Unmarshal(data, &c) != nil || c.At.IsZero() {
+		return Collection{}, false
+	}
+	return c, true
+}

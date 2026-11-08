@@ -86,7 +86,8 @@ func askUserLimits(daysArg, gbArg string) (days, gb int, err error) {
 
 // newUser builds a user with the chosen limits, counted from now.
 func newUser(username, password string, days, gb int, now time.Time) config.UserConfig {
-	u := config.UserConfig{Username: username, Password: password, QuotaGB: gb, SubToken: config.NewSubToken(), UsageBase: usage.Totals()[username]}
+	u := config.UserConfig{Username: username, Password: password, QuotaGB: gb, SubToken: config.NewSubToken(), UsageBase: usage.Totals()[username],
+		AccountID: config.NewID(), PeriodID: config.NewID()}
 	if days > 0 {
 		u.ExpiresAt = now.UTC().Add(time.Duration(days) * 24 * time.Hour).Format(time.RFC3339)
 	}
@@ -162,8 +163,13 @@ func retireUser(cfg *config.Config, out actions.OutputWriter, u config.UserConfi
 // EnforceLimits retires every user whose expiry has passed or whose traffic
 // limit is used up, and returns "name (reason)" for each.
 func EnforceLimits(cfg *config.Config, out actions.OutputWriter, now time.Time) ([]string, error) {
-	if err := coreinstall.CollectUsage(); err != nil {
-		out.Warning("Xray traffic: " + err.Error())
+	collectErr := coreinstall.CollectUsage()
+	if collectErr != nil {
+		out.Warning("Xray traffic: " + collectErr.Error())
+	}
+	// The status files say how fresh and how complete a user's count is.
+	if err := usage.MarkCollected(now, collectErr == nil); err != nil {
+		out.Warning("traffic counting: " + err.Error())
 	}
 	totals := usage.Totals()
 	var gone []string
@@ -287,6 +293,19 @@ func forgetArchived(cfg *config.Config, username string) bool {
 	return false
 }
 
+// renewedUser is a stopped user brought back: the same password, link and
+// account, a new period, and limits counted from now.
+func renewedUser(arch config.ArchivedUser, days, gb int, now time.Time) config.UserConfig {
+	u := newUser(arch.Username, arch.Password, days, gb, now) // a new PeriodID
+	if arch.SubToken != "" {
+		u.SubToken = arch.SubToken // the same link works again
+	}
+	if arch.AccountID != "" {
+		u.AccountID = arch.AccountID
+	}
+	return u
+}
+
 // renewUser brings a stopped user back with the same password and link and
 // new limits counted from now.
 func renewUser(cfg *config.Config, out actions.OutputWriter, username, daysArg, gbArg string) error {
@@ -321,11 +340,7 @@ func renewUser(cfg *config.Config, out actions.OutputWriter, username, daysArg, 
 	if err != nil {
 		return err
 	}
-	u := newUser(username, arch.Password, days, gb, time.Now())
-	u.SubToken = arch.SubToken // the same link works again
-	if u.SubToken == "" {
-		u.SubToken = config.NewSubToken()
-	}
+	u := renewedUser(*arch, days, gb, time.Now())
 	if err := grantSSH(u); err != nil {
 		return fmt.Errorf("failed to create SSH user: %w", err)
 	}

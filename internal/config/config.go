@@ -46,6 +46,9 @@ type Config struct {
 	// Subscription feeds repeat every address-based config once per extra
 	// address, so when one address is blocked the app tries the next.
 	ExtraAddresses []string `json:"extra_addresses,omitempty"`
+	// ServerID names this panel in each user's status file. It is random,
+	// made once, and does not change with the server's address or name.
+	ServerID string `json:"server_id,omitempty"`
 }
 
 // UserConfig tracks a managed user (same credentials for SSH + SOCKS).
@@ -62,6 +65,13 @@ type UserConfig struct {
 	// UsageBase is the traffic already counted for this name when the user
 	// was created or renewed; the limit counts what is used beyond it.
 	UsageBase int64 `json:"usage_base,omitempty"`
+	// AccountID names the account in its status file. It is random, made
+	// when the user is created, and kept through renewals and password
+	// changes; a user removed and added again gets a new one.
+	AccountID string `json:"account_id,omitempty"`
+	// PeriodID names the current paid period: renewing the user starts a new
+	// one, so the app never adds the traffic of two periods together.
+	PeriodID string `json:"period_id,omitempty"`
 }
 
 // ArchivedUser is a user who was removed because the expiry passed or the
@@ -104,6 +114,12 @@ func NewSubToken() string {
 	}
 	return hex.EncodeToString(b)
 }
+
+// NewID returns a fresh random identifier (128 bits, 32 hex) for a server,
+// an account or a period. It is the same shape as a subscription token but
+// is never one: anyone with the subscription link can read it, and it opens
+// nothing.
+func NewID() string { return NewSubToken() }
 
 // Expired reports whether the user has an expiry that has passed.
 func (u UserConfig) Expired(now time.Time) bool {

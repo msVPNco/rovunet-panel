@@ -2,6 +2,14 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.19.0
+
+- **Each user now has an account status file for the app**, next to the subscription: the same link with `.json` replaced by `.status.json`. It says whether the account is `active`, `expired` or `limit_reached`, the expiry, the traffic limit and the traffic used (in bytes, both directions), how complete and how fresh that count is (`metering_status`, `sampled_at`), and a `revision` that goes up when anything but the times changes. It grants nothing: the server enforces the limits on its own. The subscription file is unchanged, because the app rejects keys it does not know. See [Limits and subscription links](docs/en/limits-and-subscriptions.md#account-status-file) for every key.
+- **Stable identifiers.** The panel gets a random `server_id`, and every user an `account_id` and a `period_id`. They do not depend on the server's IP or name. `users renew` keeps the account and starts a new period, so the app never adds two periods together; `users passwd` keeps both. Existing servers and users get theirs on the first run after the update.
+- **A stopped user keeps the status file** (with the reason) while the subscription goes, so the app can say why the configs stopped working. A user removed for good has neither; a 404 is not "expired".
+- The subscription and status files are served with `Cache-Control: no-store`.
+- v1.18.0 has now been checked on a real server: a user renewed with a traffic limit was refused on SSH and NaïveProxy, was left out of SOCKS5, Hysteria 2 and WireGuard, and kept REALITY and XHTTP; REALITY traffic counted within 1% of what the app reported.
+
 ## v1.18.0
 
 - **A traffic-limited user can now use only the paths whose traffic is counted, and the server enforces it.** Before, "limited users get only VLESS, REALITY and XHTTP" was only what the panel printed: the server still accepted such a user on SSH, NaïveProxy, SOCKS5, Hysteria 2 and WireGuard, which are not counted. So a configuration a user saved while unlimited kept working after `users renew` gave them a quota (their credentials are derived from the same password), and their traffic never reached the quota. Now one rule (`MeteredOnly`) decides, everywhere: a limited user has no SSH account, no `basic_auth` line in NaïveProxy, no SOCKS5 login, and is left out of Hysteria 2 and WireGuard cores. It applies when a user is added, renewed, restored from a backup or after a password change, when a new core is made, and on `rovunet update`.

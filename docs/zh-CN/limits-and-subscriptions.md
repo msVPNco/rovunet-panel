@@ -42,6 +42,50 @@ https://your-domain/sub/<token>.json
 - 令牌是随机的，链接无法被猜到。请像对待配置本身一样保密。
 - 限量用户被停用期间，链接不再提供新配置；执行 `users renew` 后同一链接恢复可用。
 
+## 账户状态文件
+
+每个订阅旁边都有一个状态文件：同一链接，把 `.json` 换成 `.status.json`。
+
+```
+https://your-domain/sub/<token>.status.json
+```
+
+它告诉应用该账户还能使用什么，以便应用显示剩余流量和天数，并说明配置为何停止工作。它不授予任何权限：限制由服务器自行执行，文件中没有密码或配置。订阅文件本身没有变化。
+
+```json
+{
+  "version": 1,
+  "server_id": "<32 hex>",
+  "account_id": "<32 hex>",
+  "period_id": "<32 hex>",
+  "account_status": "active",
+  "expires_at": "2026-12-01T00:00:00Z",
+  "limit_bytes": 10737418240,
+  "used_bytes": 1234567,
+  "metering_status": "complete",
+  "sampled_at": "2026-11-08T10:00:00Z",
+  "generated_at": "2026-11-08T10:00:03Z",
+  "revision": 7
+}
+```
+
+| 键 | 含义 |
+|---|---|
+| `server_id` | 本面板。随机生成一次，与服务器的 IP 或名称无关。 |
+| `account_id` | 本账户。`users renew` 和 `users passwd` 后保持不变；删除后重新添加的用户会得到新的。 |
+| `period_id` | 当前周期。`users renew` 开始新周期，应用不会把两个周期的流量相加。 |
+| `account_status` | `active`、`expired` 或 `limit_reached`。 |
+| `expires_at` | 到期时间（UTC），无到期则为 `null`。 |
+| `limit_bytes` / `used_bytes` | 本周期的流量上限和已用流量，双向合计，1 GB = 1024³ 字节。没有流量上限的用户两者均为 `null`（其流量并非在所有协议上都被统计）。 |
+| `metering_status` | `complete`、`partial`（上次读取时有核心未响应，数值可能偏低）、`unavailable`（从未读取）或 `not_metered`（无流量上限）。 |
+| `sampled_at` | 上次读取 Xray 计数器的时间（无流量上限时为 `null`）。VLESS 计数器最多比 `generated_at` 早 15 秒。 |
+| `generated_at` | 文件写入时间。与 HTTP `Date` 响应头比较，可避免手机时钟错误的影响。 |
+| `revision` | 除时间外任何内容变化时加一。 |
+
+- 每次用户变更以及每次限额检查（只要有用户设了限制，每 5 分钟一次）都会重写该文件，并以 `Cache-Control: no-store` 提供。
+- 被停用的用户保留状态文件（`expired` 或 `limit_reached`），但订阅文件会被删除。彻底删除的用户两者都没有。**404 不代表已到期**：旧版面板或已删除的账户也会返回 404，因此应用应显示“账户信息不可用”。
+- 与订阅链接一样，状态链接也包含令牌：任何拿到它的人都能看到该账户的用量。
+
 ## 同一服务器的多个地址
 
 如果服务器的某个 IP 被封锁，同一服务器的其他 IP 可能仍可用。用逗号分隔的列表添加它们；第一个是主地址（`auto` 表示自动检测）：
