@@ -83,6 +83,7 @@ It tells the app what the account may still use, so the app can show remaining t
 | `revision` | Goes up by one whenever anything but the times changes. It belongs to this URL: after `users passwd` the link has a new token and the new file starts again at 1 (same `account_id` and `period_id`), so an app that follows a new link compares from scratch. |
 
 - The file is rewritten on every user change and on every limits check (every 5 minutes while some user has a limit). It is served with `Cache-Control: no-store`.
+- After an update, or on a new server, `metering_status` is `unavailable` until the first limits check, about 5 minutes later (the timer adds a random delay of up to 20 seconds).
 - A stopped user keeps the status file (with `expired` or `limit_reached`) while the subscription file is removed. A user removed for good has neither. **404 does not mean expired**: it is also what an older panel or a removed account returns, so the app should show "account information unavailable".
 - Like the subscription link, the status link carries the token: anyone who has it can see the account's usage.
 

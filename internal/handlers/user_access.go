@@ -100,3 +100,12 @@ func pendingRevocationNotes() []string {
 	}
 	return notes
 }
+
+// userAccessSummary names what a new user can connect with, for the message
+// after the user is added.
+func userAccessSummary(u config.UserConfig) string {
+	if u.MeteredOnly() {
+		return "VLESS, REALITY and XHTTP only"
+	}
+	return "SSH + SOCKS"
+}
