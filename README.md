@@ -13,7 +13,7 @@
 
 <p align="center"><b>English</b> · <a href="README.fa.md">فارسی</a> · <a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
 
-<p align="center">📘 <a href="docs/guides/Rovunet-Panel-Guide-EN.pdf">Complete guide (PDF)</a> · <a href="docs/en/README.md">Documentation</a> · <a href="https://github.com/msVPNco/rovunet-android">Android app</a> · <a href="CHANGELOG.md">Changelog</a></p>
+<p align="center">📘 <a href="docs/guides/Rovunet-Panel-Guide-EN.pdf">Complete guide (PDF)</a> · <a href="docs/en/README.md">Documentation</a> · <a href="https://github.com/msVPNco/rovunet-app">Android app</a> · <a href="CHANGELOG.md">Changelog</a></p>
 
 ---
 
@@ -23,7 +23,7 @@ Rovunet Panel is an open-source tool that turns a Linux server into a multi-prot
 
 - **14 protocols** across proxies, SSH, DNS tunnels and Xray cores, managed from one command-line tool with an interactive menu.
 - **One login per user** for every tunnel, and per-user VLESS identities that are revoked within seconds.
-- **Ready-to-import configurations**: native `rovunet://` links for the [Rovunet app](https://github.com/msVPNco/rovunet-android), standard `vless://`, `hysteria2://` and WireGuard files for other clients.
+- **Ready-to-import configurations**: native `rovunet://` links for the [Rovunet app](https://github.com/msVPNco/rovunet-app), standard `vless://`, `hysteria2://` and WireGuard files for other clients.
 - **Port 443 fronting**: VLESS and SSH over TLS share NaïveProxy's domain, port and Let's Encrypt certificate behind a decoy website.
 - **Safe operations**: checksum-verified updates with rollback, validated configurations before deployment, full-server backup and restore.
 - **Diagnostics**: live dashboard, health checks, certificate expiry and per-service logs.

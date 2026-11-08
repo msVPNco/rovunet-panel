@@ -15,7 +15,7 @@
 
 <p align="center"><a href="README.md">English</a> · <b>فارسی</b> · <a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a></p>
 
-<p align="center">📘 <a href="docs/guides/Rovunet-Panel-Guide-FA.pdf">راهنمای جامع (PDF)</a> · <a href="docs/fa/README.md">مستندات</a> · <a href="https://github.com/msVPNco/rovunet-android">اپ اندروید</a> · <a href="CHANGELOG.md">تغییرات</a></p>
+<p align="center">📘 <a href="docs/guides/Rovunet-Panel-Guide-FA.pdf">راهنمای جامع (PDF)</a> · <a href="docs/fa/README.md">مستندات</a> · <a href="https://github.com/msVPNco/rovunet-app">اپ اندروید</a> · <a href="CHANGELOG.md">تغییرات</a></p>
 
 ---
 
@@ -25,7 +25,7 @@
 
 - **۱۴ پروتکل** در چهار دسته‌ی پروکسی، SSH، تونل DNS و هسته‌ی Xray، با یک ابزار خط فرمان و منوی تعاملی.
 - **یک لاگین برای هر کاربر** روی همه‌ی تونل‌ها، و شناسه‌ی VLESS جدا برای هر کاربر که ظرف چند ثانیه قابل لغو است.
-- **کانفیگ آماده‌ی وارد کردن**: لینک بومی ⁦`rovunet://⁦`⁩ برای [اپ Rovunet](https://github.com/msVPNco/rovunet-android)، و ⁦`⁩vless://⁦`⁩، ⁦`⁩hysteria2://`⁩ و فایل WireGuard استاندارد برای کلاینت‌های دیگر.
+- **کانفیگ آماده‌ی وارد کردن**: لینک بومی ⁦`rovunet://⁦`⁩ برای [اپ Rovunet](https://github.com/msVPNco/rovunet-app)، و ⁦`⁩vless://⁦`⁩، ⁦`⁩hysteria2://`⁩ و فایل WireGuard استاندارد برای کلاینت‌های دیگر.
 - **سرو روی پورت ۴۴۳**: VLESS و SSH over TLS دامنه، پورت و گواهی Let's Encrypt NaïveProxy را پشت یک سایت پوششی مشترک دارند.
 - **عملیات امن**: آپدیت تأییدشده با checksum و برگشت خودکار، آزمایش کانفیگ پیش از استقرار، و بکاپ و بازیابی کامل سرور.
 - **عیب‌یابی**: داشبورد زنده، بررسی سلامت، تاریخ انقضای گواهی‌ها و لاگ هر سرویس.

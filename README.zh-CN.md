@@ -13,7 +13,7 @@
 
 <p align="center"><a href="README.md">English</a> · <a href="README.fa.md">فارسی</a> · <a href="README.ru.md">Русский</a> · <b>简体中文</b></p>
 
-<p align="center">📘 <a href="docs/guides/Rovunet-Panel-Guide-ZH.pdf">完整指南（PDF）</a> · <a href="docs/zh-CN/README.md">文档</a> · <a href="https://github.com/msVPNco/rovunet-android">Android 应用</a> · <a href="CHANGELOG.md">更新日志</a></p>
+<p align="center">📘 <a href="docs/guides/Rovunet-Panel-Guide-ZH.pdf">完整指南（PDF）</a> · <a href="docs/zh-CN/README.md">文档</a> · <a href="https://github.com/msVPNco/rovunet-app">Android 应用</a> · <a href="CHANGELOG.md">更新日志</a></p>
 
 ---
 
@@ -23,7 +23,7 @@ Rovunet Panel 是一个开源工具，可将 Linux 服务器变成多协议接�
 
 - **14 种协议**，涵盖代理、SSH、DNS 隧道和 Xray 内核，由一个带交互式菜单的命令行工具统一管理。
 - **每个用户一个登录**即可用于所有隧道，并为每个用户提供可在几秒内撤销的独立 VLESS 身份。
-- **可直接导入的配置**：供 [Rovunet 应用](https://github.com/msVPNco/rovunet-android) 使用的原生 `rovunet://` 链接，以及供其他客户端使用的标准 `vless://`、`hysteria2://` 链接和 WireGuard 文件。
+- **可直接导入的配置**：供 [Rovunet 应用](https://github.com/msVPNco/rovunet-app) 使用的原生 `rovunet://` 链接，以及供其他客户端使用的标准 `vless://`、`hysteria2://` 链接和 WireGuard 文件。
 - **443 端口前置**：VLESS 和 SSH over TLS 与 NaïveProxy 共用域名、端口和 Let's Encrypt 证书，隐藏在伪装网站之后。
 - **安全运维**：带校验和与回滚的更新、部署前验证配置、整机备份与恢复。
 - **诊断**：实时仪表盘、健康检查、证书到期提示和各服务日志。

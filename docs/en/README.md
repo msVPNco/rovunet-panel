@@ -27,6 +27,6 @@ Rovunet Panel turns a Linux server into a multi-protocol access server. It insta
 ## Project
 
 - Source: [github.com/msVPNco/rovunet-panel](https://github.com/msVPNco/rovunet-panel) · [Changelog](../../CHANGELOG.md) · [Integration status](../ROVUNET-STATUS.md)
-- Android app: [github.com/msVPNco/rovunet-android](https://github.com/msVPNco/rovunet-android)
+- Android app: [github.com/msVPNco/rovunet-app](https://github.com/msVPNco/rovunet-app)
 - Community: [t.me/RovunetVPN](https://t.me/RovunetVPN)
 - Based on [SlipGate](https://github.com/anonvector/slipgate) by Anonvector, not affiliated. See [NOTICE](../../NOTICE.md). License: AGPL-3.0.

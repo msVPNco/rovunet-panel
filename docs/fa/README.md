@@ -29,7 +29,7 @@
 ## پروژه
 
 - سورس: [github.com/msVPNco/rovunet-panel](https://github.com/msVPNco/rovunet-panel) · [تغییرات](../../CHANGELOG.md) · [وضعیت یکپارچگی](../ROVUNET-STATUS.md)
-- اپ اندروید: [github.com/msVPNco/rovunet-android](https://github.com/msVPNco/rovunet-android)
+- اپ اندروید: [github.com/msVPNco/rovunet-app](https://github.com/msVPNco/rovunet-app)
 - جامعه: [t.me/RovunetVPN](https://t.me/RovunetVPN)
 - بر پایهٔ [SlipGate](https://github.com/anonvector/slipgate) ساختهٔ Anonvector و بدون وابستگی رسمی به آن؛ [NOTICE](../../NOTICE.md) را ببینید. مجوز: AGPL-3.0.
 

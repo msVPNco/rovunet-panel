@@ -63,7 +63,7 @@ DNS 隧道、Soar、NaïveProxy、VLESS 和前置的 SSH over TLS 配置通过�
 
 ## 客户端应用
 
-- **[Rovunet for Android](https://github.com/msVPNco/rovunet-android)**（推荐）：导入 `rovunet://` 链接，将每个用户的路径归入一个集合，无需预先 ping 即可连接所选路径，并提供独立的真实隧道 HTTPS 测试。
+- **[Rovunet for Android](https://github.com/msVPNco/rovunet-app)**（推荐）：导入 `rovunet://` 链接，将每个用户的路径归入一个集合，无需预先 ping 即可连接所选路径，并提供独立的真实隧道 HTTPS 测试。
 - **标准客户端**，如 v2rayNG、Hiddify 或 NekoBox：使用 `vless://` 链接和 Xray 内核文件。
 
 下一页：[Xray 内核](xray-cores.md)
