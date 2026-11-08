@@ -389,7 +389,8 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 		}
 	}
 
-	out.Success(fmt.Sprintf("User %q added (SSH + SOCKS): %s", username, limitSummary(*cfg.GetUser(username))))
+	u := *cfg.GetUser(username)
+	out.Success(fmt.Sprintf("User %q added (%s): %s", username, userAccessSummary(u), limitSummary(u)))
 	if days > 0 {
 		if err := EnsureExpiryTimer(cfg); err != nil {
 			out.Warning("Could not set up the expiry timer: " + err.Error() + " (the user will not be removed automatically)")

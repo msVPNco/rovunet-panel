@@ -150,3 +150,13 @@ func TestOnlyGrantSSHCreatesAccountsForPanelUsers(t *testing.T) {
 		}
 	}
 }
+
+// The message after adding a user must not promise SSH to a limited user.
+func TestUserAccessSummary(t *testing.T) {
+	if got := userAccessSummary(config.UserConfig{QuotaGB: 1}); strings.Contains(got, "SSH") {
+		t.Fatalf("a traffic-limited user has no SSH account, got %q", got)
+	}
+	if got := userAccessSummary(config.UserConfig{ExpiresAt: "2026-12-01T00:00:00Z"}); got != "SSH + SOCKS" {
+		t.Fatalf("a user with only an expiry keeps SSH, got %q", got)
+	}
+}

@@ -2,6 +2,11 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.19.1
+
+- **Adding a traffic-limited user no longer says "SSH + SOCKS".** Such a user has neither; the message now says "VLESS, REALITY and XHTTP only". A user with only an expiry still gets SSH and SOCKS.
+- The docs now say that after an update `metering_status` is `unavailable` until the first limits check, about 5 minutes later.
+
 ## v1.19.0
 
 - **Each user now has an account status file for the app**, next to the subscription: the same link with `.json` replaced by `.status.json`. It says whether the account is `active`, `expired` or `limit_reached`, the expiry, the traffic limit and the traffic used (in bytes, both directions), how complete and how fresh that count is (`metering_status` is `partial` when a core did not answer or a counter file could not be read; `sampled_at` is the last read in which every core answered, so a failed read never makes an old count look fresh), and a `revision` that goes up when anything but the times changes (it belongs to the URL: a password change gives a new link that starts again at 1). It grants nothing: the server enforces the limits on its own. The subscription file is unchanged, because the app rejects keys it does not know. See [Limits and subscription links](docs/en/limits-and-subscriptions.md#account-status-file) for every key.
