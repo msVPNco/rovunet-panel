@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
@@ -110,20 +111,16 @@ func buildFeed(cfg *config.Config, u config.UserConfig) ([]byte, error) {
 }
 
 // WriteSubscriptions brings the subscription files in line with the users:
-// one file per user, none for removed users or old tokens. It does nothing
-// without a NaïveProxy tunnel. Users without a token get one (and the config
-// is saved). Call it after any change to users or tunnels.
+// one subscription and one status file per user, only the status file for a
+// stopped user, nothing for removed users or old tokens. It does nothing
+// without a NaïveProxy tunnel. A missing token or identifier is made (and the
+// config is saved). Call it after any change to users or tunnels, and after
+// each limits check, which refreshes the traffic in the status files.
 func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 	if subscriptionHost(cfg) == "" {
 		return nil
 	}
-	minted := false
-	for i := range cfg.Users {
-		if cfg.Users[i].SubToken == "" {
-			cfg.Users[i].SubToken = config.NewSubToken()
-			minted = true
-		}
-	}
+	minted := mintIDs(cfg)
 	if minted {
 		if err := cfg.Save(); err != nil {
 			return fmt.Errorf("save subscription tokens: %w", err)
@@ -142,6 +139,48 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 	}
 	keep := map[string]bool{}
 	var firstErr error
+	write := func(name string, body []byte) {
+		keep[name] = true
+		path := filepath.Join(dir, name)
+		if old, err := os.ReadFile(path); err == nil && string(old) == string(body) {
+			return
+		}
+		tmp := path + ".tmp"
+		if err := os.WriteFile(tmp, body, 0644); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			return
+		}
+		if err := os.Rename(tmp, path); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	status := func(u config.UserConfig, reason string, in statusInput) {
+		if u.SubToken == "" {
+			return
+		}
+		name := u.SubToken + statusSuffix
+		body, err := statusBody(buildStatus(in, u, reason), filepath.Join(dir, name))
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			return
+		}
+		write(name, body)
+	}
+	in := newStatusInput(cfg, time.Now())
+	for _, u := range cfg.Users {
+		status(u, "", in)
+	}
+	// A stopped user keeps the status file, so the app can say why, but not
+	// the subscription: those configs no longer work.
+	for _, a := range cfg.Archived {
+		if cfg.GetUser(a.Username) == nil {
+			status(a.UserConfig, a.Reason, in)
+		}
+	}
 	for _, u := range cfg.Users {
 		body, err := buildFeed(cfg, u)
 		if err != nil {
@@ -153,22 +192,7 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 		if body == nil {
 			continue
 		}
-		name := u.SubToken + ".json"
-		keep[name] = true
-		path := filepath.Join(dir, name)
-		if old, err := os.ReadFile(path); err == nil && string(old) == string(body) {
-			continue
-		}
-		tmp := path + ".tmp"
-		if err := os.WriteFile(tmp, body, 0644); err != nil {
-			if firstErr == nil {
-				firstErr = err
-			}
-			continue
-		}
-		if err := os.Rename(tmp, path); err != nil && firstErr == nil {
-			firstErr = err
-		}
+		write(u.SubToken+".json", body)
 	}
 	entries, _ := os.ReadDir(dir)
 	for _, e := range entries {
@@ -177,6 +201,32 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 		}
 	}
 	return firstErr
+}
+
+// mintIDs gives the server, and every user and stopped user, whatever
+// identifier it lacks (configs from before they existed), and reports
+// whether anything was added.
+func mintIDs(cfg *config.Config) bool {
+	minted := false
+	mint := func(s *string, f func() string) {
+		if *s == "" {
+			*s = f()
+			minted = true
+		}
+	}
+	mint(&cfg.ServerID, config.NewID)
+	for i := range cfg.Users {
+		u := &cfg.Users[i]
+		mint(&u.SubToken, config.NewSubToken)
+		mint(&u.AccountID, config.NewID)
+		mint(&u.PeriodID, config.NewID)
+	}
+	for i := range cfg.Archived {
+		a := &cfg.Archived[i]
+		mint(&a.AccountID, config.NewID)
+		mint(&a.PeriodID, config.NewID)
+	}
+	return minted
 }
 
 // addExtraAddressItems repeats the configs that connect by the server's

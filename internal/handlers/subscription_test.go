@@ -14,12 +14,15 @@ import (
 )
 
 func subTestConfig() *config.Config {
+	// Every identifier is set: a config made in a test has no file to save
+	// minted ones to.
 	return &config.Config{
 		PublicAddress: "203.0.113.7",
+		ServerID:      strings.Repeat("5e", 16),
 		Backends:      config.DefaultBackends(),
 		Users: []config.UserConfig{
-			{Username: "alice", Password: "pw-alice", SubToken: strings.Repeat("a1", 16)},
-			{Username: "bob", Password: "pw-bob", SubToken: strings.Repeat("b2", 16)},
+			{Username: "alice", Password: "pw-alice", SubToken: strings.Repeat("a1", 16), AccountID: strings.Repeat("ac", 16), PeriodID: strings.Repeat("9a", 16)},
+			{Username: "bob", Password: "pw-bob", SubToken: strings.Repeat("b2", 16), AccountID: strings.Repeat("bc", 16), PeriodID: strings.Repeat("9b", 16)},
 		},
 		Tunnels: []config.TunnelConfig{{
 			Tag: "naive", Transport: config.TransportNaive, Backend: config.BackendSOCKS, Enabled: true,
@@ -113,8 +116,13 @@ func TestWriteSubscriptionsFeedsAndCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 	entries, _ := os.ReadDir(dir)
-	if len(entries) != 1 || entries[0].Name() != cfg.Users[0].SubToken+".json" {
-		t.Fatalf("stale files left: %v", entries)
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	want := []string{cfg.Users[0].SubToken + ".json", cfg.Users[0].SubToken + ".status.json"}
+	if strings.Join(names, " ") != strings.Join(want, " ") {
+		t.Fatalf("got files %v, want %v", names, want)
 	}
 }
 
