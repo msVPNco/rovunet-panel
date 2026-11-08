@@ -2,6 +2,11 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.20.1
+
+- **An update that is cut short no longer leaves a tunnel without its program.** `rovunet update` moves each transport binary (`dnstt-server`, `slipstream-server`, `vaydns-server`, `caddy-naive`) to `.bak`, downloads the new one and puts it in place. If it stopped in between, the binary was gone and the service restarted every 5 seconds failing with status 203/EXEC; this happened on a real server on the v1.20.0 update, while GitHub was answering some downloads with HTTP 504. The next update now puts the old binary back when the binary is missing and a `.bak` exists, and removes the half-finished download. A binary that is in place is never changed, and a backup is never removed. The cause of the interruption itself is not known.
+- If a server is already in that state, the same fix by hand: `mv /usr/local/bin/<name>.bak /usr/local/bin/<name>`, `rm -f /usr/local/bin/<name>.tmp`, then restart the service.
+
 ## v1.20.0
 
 - **A new install now sets up two REALITY cores.** Next to `reality` (9443, 2096 or 8880/tcp) the installer adds `reality2` on 2087, 2053 or 8443/tcp (the first free), disguised as a different site. The two sites are never from the same company (two Microsoft sites would be blocked together). Every user gets a configuration on each, with the same counting and the same limits. If one site or port is blocked on a user's network, the other may still connect; on a real server `reality2` (Apple, 2087) connected on a fibre line and on a mobile network. Only a new install does this: a server that already has a REALITY core is left as it is, and `reality2` can be added by hand with `rovunet core-install --name reality2 --protocol reality ...` (see [Xray cores](docs/en/xray-cores.md)).

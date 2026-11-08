@@ -104,6 +104,13 @@ func runPostUpdate(ctx *actions.Context) error {
 	transportBins := []string{"dnstt-server", "slipstream-server", "vaydns-server", "caddy-naive"}
 	for _, name := range transportBins {
 		binPath := filepath.Join(config.DefaultBinDir, name)
+		// A previous update that was cut short leaves the old binary in
+		// ".bak" and no binary at all: put it back before anything else.
+		if restored, err := binary.RecoverInterrupted(binPath); err != nil {
+			out.Warning(fmt.Sprintf("  %s: %v", name, err))
+		} else if restored {
+			out.Warning(fmt.Sprintf("  %s was missing after an interrupted update; the previous version was put back", name))
+		}
 		if _, err := os.Stat(binPath); os.IsNotExist(err) {
 			continue // not installed, skip
 		}
