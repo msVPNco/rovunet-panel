@@ -17,10 +17,11 @@ import (
 var statusNow = time.Date(2026, 11, 8, 10, 0, 0, 0, time.UTC)
 
 func statusTestInput(totals map[string]int64, collected, complete bool) statusInput {
-	return statusInput{
-		serverID: "srv", now: statusNow, totals: totals,
-		collection: usage.Collection{At: statusNow.Add(-2 * time.Minute), Complete: complete}, collected: collected,
+	c := usage.Collection{Tried: statusNow.Add(-2 * time.Minute), Complete: complete}
+	if complete {
+		c.At = c.Tried
 	}
+	return statusInput{serverID: "srv", now: statusNow, totals: totals, totalsOK: true, collection: c, collected: collected}
 }
 
 func TestStatusOfUnlimitedUser(t *testing.T) {
@@ -42,8 +43,18 @@ func TestStatusOfLimitedUser(t *testing.T) {
 	if *st.ExpiresAt != "2026-12-01T00:00:00Z" || st.Metering != meteringComplete || *st.SampledAt != "2026-11-08T09:58:00Z" {
 		t.Fatalf("got %+v", st)
 	}
-	if st := buildStatus(statusTestInput(nil, true, false), u, ""); st.Metering != meteringPartial {
-		t.Fatalf("a core that did not answer makes the count partial, got %s", st.Metering)
+	if st := buildStatus(statusTestInput(nil, true, false), u, ""); st.Metering != meteringPartial || st.SampledAt != nil {
+		t.Fatalf("a core that did not answer makes the count partial, with no complete sample: %+v", st)
+	}
+	in := statusTestInput(nil, true, false)
+	in.collection.At = statusNow.Add(-time.Hour) // the last complete read
+	if st := buildStatus(in, u, ""); st.Metering != meteringPartial || *st.SampledAt != "2026-11-08T09:00:00Z" {
+		t.Fatalf("a failed read must not make the old count look fresh: %+v", st)
+	}
+	in = statusTestInput(nil, true, true)
+	in.totalsOK = false
+	if st := buildStatus(in, u, ""); st.Metering != meteringPartial {
+		t.Fatalf("an unreadable totals file makes the count partial, got %s", st.Metering)
 	}
 	if st := buildStatus(statusTestInput(nil, false, false), u, ""); st.Metering != meteringUnavailable || st.SampledAt != nil {
 		t.Fatalf("never read: unavailable, no sample time, got %+v", st)
@@ -77,7 +88,7 @@ func TestStatusRevisionChangesOnlyWithContent(t *testing.T) {
 	u := config.UserConfig{Username: "a", QuotaGB: 2}
 	rev := func(totals map[string]int64, at time.Time) int64 {
 		in := statusTestInput(totals, true, true)
-		in.now, in.collection.At = at, at
+		in.now, in.collection.At, in.collection.Tried = at, at, at
 		body, err := statusBody(buildStatus(in, u, ""), path)
 		if err != nil {
 			t.Fatal(err)

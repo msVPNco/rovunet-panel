@@ -77,10 +77,10 @@ It tells the app what the account may still use, so the app can show remaining t
 | `account_status` | `active`, `expired` or `limit_reached`. |
 | `expires_at` | Expiry time (UTC), or `null` for none. |
 | `limit_bytes` / `used_bytes` | Traffic limit and traffic used in this period, both directions, 1 GB = 1024³ bytes. Both `null` for a user without a traffic limit (their traffic is not counted on every protocol). |
-| `metering_status` | `complete`, `partial` (a core did not answer the last read; the count may be low), `unavailable` (never read) or `not_metered` (no traffic limit). |
-| `sampled_at` | When the Xray counters were last read (`null` without a traffic limit). The VLESS counter is at most 15 seconds older than `generated_at`. |
+| `metering_status` | `complete`, `partial` (a core did not answer the last read, or a counter file could not be read; the count may be low), `unavailable` (never read) or `not_metered` (no traffic limit). |
+| `sampled_at` | The last read of the Xray counters in which every core answered. A failed read does not move it, so an old count never looks fresh. `null` without a traffic limit or before the first complete read. The VLESS counter is at most 15 seconds older than `generated_at`. |
 | `generated_at` | When the file was written. Compare it with the HTTP `Date` header to allow for a wrong phone clock. |
-| `revision` | Goes up by one whenever anything but the times changes. |
+| `revision` | Goes up by one whenever anything but the times changes. It belongs to this URL: after `users passwd` the link has a new token and the new file starts again at 1 (same `account_id` and `period_id`), so an app that follows a new link compares from scratch. |
 
 - The file is rewritten on every user change and on every limits check (every 5 minutes while some user has a limit). It is served with `Cache-Control: no-store`.
 - A stopped user keeps the status file (with `expired` or `limit_reached`) while the subscription file is removed. A user removed for good has neither. **404 does not mean expired**: it is also what an older panel or a removed account returns, so the app should show "account information unavailable".

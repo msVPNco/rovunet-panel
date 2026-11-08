@@ -77,10 +77,10 @@ https://your-domain/sub/<token>.status.json
 | `account_status` | `active`、`expired` 或 `limit_reached`。 |
 | `expires_at` | 到期时间（UTC），无到期则为 `null`。 |
 | `limit_bytes` / `used_bytes` | 本周期的流量上限和已用流量，双向合计，1 GB = 1024³ 字节。没有流量上限的用户两者均为 `null`（其流量并非在所有协议上都被统计）。 |
-| `metering_status` | `complete`、`partial`（上次读取时有核心未响应，数值可能偏低）、`unavailable`（从未读取）或 `not_metered`（无流量上限）。 |
-| `sampled_at` | 上次读取 Xray 计数器的时间（无流量上限时为 `null`）。VLESS 计数器最多比 `generated_at` 早 15 秒。 |
+| `metering_status` | `complete`、`partial`（上次读取时有核心未响应，或某个计数文件无法读取，数值可能偏低）、`unavailable`（从未读取）或 `not_metered`（无流量上限）。 |
+| `sampled_at` | 最近一次所有核心都响应的 Xray 计数器读取时间。读取失败不会更新它，因此旧数值不会显得是新的。无流量上限或首次完整读取之前为 `null`。VLESS 计数器最多比 `generated_at` 早 15 秒。 |
 | `generated_at` | 文件写入时间。与 HTTP `Date` 响应头比较，可避免手机时钟错误的影响。 |
-| `revision` | 除时间外任何内容变化时加一。 |
+| `revision` | 除时间外任何内容变化时加一。它属于该 URL：执行 `users passwd` 后链接有新令牌，新文件重新从 1 开始（`account_id` 和 `period_id` 不变），因此改用新链接的应用应重新开始比较。 |
 
 - 每次用户变更以及每次限额检查（只要有用户设了限制，每 5 分钟一次）都会重写该文件，并以 `Cache-Control: no-store` 提供。
 - 被停用的用户保留状态文件（`expired` 或 `limit_reached`），但订阅文件会被删除。彻底删除的用户两者都没有。**404 不代表已到期**：旧版面板或已删除的账户也会返回 404，因此应用应显示“账户信息不可用”。

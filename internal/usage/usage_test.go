@@ -1,7 +1,10 @@
 package usage
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestCountersPersistAndSum(t *testing.T) {
@@ -62,5 +65,54 @@ func TestRestoreAddsOnlyWhatIsMissing(t *testing.T) {
 	}
 	if got := Totals()["alice"]; got != 600 {
 		t.Fatalf("alice=%d, want 600", got)
+	}
+}
+
+func TestTotalsCheckedReportsBrokenFiles(t *testing.T) {
+	Dir = t.TempDir()
+	defer func() { Dir = "/var/lib/rovunet/usage" }()
+	if _, err := TotalsChecked(); err != nil {
+		t.Fatalf("an empty directory is not an error: %v", err)
+	}
+	_ = os.WriteFile(filepath.Join(Dir, "vless.json"), []byte(`{"a":5}`), 0644)
+	_ = os.WriteFile(filepath.Join(Dir, "xray.json"), []byte(`{"a":`), 0644)
+	total, err := TotalsChecked()
+	if err == nil || total["a"] != 5 {
+		t.Fatalf("a broken file must be reported, the rest summed: %v %v", total, err)
+	}
+	if Totals()["a"] != 5 {
+		t.Fatal("Totals keeps summing what it can read")
+	}
+}
+
+func TestFailedReadKeepsLastCompleteSample(t *testing.T) {
+	Dir = t.TempDir()
+	defer func() { Dir = "/var/lib/rovunet/usage" }()
+	if _, ok := LastCollected(); ok {
+		t.Fatal("nothing recorded yet")
+	}
+	t1 := time.Date(2026, 11, 8, 10, 0, 0, 0, time.UTC)
+	t2 := t1.Add(5 * time.Minute)
+	if err := MarkCollected(t1, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := MarkCollected(t2, false); err != nil {
+		t.Fatal(err)
+	}
+	c, ok := LastCollected()
+	if !ok || !c.At.Equal(t1) || !c.Tried.Equal(t2) || c.Complete {
+		t.Fatalf("got %+v", c)
+	}
+	if err := MarkCollected(t2.Add(5*time.Minute), true); err != nil {
+		t.Fatal(err)
+	}
+	if c, _ := LastCollected(); !c.At.Equal(t2.Add(5*time.Minute)) || !c.Complete {
+		t.Fatalf("a complete read moves the sample time: %+v", c)
+	}
+	if _, err := os.Stat(filepath.Join(Dir, "collected.state")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := TotalsChecked(); err != nil {
+		t.Fatalf("the state file is not a totals file: %v", err)
 	}
 }

@@ -31,15 +31,23 @@ import (
 //	  "limit_bytes": 10737418240,       // or null: no traffic limit (1 GB = 1024^3)
 //	  "used_bytes": 1234,               // or null when there is no traffic limit
 //	  "metering_status": "complete",    // complete | partial | unavailable | not_metered
-//	  "sampled_at": "2026-11-08T10:00:00Z", // last read of the Xray counters; null without a limit
+//	  "sampled_at": "2026-11-08T10:00:00Z", // last complete read of the Xray counters, or null
 //	  "generated_at": "2026-11-08T10:00:03Z",
 //	  "revision": 7                     // +1 whenever anything but the times changes
 //	}
 //
 // used_bytes counts both directions. metering_status is "partial" when some
-// core did not answer the last read (the count may be low), "unavailable"
-// when the counters were never read, and "not_metered" for a user without a
-// traffic limit, whose traffic is not counted on every protocol.
+// core did not answer the last read or a totals file could not be read (the
+// count may be low), "unavailable" when the counters were never read, and
+// "not_metered" for a user without a traffic limit, whose traffic is not
+// counted on every protocol. sampled_at moves only on a read in which every
+// core answered, so a failed read never makes an old count look fresh; it is
+// null without a traffic limit or before the first complete read.
+//
+// revision belongs to the URL: it is continued from the file at the same
+// path. A password change gives a new token, so the new URL starts again at
+// 1 with the same account_id and period_id; an app that follows a new link
+// must compare from scratch.
 
 const statusSuffix = ".status.json"
 
@@ -75,13 +83,15 @@ type statusInput struct {
 	serverID   string
 	now        time.Time
 	totals     map[string]int64
+	totalsOK   bool // every totals file was read
 	collection usage.Collection
-	collected  bool
+	collected  bool // the cores' counters were read at least once
 }
 
 func newStatusInput(cfg *config.Config, now time.Time) statusInput {
 	c, ok := usage.LastCollected()
-	return statusInput{serverID: cfg.ServerID, now: now, totals: usage.Totals(), collection: c, collected: ok}
+	totals, err := usage.TotalsChecked()
+	return statusInput{serverID: cfg.ServerID, now: now, totals: totals, totalsOK: err == nil, collection: c, collected: ok}
 }
 
 // buildStatus describes one account. reason is "" for a current user, or
@@ -115,12 +125,14 @@ func buildStatus(in statusInput, u config.UserConfig, reason string) accountStat
 		switch {
 		case !in.collected:
 			st.Metering = meteringUnavailable
-		case in.collection.Complete:
+		case in.collection.Complete && in.totalsOK:
 			st.Metering = meteringComplete
 		default:
+			// A core did not answer the last read, or a totals file could
+			// not be read: the count may be low.
 			st.Metering = meteringPartial
 		}
-		if in.collected {
+		if !in.collection.At.IsZero() {
 			s := in.collection.At.UTC().Format(time.RFC3339)
 			st.SampledAt = &s
 		}

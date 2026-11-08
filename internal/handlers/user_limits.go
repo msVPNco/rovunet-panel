@@ -171,7 +171,10 @@ func EnforceLimits(cfg *config.Config, out actions.OutputWriter, now time.Time) 
 	if err := usage.MarkCollected(now, collectErr == nil); err != nil {
 		out.Warning("traffic counting: " + err.Error())
 	}
-	totals := usage.Totals()
+	totals, err := usage.TotalsChecked()
+	if err != nil {
+		out.Warning("traffic counting: " + err.Error() + "; the counts may be low")
+	}
 	var gone []string
 	for _, u := range append([]config.UserConfig(nil), cfg.Users...) {
 		reason := ""
