@@ -13,7 +13,7 @@
 
 <p align="center"><a href="README.md">English</a> · <a href="README.fa.md">فارسی</a> · <b>Русский</b> · <a href="README.zh-CN.md">简体中文</a></p>
 
-<p align="center">📘 <a href="docs/guides/Rovunet-Panel-Guide-RU.pdf">Полное руководство (PDF)</a> · <a href="docs/ru/README.md">Документация</a> · <a href="https://github.com/msVPNco/rovunet-android">Приложение для Android</a> · <a href="CHANGELOG.md">Изменения</a></p>
+<p align="center">📘 <a href="docs/guides/Rovunet-Panel-Guide-RU.pdf">Полное руководство (PDF)</a> · <a href="docs/ru/README.md">Документация</a> · <a href="https://github.com/msVPNco/rovunet-app">Приложение для Android</a> · <a href="CHANGELOG.md">Изменения</a></p>
 
 ---
 
@@ -23,7 +23,7 @@ Rovunet Panel — открытый инструмент, превращающи�
 
 - **14 протоколов**: прокси, SSH, DNS-туннели и ядра Xray — в одном инструменте командной строки с интерактивным меню.
 - **Один логин на пользователя** для всех туннелей и личные идентификаторы VLESS, которые отзываются за секунды.
-- **Готовые к импорту конфигурации**: собственные ссылки `rovunet://` для [приложения Rovunet](https://github.com/msVPNco/rovunet-android), стандартные `vless://`, `hysteria2://` и файлы WireGuard для других клиентов.
+- **Готовые к импорту конфигурации**: собственные ссылки `rovunet://` для [приложения Rovunet](https://github.com/msVPNco/rovunet-app), стандартные `vless://`, `hysteria2://` и файлы WireGuard для других клиентов.
 - **Работа через порт 443**: VLESS и SSH over TLS делят с NaïveProxy домен, порт и сертификат Let's Encrypt за сайтом-приманкой.
 - **Безопасная эксплуатация**: обновления с проверкой контрольных сумм и откатом, проверка конфигураций до развёртывания, полное резервное копирование и восстановление сервера.
 - **Диагностика**: панель в реальном времени, проверки состояния, сроки действия сертификатов и журналы служб.

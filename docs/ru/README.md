@@ -27,6 +27,6 @@ Rovunet Panel превращает Linux-сервер в многопроток�
 ## Проект
 
 - Исходный код: [github.com/msVPNco/rovunet-panel](https://github.com/msVPNco/rovunet-panel) · [Журнал изменений](../../CHANGELOG.md) · [Состояние интеграции](../ROVUNET-STATUS.md)
-- Приложение для Android: [github.com/msVPNco/rovunet-android](https://github.com/msVPNco/rovunet-android)
+- Приложение для Android: [github.com/msVPNco/rovunet-app](https://github.com/msVPNco/rovunet-app)
 - Сообщество: [t.me/RovunetVPN](https://t.me/RovunetVPN)
 - Основано на [SlipGate](https://github.com/anonvector/slipgate) автора Anonvector, официально не связано с ним; см. [NOTICE](../../NOTICE.md). Лицензия: AGPL-3.0.

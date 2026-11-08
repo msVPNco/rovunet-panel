@@ -27,6 +27,6 @@ Rovunet Panel 将一台 Linux 服务器变成多协议接入服务器。它把�
 ## 项目
 
 - 源码：[github.com/msVPNco/rovunet-panel](https://github.com/msVPNco/rovunet-panel) · [更新日志](../../CHANGELOG.md) · [集成状态](../ROVUNET-STATUS.md)
-- Android 应用：[github.com/msVPNco/rovunet-android](https://github.com/msVPNco/rovunet-android)
+- Android 应用：[github.com/msVPNco/rovunet-app](https://github.com/msVPNco/rovunet-app)
 - 社区：[t.me/RovunetVPN](https://t.me/RovunetVPN)
 - 基于 Anonvector 的 [SlipGate](https://github.com/anonvector/slipgate)，与其无隶属关系；参见 [NOTICE](../../NOTICE.md)。许可证：AGPL-3.0。

@@ -63,7 +63,7 @@ Configurations for DNS tunnels, Soar, NaïveProxy, VLESS and fronted SSH over TL
 
 ## Client apps
 
-- **[Rovunet for Android](https://github.com/msVPNco/rovunet-android)** (recommended): imports `rovunet://` links, groups each user's paths into one collection, connects a chosen path without a prerequisite ping and offers separate HTTPS tests through the real tunnel.
+- **[Rovunet for Android](https://github.com/msVPNco/rovunet-app)** (recommended): imports `rovunet://` links, groups each user's paths into one collection, connects a chosen path without a prerequisite ping and offers separate HTTPS tests through the real tunnel.
 - **Standard clients** such as v2rayNG, Hiddify or NekoBox: use the `vless://` links and the Xray core files.
 
 Next: [Xray cores](xray-cores.md)
