@@ -20,6 +20,15 @@ Xray 内核是由面板在隧道旁安装和管理的独立 Xray 服务器，提
 
 安装程序（`sudo rovunet install`）会在其他协议旁提供 **VLESS + REALITY**、**VLESS + XHTTP**、**Hysteria 2** 和 **WireGuard**，并在创建第一个用户后，在第一个空闲的默认端口上配置它们（REALITY：9443、2096 或 8880/tcp；XHTTP：2096、2087 或 8880/tcp；Hysteria 2：8443、4443 或 2096/udp；WireGuard：51820–51822/udp）。XHTTP 和 Hysteria 2 使用 Caddy 为 NaïveProxy 域名获取的 TLS 证书，因此也需要选择 NaïveProxy；如果证书在 90 秒内未就绪，它们会被跳过并给出提示，之后可再添加。任何内核也可以稍后添加：
 
+**两个 REALITY 内核。** 安装程序在新服务器上配置 REALITY 时，会在第一个内核旁再配置第二个 REALITY 内核 `reality2`：使用 2087、2053 或 8443/tcp（取第一个空闲的），并伪装成另一个网站。这两个网站不会属于同一家公司（例如两个微软网站会被一起封锁）。每个用户在两个内核上都有配置，计量和限制相同，因此如果用户的网络封锁了某个网站或端口，还有另一条路。只有全新安装才会这样做：已经有 REALITY 内核的服务器保持原样，第二个内核可随时手动添加，例如：
+
+```bash
+sudo rovunet core-install --name reality2 --protocol reality --host SERVER_IP --port 2087 \
+  --target www.apple.com:443 --sni www.apple.com
+```
+
+手动添加内核后，请运行一次 `sudo rovunet expire-users`，或等待最多 5 分钟，订阅链接才会包含它。第二个内核的链接名为 `Rovunet-reality2-<user>`。
+
 ```bash
 # VLESS + REALITY
 sudo rovunet core-install --name r1 --protocol reality --host SERVER_IP \

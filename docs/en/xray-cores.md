@@ -19,6 +19,15 @@ Which protocols pass depends on the network. On one filtered mobile network we m
 
 The installer (`sudo rovunet install`) offers **VLESS + REALITY**, **VLESS + XHTTP**, **Hysteria 2** and **WireGuard** next to the other protocols and sets them up after the first user, on the first free default port (REALITY: 9443, 2096 or 8880/tcp; XHTTP: 2096, 2087 or 8880/tcp; Hysteria 2: 8443, 4443 or 2096/udp; WireGuard: 51820–51822/udp). XHTTP and Hysteria 2 use the TLS certificate Caddy obtained for the NaïveProxy domain, so they need NaïveProxy selected too; if the certificate is not ready within 90 seconds they are skipped with a message and can be added later. Any core can also be added later:
 
+**Two REALITY cores.** When the installer sets up REALITY on a new server it sets up a second REALITY core, `reality2`, next to the first: on 2087, 2053 or 8443/tcp (the first free), disguised as a different site. The two sites are never from the same company (two Microsoft sites, for example, would be blocked together). Every user gets a configuration on each, with the same counting and the same limits, so a user whose network blocks one site or port has another way in. Only a new install does this: a server that already has a REALITY core is left as it is, and the second core can be added by hand at any time, for example:
+
+```bash
+sudo rovunet core-install --name reality2 --protocol reality --host SERVER_IP --port 2087 \
+  --target www.apple.com:443 --sni www.apple.com
+```
+
+After adding a core by hand, run `sudo rovunet expire-users` once, or wait up to 5 minutes, so the subscription links include it. The links of the second core are named `Rovunet-reality2-<user>`.
+
 ```bash
 # VLESS + REALITY
 sudo rovunet core-install --name r1 --protocol reality --host SERVER_IP \

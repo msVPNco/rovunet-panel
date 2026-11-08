@@ -35,6 +35,31 @@ var RealityTargets = []string{
 	"www.mozilla.org",
 }
 
+// realityCheck is CheckRealityTarget; a variable so tests need no network.
+var realityCheck = CheckRealityTarget
+
+// TargetFamily names the company behind a host, so that sites of one company
+// (www.microsoft.com and learn.microsoft.com, or the several Amazon and Google
+// content hosts) count as one. Any other host is its own name without the
+// "www." prefix and the top-level domain.
+func TargetFamily(host string) string {
+	h := strings.ToLower(strings.TrimSpace(host))
+	h = strings.TrimSuffix(h, ":443")
+	for _, f := range []string{"microsoft", "amazon", "google", "gstatic", "mozilla"} {
+		if strings.Contains(h, f) {
+			if f == "gstatic" {
+				return "google"
+			}
+			return f
+		}
+	}
+	parts := strings.Split(h, ".")
+	if len(parts) >= 2 {
+		return parts[len(parts)-2]
+	}
+	return h
+}
+
 // CheckRealityTarget reports whether host:443 answers TLS 1.3 with HTTP/2
 // from this server, which is what REALITY needs from its target.
 func CheckRealityTarget(host string) bool {
@@ -83,10 +108,30 @@ func PickRealityTarget(targets []string, check func(string) bool, rnd *rand.Rand
 // nothing for other protocols or when a target was given. It reports the host
 // it chose, or "".
 func AutoReality(o *Options) (string, error) {
+	return autoReality(o, nil)
+}
+
+// AutoRealityOther is AutoReality for a second REALITY core: it never picks
+// the first core's site, nor another site of the same company, because two
+// disguises of one company would fall together.
+func AutoRealityOther(o *Options, first string) (string, error) {
+	return autoReality(o, func(t string) bool { return TargetFamily(t) != TargetFamily(first) })
+}
+
+func autoReality(o *Options, allow func(string) bool) (string, error) {
 	if o.Protocol != "reality" || strings.TrimSpace(o.RealityTarget) != "" {
 		return "", nil
 	}
-	host, err := PickRealityTarget(RealityTargets, CheckRealityTarget, rand.New(rand.NewSource(time.Now().UnixNano())))
+	targets := RealityTargets
+	if allow != nil {
+		targets = nil
+		for _, t := range RealityTargets {
+			if allow(t) {
+				targets = append(targets, t)
+			}
+		}
+	}
+	host, err := PickRealityTarget(targets, realityCheck, rand.New(rand.NewSource(time.Now().UnixNano())))
 	if err != nil {
 		return "", err
 	}

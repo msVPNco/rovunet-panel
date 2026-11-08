@@ -1199,18 +1199,41 @@ func installCores(cfg *config.Config, out actions.OutputWriter, protocols []stri
 			existing[c.Protocol] = true
 		}
 	}
-	for _, protocol := range protocols {
-		name, ports := protocol, []int{9443, 2096, 8880}
+	// A new REALITY core is installed together with a second one on another
+	// port and with another site as its disguise (see the REALITY paragraph of
+	// docs/en/xray-cores.md), so a user has two ways in if one site or port is
+	// blocked on their network. Servers that already have a REALITY core are
+	// not given one.
+	jobs := coreJobs(protocols)
+	firstReality, realityInstalled := "", false
+	for _, job := range jobs {
+		name, protocol := job.name, job.protocol
+		ports := []int{9443, 2096, 8880}
 		o := coreplan.Options{Protocol: protocol, Host: host}
 		switch protocol {
 		case "reality":
+			if name == secondRealityCore {
+				if !realityInstalled {
+					continue // the first core was kept or failed: leave the server as it is
+				}
+				ports = []int{2087, 2053, 8443}
+				h, err := coreplan.AutoRealityOther(&o, firstReality)
+				if err != nil {
+					out.Warning("Second REALITY core skipped: " + err.Error())
+					continue
+				}
+				out.Info("Second REALITY disguise: " + h)
+				break
+			}
 			// A random working site from the built-in bank, checked from
 			// this server; Microsoft is the fallback if none can be checked.
 			if host, err := coreplan.AutoReality(&o); err != nil {
 				out.Warning("REALITY target: " + err.Error() + "; using www.microsoft.com")
 				o.RealityTarget, o.SNI = "www.microsoft.com:443", "www.microsoft.com"
+				firstReality = "www.microsoft.com"
 			} else {
 				out.Info("REALITY disguise: " + host)
+				firstReality = host
 			}
 		case "wireguard":
 			ports = []int{51820, 51821, 51822}
@@ -1262,8 +1285,30 @@ func installCores(cfg *config.Config, out actions.OutputWriter, protocols []stri
 		default:
 			out.Success(fmt.Sprintf("Xray core %q running", name))
 		}
+		if name == "reality" && (dir != "") {
+			realityInstalled = true
+		}
 	}
 }
+
+// coreJob is one Xray core the installer sets up: its name and protocol.
+type coreJob struct{ name, protocol string }
+
+// coreJobs lists the cores to install for the chosen protocols: each one, and a
+// second core after REALITY.
+func coreJobs(protocols []string) []coreJob {
+	var jobs []coreJob
+	for _, p := range protocols {
+		jobs = append(jobs, coreJob{p, p})
+		if p == "reality" {
+			jobs = append(jobs, coreJob{secondRealityCore, p})
+		}
+	}
+	return jobs
+}
+
+// secondRealityCore is the name of the second REALITY core a new install adds.
+const secondRealityCore = "reality2"
 
 // naiveDomain is the domain of the first enabled NaïveProxy tunnel, "" if none.
 func naiveDomain(cfg *config.Config) string {

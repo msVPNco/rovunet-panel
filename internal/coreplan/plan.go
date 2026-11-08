@@ -28,6 +28,21 @@ type Options struct {
 	RealityTarget string `json:"realityTarget,omitempty"`
 	Port          int    `json:"port"`
 	Devices       int    `json:"-"`
+	// CoreName is the name the core is installed under. It is not stored; it
+	// only lets a second core of the same protocol (reality2) name its links
+	// apart from the first.
+	CoreName string `json:"-"`
+}
+
+// linkLabel is the protocol part of a client link's name: the protocol, or the
+// core's own name when that name extends it ("reality2"), so two cores of one
+// protocol do not give a user two links with the same name. Cores named
+// otherwise ("hy2", "xh") keep the protocol, as their links always had.
+func (o Options) linkLabel() string {
+	if o.CoreName != o.Protocol && strings.HasPrefix(o.CoreName, o.Protocol) {
+		return o.CoreName
+	}
+	return o.Protocol
 }
 
 // State is what must stay the same across regenerations of one core, so that
@@ -268,7 +283,7 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 	extension := "txt"
 	peers := []object{}
 	for _, c := range clients {
-		name := fmt.Sprintf("Rovunet-%s-%s", o.Protocol, c.Name)
+		name := fmt.Sprintf("Rovunet-%s-%s", o.linkLabel(), c.Name)
 		q := url.Values{}
 		var scheme, credential string
 		switch o.Protocol {

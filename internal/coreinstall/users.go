@@ -93,6 +93,7 @@ func writeUserCore(dir string, o coreplan.Options, st *coreplan.State, users []c
 	if st.APIPort == 0 && coreplan.Metered(o.Protocol) {
 		st.APIPort = pickAPIPort(filepath.Base(dir))
 	}
+	o.CoreName = filepath.Base(dir)
 	b, err := coreplan.GenerateFor(o, st, clients)
 	if err != nil {
 		return false, err
@@ -374,6 +375,7 @@ func Profiles(user config.UserConfig) ([]Profile, error) {
 			addrs[k] = v
 		}
 		st.WGAddrs = addrs
+		o.CoreName = c.Name
 		b, err := coreplan.GenerateFor(o, &st, []coreplan.Client{{Name: user.Username, Secret: user.Password}})
 		if err != nil {
 			return out, fmt.Errorf("core %s: %w", c.Name, err)
