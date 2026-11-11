@@ -28,8 +28,7 @@ jobs:
           if [[ "$GITHUB_REF_TYPE" == tag ]]; then tag="$GITHUB_REF_NAME"; else tag="v$(make -s print-version)"; fi
           test "$tag" = "v$(make -s print-version)"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" 2>/dev/null || true)
-          if [[ -n "$existing" ]]; then
+          if existing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" 2>/dev/null); then
             if [[ "$(jq -r .draft <<< "$existing")" == false ]]; then
               echo "skip=true" >> "$GITHUB_OUTPUT"
             else
@@ -67,6 +66,7 @@ jobs:
           bash -n scripts/managed-preview-server.sh scripts/build-managed-awg.sh
           python3 scripts/test-preview-rollback-usage.py
           python3 scripts/test-managed-preview-upgrade.py
+          python3 scripts/test-release-tag.py
           go test -count=1 ./...
           go test -race -count=1 ./...
 

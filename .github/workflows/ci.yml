@@ -30,6 +30,7 @@ jobs:
           bash -n scripts/managed-preview-server.sh scripts/build-managed-awg.sh
           python3 scripts/test-preview-rollback-usage.py
           python3 scripts/test-managed-preview-upgrade.py
+          python3 scripts/test-release-tag.py
       - name: Build and exercise pinned userspace AmneziaWG
         run: |
           bash scripts/build-managed-awg.sh "$RUNNER_TEMP/awg-assets"
