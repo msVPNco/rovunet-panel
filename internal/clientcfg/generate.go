@@ -12,9 +12,10 @@ import (
 
 // URIOptions controls URI generation.
 type URIOptions struct {
-	ClientMode string // "dnstt" or "noizdns" (DNSTT transport only)
-	Username   string // override SOCKS/SSH username
-	Password   string // override SOCKS/SSH password
+	ClientMode  string // "dnstt" or "noizdns" (DNSTT transport only)
+	Username    string // override SOCKS/SSH username
+	Password    string // override SOCKS/SSH password
+	DisplayName string // optional presentation only; never changes the tunnel tag
 }
 
 // b64 encodes a string as base64 (matching Android's Base64.NO_WRAP).
@@ -40,6 +41,9 @@ func GenerateURI(tunnel *config.TunnelConfig, backend *config.BackendConfig, cfg
 	name := tunnel.Tag
 	if opts.ClientMode == ClientModeNoizDNS {
 		name = strings.ReplaceAll(name, "dnstt", "noizdns")
+	}
+	if opts.DisplayName != "" {
+		name = stripFieldDelimiter(opts.DisplayName)
 	}
 	fields[FName] = name
 	fields[FDomain] = tunnel.Domain

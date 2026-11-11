@@ -2,6 +2,39 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.21.0
+
+### English
+
+- Add account-managed **AmneziaWG, Shadowsocks 2022, Trojan TLS and VLESS Encryption**: installation, targeted account updates, persistent start/stop, port changes, removal, backups and certificate tracking. Release assets include pinned runtimes, their source archives, licenses and checksums for Linux amd64/arm64.
+- Keep existing subscription URLs and item IDs through normal updates. Refresh feeds after core/tunnel lifecycle changes; serialize writers and preserve the last valid feed on generation errors. Android uses `.json`; Windows uses `.windows.json`. The tested full setup yields **24 Android / 22 Windows configurations**, depending on installed services and account eligibility. Released Windows excludes AmneziaWG and SS2022.
+- Apply readable names to the 24 reviewed configurations. Only the native display-name field changes; endpoint, credentials, embedded core profile, collection identity, subscription token and item order stay unchanged.
+- Use one account-eligibility/export policy across CLI and subscriptions, retain Soar in the final installation output, and export credentials only after provisioning is confirmed.
+- Persist Xray source counters atomically, retain known usage after a reset/crash and report incomplete samples as partial. Backups include external TLS files, applied credentials and usage history. Firewall ownership preserves shared/preexisting rules.
+- **Limits:** all four added protocols are excluded from traffic-limited accounts. Removing credentials in the pinned Xray rejects new sessions but leaves established streams alive, including after expiry. Direct Soar has no separate account authentication. Exact simultaneous-device limiting is not implemented. SS2022 and Trojan without Flow have upstream deprecation warnings.
+- The owner accepted the staged server upgrade and renamed subscription output. Local tests include actual Xray payloads, two-peer AmneziaWG network namespaces, rollback/recovery, display-only comparisons, full tests, vet and race. This does not establish whole-host reboot, long-run stability, battery or independent SS2022 UDP behavior.
+- Existing stable installations update with `sudo rovunet update`. The accepted private `preview.3` has a separate, checksummed **preview-to-v1.21.0 amd64 upgrade package** that preserves the running cores and links; it checks every existing profile before accepting the binary replacement. Do not rerun the fresh installer on that preview.
+
+### فارسی
+
+- چهار گزینهٔ **AmneziaWG، Shadowsocks 2022، Trojan TLS و VLESS Encryption** وارد مدیریت حساب، نصب، شروع/توقف، تغییر پورت، حذف، پشتیبان و پیگیری گواهی شدند. فایل‌های انتشار هر دو معماری، منابع موتورهای مبنا، مجوز و checksum دارند.
+- لینک و شناسهٔ سابسکریپشن قبلی در آپدیت معمولی حفظ می‌شود. نام نمایشی ۲۴ کانفیگ خواناتر شده؛ کلید، رمز، مقصد و ترتیب عوض نمی‌شوند. چیدمان کامل آزموده‌شده Android=24 و Windows=22 است؛ خروجی هر حساب به سرویس‌ها و محدودیت‌هایش بستگی دارد. Windows فعلی AmneziaWG و SS2022 را نمی‌گیرد.
+- شمارندهٔ پایدار مصرف، حفظ حد پایین مصرف در خطا، نوسازی اشتراک پس از تغییرات، پشتیبان TLS و حفظ قواعد فایروال مشترک تکمیل شدند.
+- هر چهار گزینهٔ تازه از حساب حجمی کنار گذاشته می‌شوند. سه گزینهٔ تازهٔ Xray اتصال جدید کاربر منقضی/حذف‌شده را رد می‌کنند، ولی جریان قبلی ممکن است ادامه یابد. سقف دقیق دستگاه پیاده نشده و Soar مستقیم کلید مشترک دارد. هشدارهای deprecated بودن SS2022 و Trojan بدون Flow حفظ شده‌اند.
+- نصب آزمایشی و نام‌ها به تأیید مالک رسیده‌اند. آزمون‌های محلی و شواهد شبکه، اثبات ریبوت کامل میزبان، پایداری طولانی، باتری یا UDP مستقل SS2022 نیستند. برای preview.3 بستهٔ ارتقای جداگانهٔ amd64 ارائه شده؛ نصب اولیه را روی این سرور دوباره اجرا نکنید.
+
+### Русский
+
+- Добавлены управляемые аккаунтами AmneziaWG, Shadowsocks 2022, Trojan TLS и VLESS Encryption, операции жизненного цикла, резервирование TLS/учётных данных и закреплённые runtime-ресурсы с исходниками, лицензиями и контрольными суммами.
+- Ссылки подписок и ID сохраняются; новые отображаемые имена не меняют параметры подключения. Проверенная полная конфигурация: Android 24 / Windows 22; Windows исключает AmneziaWG и SS2022. Исправлены единая политика экспорта, обновление подписок и сохранение счётчиков после ошибок.
+- Все четыре новых протокола исключены для аккаунтов с лимитом трафика. Новые протоколы Xray запрещают новые сеансы после удаления, но открытые потоки могут продолжаться. Точного лимита устройств нет. Для принятой preview.3 предусмотрен отдельный пакет обновления amd64 без переустановки ядер.
+
+### 简体中文
+
+- 新增账户托管的 AmneziaWG、Shadowsocks 2022、Trojan TLS 和 VLESS Encryption，支持生命周期操作、TLS/凭据备份，并提供固定版本运行时、源码、许可证和校验和。
+- 保留订阅地址与配置 ID；新的显示名称不改变连接参数。完整测试配置为 Android 24 / Windows 22，Windows 不接收 AmneziaWG 和 SS2022。统一导出策略、订阅刷新及故障后计数持久化得到修复。
+- 四种新增协议均排除流量受限账户。新增 Xray 协议在删除后拒绝新会话，但现有流可能继续；尚无精确设备数限制。已验收的 preview.3 提供独立 amd64 升级包，无需重新安装内核。
+
 ## v1.20.1
 
 - **An update that is cut short no longer leaves a tunnel without its program.** `rovunet update` moves each transport binary (`dnstt-server`, `slipstream-server`, `vaydns-server`, `caddy-naive`) to `.bak`, downloads the new one and puts it in place. If it stopped in between, the binary was gone and the service restarted every 5 seconds failing with status 203/EXEC; this happened on a real server on the v1.20.0 update, while GitHub was answering some downloads with HTTP 504. The next update now puts the old binary back when the binary is missing and a `.bak` exists, and removes the half-finished download. A binary that is in place is never changed, and a backup is never removed. The cause of the interruption itself is not known.

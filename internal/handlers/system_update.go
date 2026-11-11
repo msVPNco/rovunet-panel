@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/binary"
@@ -21,6 +22,9 @@ import (
 func handleSystemUpdate(ctx *actions.Context) error {
 	out := ctx.Output
 	out.Info("Current version: " + version.String())
+	if strings.Contains(version.Version, "managed-preview") {
+		return actions.NewError(actions.SystemUpdate, "this private preview requires a reviewed preview package or its rollback script; the public updater does not yet support its managed cores", nil)
+	}
 
 	base := binary.DownloadBase()
 	downloadURL := fmt.Sprintf("%s/rovunet-%s-%s", base, runtime.GOOS, runtime.GOARCH)

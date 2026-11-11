@@ -9,6 +9,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/certs"
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/msVPNco/rovunet-panel/internal/keys"
 	"github.com/msVPNco/rovunet-panel/internal/network"
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
@@ -32,6 +33,20 @@ func handleTunnelAdd(ctx *actions.Context) error {
 		if err != nil {
 			return err
 		}
+	}
+	if strings.HasPrefix(transport_, "xray-") {
+		protocol := strings.TrimPrefix(transport_, "xray-")
+		installCores(cfg, out, []string{protocol})
+		cores, err := coreinstall.List()
+		if err != nil {
+			return err
+		}
+		for _, core := range cores {
+			if core.Protocol == protocol {
+				return WriteSubscriptions(cfg, out)
+			}
+		}
+		return fmt.Errorf("protocol was not installed; see the reported provisioning failure")
 	}
 	// Direct transports have an implicit backend
 	isDirect := transport_ == config.TransportSSH || transport_ == config.TransportSOCKS || transport_ == config.TransportStunTLS
@@ -615,6 +630,7 @@ func addSingleTunnel(ctx *actions.Context, cfg *config.Config, transport_, backe
 		out.Info("Creating systemd service...")
 	}
 	if err := transport.CreateService(&tunnel, cfg); err != nil {
+		markTunnelFailed(cfg, &tunnel, out)
 		return actions.NewError(actions.TunnelAdd, "failed to create service", err)
 	}
 

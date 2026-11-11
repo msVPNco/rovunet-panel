@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,10 +25,11 @@ const FlushEvery = 15 * time.Second
 
 // Counter is the running total of one server.
 type Counter struct {
-	path  string
-	mu    sync.Mutex
-	m     map[string]int64
-	dirty bool
+	path    string
+	mu      sync.Mutex
+	m       map[string]int64
+	dirty   bool
+	loadErr error
 }
 
 // NewCounter starts from the totals the named server saved earlier, so a
@@ -35,10 +37,17 @@ type Counter struct {
 func NewCounter(name string) *Counter {
 	c := &Counter{path: filepath.Join(Dir, name+".json"), m: map[string]int64{}}
 	if data, err := os.ReadFile(c.path); err == nil {
-		_ = json.Unmarshal(data, &c.m)
+		c.loadErr = json.Unmarshal(data, &c.m)
 		if c.m == nil {
 			c.m = map[string]int64{}
 		}
+		for _, n := range c.m {
+			if n < 0 {
+				c.loadErr = fmt.Errorf("negative persisted usage counter")
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		c.loadErr = err
 	}
 	return c
 }
@@ -49,6 +58,11 @@ func (c *Counter) Add(user string, n int64) {
 		return
 	}
 	c.mu.Lock()
+	if n > math.MaxInt64-c.m[user] {
+		c.loadErr = fmt.Errorf("usage counter overflow")
+		c.mu.Unlock()
+		return
+	}
 	c.m[user] += n
 	c.dirty = true
 	c.mu.Unlock()
@@ -57,13 +71,14 @@ func (c *Counter) Add(user string, n int64) {
 // Flush writes the totals if they changed.
 func (c *Counter) Flush() error {
 	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.loadErr != nil {
+		return c.loadErr
+	}
 	if !c.dirty {
-		c.mu.Unlock()
 		return nil
 	}
 	data, err := json.Marshal(c.m)
-	c.dirty = false
-	c.mu.Unlock()
 	if err != nil {
 		return err
 	}
@@ -74,7 +89,11 @@ func (c *Counter) Flush() error {
 	if err := os.WriteFile(tmp, data, 0644); err != nil {
 		return err
 	}
-	return os.Rename(tmp, c.path)
+	if err := os.Rename(tmp, c.path); err != nil {
+		return err
+	}
+	c.dirty = false
+	return nil
 }
 
 // Run flushes every FlushEvery and once more when ctx ends.
@@ -103,6 +122,10 @@ func Totals() map[string]int64 {
 // could not be read or parsed, in which case the sums may be low. No
 // directory yet is not an error: nothing was counted.
 func TotalsChecked() (map[string]int64, error) {
+	return totalsCheckedExcept("")
+}
+
+func totalsCheckedExcept(skip string) (map[string]int64, error) {
 	total := map[string]int64{}
 	entries, err := os.ReadDir(Dir)
 	if err != nil && !os.IsNotExist(err) {
@@ -110,6 +133,27 @@ func TotalsChecked() (map[string]int64, error) {
 	}
 	var first error
 	for _, e := range entries {
+		if e.Name() == skip+".json" {
+			continue
+		}
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".source") {
+			s, serr := readAbsolute(filepath.Join(Dir, e.Name()))
+			if serr == nil {
+				for u, n := range s.Totals {
+					if n > math.MaxInt64-total[u] {
+						return total, fmt.Errorf("usage totals overflow")
+					}
+					total[u] += n
+				}
+				if s.Incomplete {
+					serr = fmt.Errorf("unsampled traffic across an engine epoch or counter reset")
+				}
+			}
+			if serr != nil && first == nil {
+				first = fmt.Errorf("usage source %s: %w", e.Name(), serr)
+			}
+			continue
+		}
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
@@ -118,6 +162,9 @@ func TotalsChecked() (map[string]int64, error) {
 			var m map[string]int64
 			if err = json.Unmarshal(data, &m); err == nil {
 				for u, n := range m {
+					if n < 0 || n > math.MaxInt64-total[u] {
+						return total, fmt.Errorf("invalid usage total")
+					}
 					total[u] += n
 				}
 				continue
@@ -135,24 +182,7 @@ const restoredName = "restored"
 
 // totalsExcept sums every totals file but the named one.
 func totalsExcept(skip string) map[string]int64 {
-	total := map[string]int64{}
-	entries, _ := os.ReadDir(Dir)
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || e.Name() == skip+".json" {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(Dir, e.Name()))
-		if err != nil {
-			continue
-		}
-		var m map[string]int64
-		if json.Unmarshal(data, &m) != nil {
-			continue
-		}
-		for u, n := range m {
-			total[u] += n
-		}
-	}
+	total, _ := totalsCheckedExcept(skip)
 	return total
 }
 

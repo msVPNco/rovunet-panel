@@ -13,6 +13,9 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
+var startTunnelService = service.Start
+var stopTunnelService = service.Stop
+
 func handleTunnelStart(ctx *actions.Context) error {
 	cfg := ctx.Config.(*config.Config)
 	tag := ctx.GetArg("tag")
@@ -24,8 +27,15 @@ func handleTunnelStart(ctx *actions.Context) error {
 		return actions.NewError(actions.TunnelStart, fmt.Sprintf("tunnel %q not found", tag), nil)
 	}
 	svcName := service.TunnelServiceName(tag)
-	if err := service.Start(svcName); err != nil {
+	if err := startTunnelService(svcName); err != nil {
 		return actions.NewError(actions.TunnelStart, "failed to start service", err)
+	}
+	tunnel.Enabled = true
+	if err := cfg.Save(); err != nil {
+		return actions.NewError(actions.TunnelStart, "service started but saving its state failed", err)
+	}
+	if err := WriteSubscriptions(cfg, ctx.Output); err != nil {
+		return actions.NewError(actions.TunnelStart, "service started but refreshing subscriptions failed", err)
 	}
 	ctx.Output.Success(fmt.Sprintf("Tunnel %q started", tag))
 	return nil
@@ -42,8 +52,15 @@ func handleTunnelStop(ctx *actions.Context) error {
 		return actions.NewError(actions.TunnelStop, fmt.Sprintf("tunnel %q not found", tag), nil)
 	}
 	svcName := service.TunnelServiceName(tag)
-	if err := service.Stop(svcName); err != nil {
+	if err := stopTunnelService(svcName); err != nil {
 		return actions.NewError(actions.TunnelStop, "failed to stop service", err)
+	}
+	tunnel.Enabled = false
+	if err := cfg.Save(); err != nil {
+		return actions.NewError(actions.TunnelStop, "service stopped but saving its state failed", err)
+	}
+	if err := WriteSubscriptions(cfg, ctx.Output); err != nil {
+		return actions.NewError(actions.TunnelStop, "service stopped but refreshing subscriptions failed", err)
 	}
 	ctx.Output.Success(fmt.Sprintf("Tunnel %q stopped", tag))
 	return nil

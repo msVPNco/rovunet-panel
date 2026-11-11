@@ -44,6 +44,9 @@ func handleTunnelRemove(ctx *actions.Context) error {
 	if err := cfg.Save(); err != nil {
 		return actions.NewError(actions.TunnelRemove, "failed to save config", err)
 	}
+	if err := WriteSubscriptions(cfg, ctx.Output); err != nil {
+		return actions.NewError(actions.TunnelRemove, "tunnel removed but refreshing subscriptions failed", err)
+	}
 
 	ctx.Output.Success(fmt.Sprintf("Tunnel %q removed", tag))
 	return nil
@@ -77,6 +80,9 @@ func handleTunnelRemoveAll(ctx *actions.Context, cfg *config.Config) error {
 
 	if err := cfg.Save(); err != nil {
 		return actions.NewError(actions.TunnelRemove, "failed to save config", err)
+	}
+	if err := WriteSubscriptions(cfg, ctx.Output); err != nil {
+		return actions.NewError(actions.TunnelRemove, "tunnels removed but refreshing subscriptions failed", err)
 	}
 
 	ctx.Output.Success(fmt.Sprintf("All %d tunnel(s) removed", len(tags)))

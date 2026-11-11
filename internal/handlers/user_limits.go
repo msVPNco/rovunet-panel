@@ -13,6 +13,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/protocols"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
 	"github.com/msVPNco/rovunet-panel/internal/usage"
 	"github.com/msVPNco/rovunet-panel/internal/warp"
@@ -112,22 +113,24 @@ func limitSummary(u config.UserConfig) string {
 }
 
 // removeUserFully removes a user from the system, the config and every
-// service that holds credentials, and ends the user's open sessions.
+// service that holds credentials. Some engines cannot close existing streams.
 func removeUserFully(cfg *config.Config, out actions.OutputWriter, username string) error {
 	// A traffic-limited user has no SSH account, so there may be nothing to remove.
 	if err := revokeSSH(username); err != nil {
 		return fmt.Errorf("failed to remove SSH user: %w", err)
 	}
 	cfg.RemoveUser(username)
+	// systemd boot preparation reads the saved config during a restart.
+	// Persist removal first so it cannot regenerate the removed credential.
+	if err := cfg.Save(); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
 	if cfg.Warp.Enabled {
 		proxy.RunAsUser = warp.SocksUser
 	}
 	_ = setupSOCKS(cfg)
 	syncNaive(cfg, out)
 	syncCores(cfg, out)
-	if err := cfg.Save(); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
-	}
 	if cfg.Warp.Enabled {
 		if err := warp.RefreshRouting(cfg); err != nil {
 			out.Warning("Failed to update WARP routing: " + err.Error())
@@ -276,13 +279,20 @@ func formatGB(b int64) string { return fmt.Sprintf("%.2f GB", float64(b)/float64
 
 // warnQuotaScope tells the operator what a traffic limit covers.
 func warnQuotaScope(cfg *config.Config, out actions.OutputWriter) {
-	out.Info("Traffic limit: only VLESS (WebSocket), REALITY and XHTTP traffic is counted, so this user is given only those configs, has no SSH account and no login on NaïveProxy, SOCKS5, Hysteria 2 or WireGuard. Counting updates every 15 seconds and the limit is checked every 5 minutes, so more than the limit can pass on a fast connection.")
+	out.Info("Traffic limits cover VLESS (WebSocket), REALITY and XHTTP. SSH, NaïveProxy, SOCKS5, Hysteria 2, WireGuard, AmneziaWG, SS2022, Trojan and VLESS Encryption paths are excluded from traffic-limited accounts. Native counters flush every 15 seconds; Xray is sampled and limits are enforced every 5 minutes, so traffic can exceed the nominal limit between checks.")
+	if cores, err := coreinstall.List(); err == nil {
+		for _, c := range cores {
+			if protocols.QuotaEligible(c.Protocol) {
+				return
+			}
+		}
+	}
 	for _, t := range cfg.Tunnels {
 		if t.Transport == config.TransportVLESS {
 			return
 		}
 	}
-	out.Warning("There is no VLESS tunnel yet, so this user would get no config. Add one with 'rovunet tunnel add'.")
+	out.Warning("No counted protocol is installed yet; this account has no usable profile until one is installed.")
 }
 
 // forgetArchived drops a stopped user's record for good.

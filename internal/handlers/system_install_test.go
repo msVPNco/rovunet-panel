@@ -31,9 +31,9 @@ func (o *printOutput) count(substr string) int {
 func configsTestTunnels() []config.TunnelConfig {
 	soarKey := &config.SoarConfig{PublicKey: "tCd7Qm7FolQBkQfQUWLVrLBktDMirri+SlUaAHT1gxM="}
 	return []config.TunnelConfig{
-		{Tag: "soar", Transport: config.TransportSoar, Backend: config.BackendDirect, Domain: "r.example.com", Soar: soarKey},
-		{Tag: "soar-ssh", Transport: config.TransportSoar, Backend: config.BackendSSH, Domain: "rs.example.com", Soar: soarKey},
-		{Tag: "dnstt", Transport: config.TransportDNSTT, Backend: config.BackendSOCKS, Domain: "t.example.com",
+		{Tag: "soar", Enabled: true, Transport: config.TransportSoar, Backend: config.BackendDirect, Domain: "r.example.com", Soar: soarKey},
+		{Tag: "soar-ssh", Enabled: true, Transport: config.TransportSoar, Backend: config.BackendSSH, Domain: "rs.example.com", Soar: soarKey},
+		{Tag: "dnstt", Enabled: true, Transport: config.TransportDNSTT, Backend: config.BackendSOCKS, Domain: "t.example.com",
 			DNSTT: &config.DNSTTConfig{PublicKey: strings.Repeat("ab", 32)}},
 	}
 }
@@ -82,7 +82,7 @@ func TestPrintClientConfigsVLESS(t *testing.T) {
 		t.Fatal(err)
 	}
 	tunnels := []config.TunnelConfig{{
-		Tag: "vless", Transport: config.TransportVLESS, Backend: config.BackendDirect, Domain: "cdn.example.com",
+		Tag: "vless", Enabled: true, Transport: config.TransportVLESS, Backend: config.BackendDirect, Domain: "cdn.example.com",
 		VLESS: &config.VLESSConfig{Port: 2053, Path: "/p", TLS: true, Cert: "c", Key: "k", SecretFile: secret, CDN: true},
 	}}
 	cfg := &config.Config{
@@ -111,7 +111,7 @@ func TestShowUserConfigsNaiveBothModes(t *testing.T) {
 		PublicAddress: "203.0.113.7",
 		Backends:      config.DefaultBackends(),
 		Tunnels: []config.TunnelConfig{{
-			Tag: "naive", Transport: config.TransportNaive, Backend: config.BackendSOCKS,
+			Tag: "naive", Enabled: true, Transport: config.TransportNaive, Backend: config.BackendSOCKS,
 			Domain: "n.example.com", Naive: &config.NaiveConfig{Port: 443},
 		}},
 	}
@@ -131,7 +131,7 @@ func TestPlainSOCKSHiddenByDefault(t *testing.T) {
 		Backends:      config.DefaultBackends(),
 		Users:         []config.UserConfig{{Username: "alice", Password: "a"}},
 		Tunnels: []config.TunnelConfig{
-			{Tag: "socks", Transport: config.TransportSOCKS, Backend: config.BackendSOCKS, Enabled: true},
+			{Tag: "socks", Enabled: true, Transport: config.TransportSOCKS, Backend: config.BackendSOCKS},
 		},
 	}
 	t.Setenv("ROVUNET_ALL_CONFIGS", "")

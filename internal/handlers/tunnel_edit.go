@@ -517,6 +517,9 @@ func handleTunnelEdit(ctx *actions.Context) error {
 	if resyncNaive {
 		syncNaive(cfg, out)
 	}
+	if err := WriteSubscriptions(cfg, out); err != nil {
+		return actions.NewError(actions.TunnelEdit, "tunnel updated but refreshing subscriptions failed", err)
+	}
 
 	out.Success(fmt.Sprintf("Tunnel %q updated", tag))
 	return nil

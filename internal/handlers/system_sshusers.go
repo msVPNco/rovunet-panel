@@ -9,9 +9,9 @@ import (
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
+	"github.com/msVPNco/rovunet-panel/internal/clientexport"
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
-	"github.com/msVPNco/rovunet-panel/internal/coreplan"
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
 	"github.com/msVPNco/rovunet-panel/internal/system"
@@ -475,42 +475,63 @@ func printSubscriptionLink(cfg *config.Config, u config.UserConfig, out actions.
 	if link := SubscriptionURL(cfg, u); link != "" {
 		out.Print("  Subscription link (all configs of " + u.Username + ", for the app's Subscriptions menu):")
 		out.Print("  " + link)
+		out.Print("  Windows 0.1.0 Beta subscription (excludes unsupported AWG / SS2022):")
+		out.Print("  " + WindowsSubscriptionURL(cfg, u))
 		out.Print("")
 	}
 }
 
 func printUserConfigs(cfg *config.Config, username, password string, out actions.OutputWriter) {
 	ensureServerAddress(cfg, out, cfg.Tunnels)
-	// Fastest first: Xray cores are slotted in among the tunnels by rank.
-	limited := quotaLimited(cfg, username)
-	flushCores := coreProfilePrinterFor(cfg, config.UserConfig{Username: username, Password: password}, out, limited)
-	if limited {
-		out.Print("  # Traffic-limited user: only VLESS, REALITY and XHTTP configs are given, because only their traffic is counted.")
+	u := config.UserConfig{Username: username, Password: password}
+	if stored := cfg.GetUser(username); stored != nil {
+		u = *stored
+	}
+	printStructuredProfiles(cfg, u, cfg.Tunnels, out, false)
+}
+
+func printStructuredProfiles(cfg *config.Config, u config.UserConfig, tunnels []config.TunnelConfig, out actions.OutputWriter, summary bool) int {
+	profiles, err := clientexport.Build(cfg, u, tunnels, clientexport.Options{All: showAllConfigs(), StatsWorking: statsWorking})
+	if err != nil {
+		out.Warning("Client profiles: " + err.Error())
+	}
+	for _, p := range profiles {
+		label := "user=" + u.Username
+		if summary {
+			label = u.Username
+			if label == "" {
+				label = "(no auth)"
+			}
+			if p.NoLogin {
+				label = u.Username + ", no login needed"
+				if u.Username == "" {
+					label = "(no login)"
+				}
+			}
+		}
+		out.Print(fmt.Sprintf("  [%s] %s", p.ID, label))
+		out.Print("  " + p.Link)
+		if p.Standard != "" && p.Standard != p.Link {
+			if p.File {
+				out.Print("  # Private client file (save without indentation):")
+				for _, line := range strings.Split(strings.TrimRight(p.Standard, "\n"), "\n") {
+					out.Print(line)
+				}
+			} else {
+				out.Print("  # Standard link for other apps:")
+				out.Print("  " + p.Standard)
+			}
+		}
+		out.Print("")
 	}
 	hidden := 0
-	for _, t := range clientcfg.SortByRank(cfg.Tunnels, tunnelRank) {
-		flushCores(clientcfg.TunnelRank(t.Transport))
-		if t.Transport == config.TransportVLESS {
-			printVLESSLinks(out, cfg, &t, username, password)
-			continue
-		}
-		if limited {
-			continue
-		}
-		if skipPlainSOCKS(&t) {
+	for _, t := range tunnels {
+		if t.Enabled && skipPlainSOCKS(&t) && !u.MeteredOnly() {
 			hidden++
-			continue
-		}
-		// A NaiveProxy tunnel serves SOCKS and SSH clients alike: print both.
-		for _, v := range naiveAwareVariants(&t) {
-			vt := t
-			vt.Backend = v.backend
-			vt.Tag = v.tag
-			printTunnelConfig(cfg, &vt, username, password, out)
 		}
 	}
-	flushCores(1 << 30)
 	noteHidden(out, hidden)
+	return len(profiles)
 }
 
 // showAllConfigs lists plain SOCKS5 tunnels too (ROVUNET_ALL_CONFIGS=1).
@@ -527,129 +548,8 @@ func noteHidden(out actions.OutputWriter, n int) {
 	}
 }
 
-// printTunnelConfig prints one tunnel's config(s) for a user: its public key
-// where it has one, then a rovunet:// link per client mode.
-func printTunnelConfig(cfg *config.Config, t *config.TunnelConfig, username, password string, out actions.OutputWriter) {
-	backend := cfg.GetBackend(t.Backend)
-	// Soar's direct backend is built into the Soar server: there is no
-	// backend entry, and its config needs none (it has no login).
-	soarDirect := t.Transport == config.TransportSoar && t.Backend == config.BackendDirect
-	if backend == nil && !soarDirect {
-		return
-	}
-
-	// Show public key for DNSTT/VayDNS/Soar tunnels
-	if t.Transport == config.TransportDNSTT && t.DNSTT != nil && t.DNSTT.PublicKey != "" {
-		out.Print(fmt.Sprintf("  [%s] Public Key: %s", t.Tag, t.DNSTT.PublicKey))
-	} else if t.Transport == config.TransportVayDNS && t.VayDNS != nil && t.VayDNS.PublicKey != "" {
-		out.Print(fmt.Sprintf("  [%s] Public Key: %s", t.Tag, t.VayDNS.PublicKey))
-	} else if t.Transport == config.TransportSoar && t.Soar != nil && t.Soar.PublicKey != "" {
-		out.Print(fmt.Sprintf("  [%s] Public Key: %s", t.Tag, t.Soar.PublicKey))
-	}
-
-	modes := []string{""}
-	if t.Transport == config.TransportDNSTT {
-		modes = []string{clientcfg.ClientModeDNSTT, clientcfg.ClientModeNoizDNS}
-	}
-
-	for _, mode := range modes {
-		opts := clientcfg.URIOptions{
-			ClientMode: mode,
-			Username:   username,
-			Password:   password,
-		}
-		uri, err := clientcfg.GeneratePortableURI(t, backend, cfg, opts, "rovunet")
-		if err != nil {
-			continue
-		}
-		label := t.Tag
-		if mode == clientcfg.ClientModeNoizDNS {
-			label = strings.ReplaceAll(label, "dnstt", "noizdns")
-		}
-		if soarDirect {
-			out.Print("  # Soar: no login, same for every user")
-		}
-		out.Print(fmt.Sprintf("  [%s] user=%s", label, username))
-		out.Print(fmt.Sprintf("  %s", uri))
-		out.Print("")
-	}
-}
-
-// tunnelRank orders tunnels for output, fastest first.
-func tunnelRank(t config.TunnelConfig) int { return clientcfg.TunnelRank(t.Transport) }
-
-// coreProfilePrinter returns a function that prints the user's Xray core
-// profiles whose rank is at most the given limit, in rank order, each once.
-// Calling it with each tunnel's rank before the tunnel, and with a huge limit
-// at the end, interleaves cores and tunnels from fastest to slowest.
-func coreProfilePrinter(cfg *config.Config, user config.UserConfig, out actions.OutputWriter) func(limit int) int {
-	return coreProfilePrinterFor(cfg, user, out, false)
-}
-
-// statsWorking is overridden by tests.
+// statsWorking is the shared export's statistics readiness check.
 var statsWorking = coreinstall.StatsWorking
-
-// coreProfilePrinterFor is coreProfilePrinter; for a traffic-limited user it
-// keeps only the cores whose traffic is counted (REALITY and XHTTP with a
-// working statistics API).
-func coreProfilePrinterFor(cfg *config.Config, user config.UserConfig, out actions.OutputWriter, limited bool) func(limit int) int {
-	profiles, err := coreinstall.Profiles(user)
-	if err != nil {
-		out.Warning("Xray cores: " + err.Error())
-	}
-	if limited {
-		kept := profiles[:0]
-		for _, p := range profiles {
-			if coreplan.Metered(p.Protocol) && statsWorking(p.Core) {
-				kept = append(kept, p)
-			}
-		}
-		profiles = kept
-	}
-	profiles = clientcfg.SortByRank(profiles, func(p coreinstall.Profile) int { return clientcfg.CoreRank(p.Protocol) })
-	next := 0
-	return func(limit int) int {
-		printed := 0
-		for next < len(profiles) && clientcfg.CoreRank(profiles[next].Protocol) <= limit {
-			if printCoreProfile(cfg, user, profiles[next], out) {
-				printed++
-			}
-			next++
-		}
-		return printed
-	}
-}
-
-// printCoreProfiles prints all of a user's Xray core profiles, each wrapped so
-// the app groups it with the user's tunnels, followed by the same profile for
-// other apps. It returns how many it printed.
-func printCoreProfiles(cfg *config.Config, user config.UserConfig, out actions.OutputWriter) int {
-	return coreProfilePrinter(cfg, user, out)(1 << 30)
-}
-
-func printCoreProfile(cfg *config.Config, user config.UserConfig, p coreinstall.Profile, out actions.OutputWriter) bool {
-	uri, err := clientcfg.GenerateCoreURI(p.Core, p.Link, cfg, clientcfg.URIOptions{Username: user.Username})
-	if err != nil {
-		out.Warning(fmt.Sprintf("Xray core %s: %v", p.Core, err))
-		return false
-	}
-	out.Print(fmt.Sprintf("  [%s] %s, user=%s", p.Core, coreProtocolName(p.Protocol), user.Username))
-	out.Print(fmt.Sprintf("  %s", uri))
-	// The same profile for other clients: a one-line link, or the
-	// WireGuard file to save and import.
-	if p.Protocol == "wireguard" {
-		out.Print("  # WireGuard file for other apps (save as rovunet.conf);")
-		out.Print("  # its lines must start at the left edge, with no indentation:")
-		for _, line := range strings.Split(strings.TrimRight(p.Link, "\n"), "\n") {
-			out.Print(line)
-		}
-	} else {
-		out.Print("  # Standard link for other apps:")
-		out.Print("  " + p.Link)
-	}
-	out.Print("")
-	return true
-}
 
 // coreProtocolName is a core protocol's standard name.
 func coreProtocolName(protocol string) string {
@@ -662,6 +562,14 @@ func coreProtocolName(protocol string) string {
 		return "Hysteria 2"
 	case "wireguard":
 		return "WireGuard"
+	case "amneziawg":
+		return "AmneziaWG (userspace)"
+	case "ss2022":
+		return "Shadowsocks 2022"
+	case "trojan":
+		return "Trojan TLS"
+	case "vlessenc":
+		return "VLESS Encryption (ML-KEM-768)"
 	}
 	return protocol
 }

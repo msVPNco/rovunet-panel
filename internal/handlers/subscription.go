@@ -3,15 +3,18 @@ package handlers
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
+	"github.com/msVPNco/rovunet-panel/internal/clientexport"
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/transport"
 )
@@ -36,43 +39,19 @@ type subFeed struct {
 	Items   []subItem `json:"items"`
 }
 
-// captureOutput collects printed lines.
-type captureOutput struct{ lines []string }
+var subscriptionWriteMu sync.Mutex
 
-func (c *captureOutput) Info(string)    {}
-func (c *captureOutput) Success(string) {}
-func (c *captureOutput) Warning(string) {}
-func (c *captureOutput) Error(string)   {}
-func (c *captureOutput) Print(m string) { c.lines = append(c.lines, m) }
+func userSubscriptionItems(cfg *config.Config, u config.UserConfig) ([]subItem, error) {
+	return subscriptionItemsForClient(cfg, u, "")
+}
 
-var subTagRe = regexp.MustCompile(`^\[([^\]]+)\]`)
-
-// subscriptionItems turns the lines `users configs` prints for one user into
-// feed items: each rovunet:// line, named by the [tag] header above it.
-func subscriptionItems(lines []string) []subItem {
+func subscriptionItemsForClient(cfg *config.Config, u config.UserConfig, client string) ([]subItem, error) {
+	profiles, err := clientexport.Build(cfg, u, cfg.Tunnels, clientexport.Options{Client: client, All: showAllConfigs(), StatsWorking: statsWorking})
 	var items []subItem
-	tag := ""
-	used := map[string]int{}
-	for _, l := range lines {
-		t := strings.TrimSpace(l)
-		if m := subTagRe.FindStringSubmatch(t); m != nil {
-			tag = m[1]
-			continue
-		}
-		if !strings.HasPrefix(t, "rovunet://") {
-			continue
-		}
-		id := tag
-		if id == "" {
-			id = "config"
-		}
-		used[id]++
-		if used[id] > 1 {
-			id = fmt.Sprintf("%s-%d", id, used[id])
-		}
-		items = append(items, subItem{ID: id, Link: t})
+	for _, p := range profiles {
+		items = append(items, subItem{ID: p.ID, Link: p.Link})
 	}
-	return items
+	return items, err
 }
 
 // subscriptionHost is the NaïveProxy domain (and port) that serves the files,
@@ -98,15 +77,28 @@ func SubscriptionURL(cfg *config.Config, u config.UserConfig) string {
 	return fmt.Sprintf("https://%s/sub/%s.json", host, u.SubToken)
 }
 
+func WindowsSubscriptionURL(cfg *config.Config, u config.UserConfig) string {
+	link := SubscriptionURL(cfg, u)
+	if link == "" {
+		return ""
+	}
+	return strings.TrimSuffix(link, ".json") + ".windows.json"
+}
+
 // buildFeed renders one user's feed.
 func buildFeed(cfg *config.Config, u config.UserConfig) ([]byte, error) {
-	c := &captureOutput{}
-	printUserConfigs(cfg, u.Username, u.Password, c)
-	items := subscriptionItems(c.lines)
+	return buildFeedForClient(cfg, u, "")
+}
+
+func buildFeedForClient(cfg *config.Config, u config.UserConfig, client string) ([]byte, error) {
+	items, err := subscriptionItemsForClient(cfg, u, client)
+	if err != nil {
+		return nil, err
+	}
 	if len(items) == 0 {
 		return nil, nil
 	}
-	items = addExtraAddressItems(cfg, u, items)
+	items = extraAddressItemsForClient(cfg, u, items, client)
 	return json.MarshalIndent(subFeed{Version: 1, Name: u.Username, Items: items}, "", "  ")
 }
 
@@ -120,12 +112,10 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 	if subscriptionHost(cfg) == "" {
 		return nil
 	}
-	minted := mintIDs(cfg)
-	if minted {
-		if err := cfg.Save(); err != nil {
-			return fmt.Errorf("save subscription tokens: %w", err)
-		}
-	}
+	// The limits timer and administrative commands can refresh concurrently.
+	// Readers keep seeing the previous atomic files while a writer works.
+	subscriptionWriteMu.Lock()
+	defer subscriptionWriteMu.Unlock()
 	root := transport.SubscriptionDir
 	dir := filepath.Join(root, "sub")
 	// Directories can be entered but not listed, so a local account (SSH users
@@ -136,6 +126,20 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 			return err
 		}
 		_ = os.Chmod(d, 0711)
+	}
+	lock, err := os.OpenFile(filepath.Join(root, ".write.lock"), os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
+		return err
+	}
+	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+	if mintIDs(cfg) {
+		if err := cfg.Save(); err != nil {
+			return fmt.Errorf("save subscription tokens: %w", err)
+		}
 	}
 	keep := map[string]bool{}
 	var firstErr error
@@ -156,11 +160,12 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 			firstErr = err
 		}
 	}
-	status := func(u config.UserConfig, reason string, in statusInput) {
+	status := func(u config.UserConfig, reason string, in statusInput, suffix string) {
 		if u.SubToken == "" {
 			return
 		}
-		name := u.SubToken + statusSuffix
+		name := u.SubToken + suffix + statusSuffix
+		keep[name] = true
 		body, err := statusBody(buildStatus(in, u, reason), filepath.Join(dir, name))
 		if err != nil {
 			if firstErr == nil {
@@ -172,32 +177,50 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 	}
 	in := newStatusInput(cfg, time.Now())
 	for _, u := range cfg.Users {
-		status(u, "", in)
+		status(u, "", in, "")
+		status(u, "", in, ".windows")
 	}
 	// A stopped user keeps the status file, so the app can say why, but not
 	// the subscription: those configs no longer work.
 	for _, a := range cfg.Archived {
 		if cfg.GetUser(a.Username) == nil {
-			status(a.UserConfig, a.Reason, in)
+			status(a.UserConfig, a.Reason, in, "")
+			status(a.UserConfig, a.Reason, in, ".windows")
 		}
 	}
 	for _, u := range cfg.Users {
-		body, err := buildFeed(cfg, u)
-		if err != nil {
-			if firstErr == nil {
-				firstErr = err
+		for _, client := range []string{"", "windows"} {
+			suffix := ""
+			if client == "windows" {
+				suffix = ".windows"
 			}
-			continue
+			name := u.SubToken + suffix + ".json"
+			body, err := buildFeedForClient(cfg, u, client)
+			if err != nil {
+				// A transient provisioning/read error must not turn a valid
+				// existing subscription into a 404. Explicit removals below
+				// still retire their old URLs and credentials as before.
+				keep[name] = true
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			if body == nil {
+				continue
+			}
+			write(name, body)
 		}
-		if body == nil {
-			continue
-		}
-		write(u.SubToken+".json", body)
 	}
-	entries, _ := os.ReadDir(dir)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return errors.Join(firstErr, err)
+	}
 	for _, e := range entries {
 		if !keep[e.Name()] {
-			_ = os.Remove(filepath.Join(dir, e.Name()))
+			if err := os.Remove(filepath.Join(dir, e.Name())); err != nil && firstErr == nil {
+				firstErr = err
+			}
 		}
 	}
 	return firstErr
@@ -234,6 +257,10 @@ func mintIDs(cfg *config.Config) bool {
 // as NaïveProxy) come out identical and are skipped, so only the address-based
 // ones are added, with the address number in their id.
 func addExtraAddressItems(cfg *config.Config, u config.UserConfig, items []subItem) []subItem {
+	return extraAddressItemsForClient(cfg, u, items, "")
+}
+
+func extraAddressItemsForClient(cfg *config.Config, u config.UserConfig, items []subItem, client string) []subItem {
 	have := map[string]bool{}
 	ids := map[string]bool{}
 	for _, it := range items {
@@ -246,9 +273,8 @@ func addExtraAddressItems(cfg *config.Config, u config.UserConfig, items []subIt
 		// A Config holds a lock and can't be copied, so the address is
 		// swapped for the print and put back.
 		cfg.PublicAddress = addr
-		c := &captureOutput{}
-		printUserConfigs(cfg, u.Username, u.Password, c)
-		for _, it := range subscriptionItems(c.lines) {
+		extra, _ := subscriptionItemsForClient(cfg, u, client)
+		for _, it := range extra {
 			if have[linkIdentity(it.Link)] {
 				continue
 			}

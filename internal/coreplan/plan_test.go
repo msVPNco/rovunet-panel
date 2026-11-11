@@ -14,7 +14,7 @@ import (
 )
 
 func TestDistinctProfiles(t *testing.T) {
-	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard"} {
+	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard", "ss2022", "trojan", "vlessenc"} {
 		b, err := Generate(Options{Protocol: protocol, Host: "example.org", SNI: "example.org", RealityTarget: "example.org:443", Port: 8443, Devices: 300, Cert: "cert.pem", Key: "key.pem"})
 		if err != nil {
 			t.Fatal(err)
@@ -54,7 +54,7 @@ func TestGeneratedConfigWithXray(t *testing.T) {
 	if output, err := exec.Command("openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-subj", "/CN=example.org", "-keyout", key, "-out", cert).CombinedOutput(); err != nil {
 		t.Fatalf("certificate: %v %s", err, output)
 	}
-	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard"} {
+	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard", "ss2022", "trojan", "vlessenc"} {
 		t.Run(protocol, func(t *testing.T) {
 			b, err := Generate(Options{Protocol: protocol, Host: "example.org", SNI: "example.org", RealityTarget: "example.org:443", Port: 8443, Devices: 3, Cert: cert, Key: key})
 			if err != nil {
@@ -80,7 +80,7 @@ func TestWriteAppFixture(t *testing.T) {
 		t.Skip("set ROVUNET_CORE_FIXTURE to write the app fixture")
 	}
 	var records []string
-	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard"} {
+	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard", "ss2022", "trojan", "vlessenc"} {
 		b, err := Generate(Options{Protocol: protocol, Host: "example.org", SNI: "example.org", RealityTarget: "example.org:443", Port: 8443, Devices: 1, Cert: "cert.pem", Key: "key.pem"})
 		if err != nil {
 			t.Fatal(err)
@@ -111,7 +111,7 @@ func TestWriteAppFixture(t *testing.T) {
 }
 
 func TestGenerateForIsStablePerClient(t *testing.T) {
-	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard"} {
+	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard", "ss2022", "trojan", "vlessenc"} {
 		o := Options{Protocol: protocol, Host: "example.org", SNI: "example.org", RealityTarget: "example.org:443", Port: 8443, Cert: "c.pem", Key: "k.pem"}
 		st, err := NewState()
 		if err != nil {
@@ -174,7 +174,7 @@ func TestWireGuardAddressesNeverMove(t *testing.T) {
 }
 
 func TestValidateRepairsPastedLinksAndRejectsPlaceholders(t *testing.T) {
-	o := Options{Protocol: "reality", Host: "66.92.161.184", Port: 9443,
+	o := Options{Protocol: "reality", Host: "192.0.2.1", Port: 9443,
 		SNI:           "[www.microsoft.com](https://www.microsoft.com)",
 		RealityTarget: "[www.microsoft.com:443](https://www.microsoft.com:443)"}
 	if err := Validate(&o); err != nil {

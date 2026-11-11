@@ -21,8 +21,8 @@ Rovunet Panel is an open-source tool that turns a Linux server into a multi-prot
 
 ## Highlights
 
-- **14 protocols** across proxies, SSH, DNS tunnels and Xray cores, managed from one command-line tool with an interactive menu.
-- **One login per user** for every tunnel, and per-user VLESS identities that are revoked within seconds.
+- **Managed proxies, SSH, DNS tunnels and protocol cores**, including AmneziaWG, Shadowsocks 2022, Trojan TLS and VLESS Encryption, from one command-line tool with an interactive menu.
+- **Account-managed credentials** on authenticated paths, with targeted updates for the four added protocols. Direct Soar uses a shared key.
 - **Ready-to-import configurations**: native `rovunet://` links for the [Rovunet app](https://github.com/msVPNco/rovunet-app), standard `vless://`, `hysteria2://` and WireGuard files for other clients.
 - **Port 443 fronting**: VLESS and SSH over TLS share NaïveProxy's domain, port and Let's Encrypt certificate behind a decoy website.
 - **Safe operations**: checksum-verified updates with rollback, validated configurations before deployment, full-server backup and restore.
@@ -30,6 +30,7 @@ Rovunet Panel is an open-source tool that turns a Linux server into a multi-prot
 - **Limits and subscription links**: unlimited or limited users (days and/or GB, enforced every 5 minutes), and one `https://…/sub/<token>.json` link per user that carries all their configurations for the app's Subscriptions menu.
 - **Several addresses for one server**: add the server's other IPs and the links carry each address-based configuration once per address, so one blocked IP does not cut users off.
 - **Automatic REALITY target**: the camouflage site is chosen from a bank of high-traffic sites that are rarely blocked. A new install adds a second REALITY core on another port with a site of another company, so a user has two ways in.
+- **Stable subscription URLs and readable names**: normal updates preserve existing tokens and profile IDs. Android uses `<token>.json`; Windows uses `<token>.windows.json` with its own supported protocol set. Refresh the saved subscription to receive the approved display names.
 
 ## Protocols
 
@@ -49,8 +50,14 @@ Rovunet Panel is an open-source tool that turns a Linux server into a multi-prot
 | **VLESS + XHTTP** (Xray) | HTTP requests over TLS | any TCP | Behind a CDN, or where WebSocket is blocked |
 | **Hysteria 2** (Xray) | QUIC | any UDP | Lossy networks where UDP passes |
 | **WireGuard** (Xray) | UDP | any UDP | Where WireGuard is not blocked |
+| **AmneziaWG** | Userspace UDP tunnel | any UDP | An optional alternative to WireGuard |
+| **Shadowsocks 2022** (Xray) | TCP and UDP | any TCP/UDP | Optional compatibility; deprecated by the pinned Xray |
+| **Trojan TLS** (Xray) | TCP + trusted TLS certificate | any TCP | Optional TLS compatibility; the pinned Xray deprecates Trojan without Flow |
+| **VLESS Encryption** (Xray) | TCP + ML-KEM/X25519 encryption | any TCP | Clients supporting the pinned encryption format |
 
 Suitability depends on the server, operator and network; these are guidelines, not guarantees. See [Protocols](docs/en/protocols.md) for details.
+
+**v1.21.0:** the tested full setup exports **24 Android configurations and 22 Windows configurations**, not 24 independent protocols. Counts depend on installed services and account eligibility. The released Windows client excludes AmneziaWG and SS2022. All four added protocols are excluded from traffic-limited accounts; the three new Xray protocols deny new sessions after expiry/removal, but established streams may continue. An exact simultaneous-device cap is not implemented. See [managed protocols and compatibility](docs/MANAGED-PROTOCOLS.md).
 
 ## Quick start
 

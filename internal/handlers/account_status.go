@@ -125,7 +125,7 @@ func buildStatus(in statusInput, u config.UserConfig, reason string) accountStat
 		switch {
 		case !in.collected:
 			st.Metering = meteringUnavailable
-		case in.collection.Complete && in.totalsOK:
+		case in.collection.Complete && in.totalsOK && in.now.Sub(in.collection.Tried) <= 10*time.Minute:
 			st.Metering = meteringComplete
 		default:
 			// A core did not answer the last read, or a totals file could
@@ -149,6 +149,17 @@ func statusBody(st accountStatus, path string) ([]byte, error) {
 	if old, err := os.ReadFile(path); err == nil {
 		var prev accountStatus
 		if json.Unmarshal(old, &prev) == nil && prev.Revision > 0 {
+			// Released clients require a numeric lower bound on metered
+			// accounts, even while counting is unavailable. Keep the last
+			// known value instead of publishing a fabricated drop to zero.
+			if prev.ServerID == st.ServerID && prev.AccountID == st.AccountID && prev.PeriodID == st.PeriodID && prev.UsedBytes != nil && st.UsedBytes != nil && *st.UsedBytes < *prev.UsedBytes {
+				st.UsedBytes = prev.UsedBytes
+				st.Metering = meteringPartial
+				st.SampledAt = prev.SampledAt
+				if st.Status == statusActive && st.LimitBytes != nil && *st.UsedBytes >= *st.LimitBytes {
+					st.Status = statusLimitReached
+				}
+			}
 			st.Revision = prev.Revision
 			if !sameStatus(prev, st) {
 				st.Revision++

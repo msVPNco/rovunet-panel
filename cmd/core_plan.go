@@ -30,10 +30,16 @@ func init() {
 				return err
 			}
 		}
-		return os.WriteFile(filepath.Join(directory, "README.txt"), []byte("Generated configuration only. No service was installed. Check server.json with the pinned Xray core before deployment. Check TCP/UDP port conflicts and firewall policy. Never share a WireGuard device file between simultaneous devices. TLS requires a valid certificate for the SNI. Keep private keys private. Existing panel-managed tunnels were not modified.\n"), 0600)
+		note := "Generated configuration only. No service was installed. Validate with the pinned runtime before deployment. Check TCP/UDP port conflicts and firewall policy. Each WireGuard/AmneziaWG device needs its own peer. TLS requires a valid certificate for the SNI. Keep private keys private.\n"
+		if o.Protocol == "amneziawg" {
+			note += "server.json is the managed AmneziaWG manifest; it is not an Xray configuration. Use the official pinned userspace engine and tools.\n"
+		}
+		return os.WriteFile(filepath.Join(directory, "README.txt"), []byte(note), 0600)
 	}}
 	f := c.Flags()
-	f.StringVar(&o.Protocol, "protocol", "", "reality, xhttp, hysteria2, wireguard")
+	f.StringVar(&o.Protocol, "protocol", "", "reality, xhttp, hysteria2, wireguard, amneziawg, ss2022, trojan, vlessenc")
+	f.StringVar(&o.Subnet, "subnet", "", "AmneziaWG: IPv4 /24 subnet")
+	f.StringVar(&o.Egress, "egress", "", "AmneziaWG: Internet interface")
 	f.StringVar(&o.Host, "host", "", "Public endpoint hostname or IP")
 	f.StringVar(&o.SNI, "sni", "", "Certificate name or REALITY server name")
 	f.IntVar(&o.Port, "port", 8443, "Unoccupied TCP/UDP listener port")

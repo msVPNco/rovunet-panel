@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: '1.27.4'
       - name: Build pinned validation core
         run: |
           git clone https://github.com/XTLS/Xray-core.git "$RUNNER_TEMP/xray-src"
@@ -25,6 +25,21 @@ jobs:
           echo "XRAY=$RUNNER_TEMP/xray" >> "$GITHUB_ENV"
       - name: Vet
         run: go vet ./...
+      - name: Check preview scripts and rollback accounting
+        run: |
+          bash -n scripts/managed-preview-server.sh scripts/build-managed-awg.sh
+          python3 scripts/test-preview-rollback-usage.py
+          python3 scripts/test-managed-preview-upgrade.py
+      - name: Build and exercise pinned userspace AmneziaWG
+        run: |
+          bash scripts/build-managed-awg.sh "$RUNNER_TEMP/awg-assets"
+          go build -o "$RUNNER_TEMP/rovunet-awg-test" .
+          go build -o "$RUNNER_TEMP/awg-helper" ./internal/coreinstall/testdata/awg-helper
+          mkdir -p "$RUNNER_TEMP/awg-network-test"
+          sudo python3 -u scripts/test-managed-awg.py \
+            --panel "$RUNNER_TEMP/rovunet-awg-test" --helper "$RUNNER_TEMP/awg-helper" \
+            --engine "$RUNNER_TEMP/awg-assets/amneziawg-go-linux-amd64" \
+            --tool "$RUNNER_TEMP/awg-assets/awg-linux-amd64" --work "$RUNNER_TEMP/awg-network-test"
       - name: Test
         run: go test ./...
       - name: Race

@@ -44,7 +44,9 @@ func ServiceName(name string) string { return "rovunet-core-" + name }
 // Proto is the transport-layer protocol a core listens on.
 func Proto(protocol string) string {
 	switch protocol {
-	case "hysteria2", "wireguard":
+	case "ss2022":
+		return "tcp,udp"
+	case "hysteria2", "wireguard", "amneziawg":
 		return "udp"
 	}
 	return "tcp"
@@ -55,26 +57,43 @@ func PortFree(port int, proto string) error { return network.PortFree(port, prot
 
 // Unit builds the systemd unit for a core whose config sits in dir.
 func Unit(name, dir string) *service.Unit {
+	self, _ := config.SelfPath()
+	condition := ""
+	confirm := ""
+	if _, err := os.Stat(filepath.Join(dir, optionsFile)); err == nil {
+		condition = self + " core-prepare " + name
+		confirm = self + " core-confirm " + name
+	}
+	if m, err := ReadMeta(name); err == nil && m.Protocol == "amneziawg" {
+		return &service.Unit{Name: ServiceName(name), Description: "Rovunet Panel AmneziaWG: " + name, ExecStart: self + " core-awg-run " + name, ExecReload: self + " core-awg-sync " + name, ExecCondition: condition, ExecStartPost: confirm, User: "root", Group: config.SystemGroup, After: "network-online.target", Restart: "on-failure"}
+	}
 	return &service.Unit{
-		Name:        ServiceName(name),
-		Description: "Rovunet Panel Xray core: " + name,
-		ExecStart:   fmt.Sprintf("%s run -c %s", XrayPath, filepath.Join(dir, "server.json")),
-		User:        "root", // same as the VLESS service: binds privileged ports
-		Group:       config.SystemGroup,
-		After:       "network-online.target",
-		Restart:     "always",
+		Name:          ServiceName(name),
+		Description:   "Rovunet Panel Xray core: " + name,
+		ExecStart:     fmt.Sprintf("%s run -c %s", XrayPath, filepath.Join(dir, "server.json")),
+		ExecCondition: condition,
+		ExecStartPost: confirm,
+		User:          "root", // same as the VLESS service: binds privileged ports
+		Group:         config.SystemGroup,
+		After:         "network-online.target",
+		Restart:       "always",
 	}
 }
 
 // WriteBundle stores the server config, per-device client files and the
 // protocol/port metadata remove needs. dir must not already exist.
-func WriteBundle(dir string, o coreplan.Options, b coreplan.Bundle) error {
+func WriteBundle(dir string, o coreplan.Options, b coreplan.Bundle) (err error) {
 	if err := os.MkdirAll(filepath.Dir(dir), 0700); err != nil {
 		return err
 	}
 	if err := os.Mkdir(dir, 0700); err != nil {
 		return fmt.Errorf("core already exists or cannot be created: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			_ = os.RemoveAll(dir)
+		}
+	}()
 	if err := os.WriteFile(filepath.Join(dir, "server.json"), b.Server, 0600); err != nil {
 		return err
 	}
@@ -169,8 +188,13 @@ func EnsureXray() error {
 
 // TestConfig asks Xray itself to validate a config before it is deployed.
 func TestConfig(path string) error {
+	if m, err := ReadMeta(filepath.Base(filepath.Dir(path))); err == nil && m.Protocol == "amneziawg" {
+		_, err := readAWG(path)
+		return err
+	}
 	if out, err := exec.Command(XrayPath, "run", "-test", "-c", path).CombinedOutput(); err != nil {
-		return fmt.Errorf("xray rejected the config: %v: %s", err, strings.TrimSpace(string(out)))
+		_ = out // engine errors may contain credential material
+		return fmt.Errorf("xray rejected the private configuration: %v", err)
 	}
 	return nil
 }
@@ -181,6 +205,14 @@ func Install(name string, o coreplan.Options) (dir string, err error) {
 	if err := ValidateName(name); err != nil {
 		return "", err
 	}
+	if service.Exists(ServiceName(name)) {
+		return "", fmt.Errorf("service name already exists; refusing to overwrite it")
+	}
+	if o.Protocol == "amneziawg" {
+		if err := CheckAWGNetwork(&o); err != nil {
+			return "", err
+		}
+	}
 	proto := Proto(o.Protocol)
 	if err := PortFree(o.Port, proto); err != nil {
 		return "", err
@@ -189,7 +221,7 @@ func Install(name string, o coreplan.Options) (dir string, err error) {
 	if err != nil {
 		return "", err
 	}
-	if err := EnsureXray(); err != nil {
+	if err := ensureEngine(o.Protocol); err != nil {
 		return "", err
 	}
 	dir = filepath.Join(Root, name)
@@ -197,11 +229,12 @@ func Install(name string, o coreplan.Options) (dir string, err error) {
 		return "", err
 	}
 	unitName := ServiceName(name)
+	firewallAttempted := false
 	defer func() {
 		if err != nil {
-			_ = service.Stop(unitName)
-			_ = service.Remove(unitName)
-			_ = os.RemoveAll(dir)
+			if cleanupErr := cleanupCreated(name, filepath.Join(Root, name), o.Port, proto, firewallAttempted); cleanupErr != nil {
+				err = fmt.Errorf("%w; cleanup incomplete: %v", err, cleanupErr)
+			}
 		}
 	}()
 	if err = TestConfig(filepath.Join(dir, "server.json")); err != nil {
@@ -213,11 +246,16 @@ func Install(name string, o coreplan.Options) (dir string, err error) {
 	if err = service.Start(unitName); err != nil {
 		return "", err
 	}
+	if err = waitReady(name); err != nil {
+		return "", err
+	}
 	RecordCert(name)
-	_ = EnsureCertTimer() // best effort; the post-update step retries it
-	if ferr := network.AllowPort(o.Port, proto); ferr != nil {
-		// The service is up; a firewall failure is reported, not rolled back.
-		return dir, fmt.Errorf("core started, but opening %d/%s failed: %w", o.Port, proto, ferr)
+	if err = EnsureCertTimer(); err != nil {
+		return "", err
+	}
+	firewallAttempted = true
+	if ferr := network.AllowOwnedPort("core:"+name, o.Port, proto); ferr != nil {
+		return "", fmt.Errorf("opening %d/%s failed; installation rolled back: %w", o.Port, proto, ferr)
 	}
 	return dir, nil
 }
@@ -230,10 +268,18 @@ func Activate(name string) error {
 	if err != nil {
 		return err
 	}
-	if err := EnsureXray(); err != nil {
+	if err := ensureEngine(m.Protocol); err != nil {
 		return err
 	}
 	dir := filepath.Join(Root, name)
+	if _, st, managed, err := loadUserCore(name); err != nil {
+		return err
+	} else if managed && (st.Disabled || st.Paused) {
+		if err := service.Stop(ServiceName(name)); err != nil {
+			return err
+		}
+		return service.Create(Unit(name, dir))
+	}
 	if err := TestConfig(filepath.Join(dir, "server.json")); err != nil {
 		return err
 	}
@@ -249,21 +295,35 @@ func Activate(name string) error {
 	} else if err := service.Start(unitName); err != nil {
 		return err
 	}
+	if err := waitReady(name); err != nil {
+		return err
+	}
 	RecordCert(name)
-	return network.AllowPort(m.Port, m.Proto)
+	if err := network.AllowOwnedPort("core:"+name, m.Port, m.Proto); err != nil {
+		return err
+	}
+	return EnsureCertTimer()
 }
 
-// Remove stops a core and deletes its unit and files. The firewall rule is
-// left in place on purpose: another service may share the port number.
+// Remove stops only this core and releases only its exclusive firewall rules.
 func Remove(name string) error {
 	if err := ValidateName(name); err != nil {
 		return err
 	}
-	if _, err := ReadMeta(name); err != nil {
+	m, err := ReadMeta(name)
+	if err != nil {
 		return fmt.Errorf("core %q not found: %w", name, err)
 	}
 	unitName := ServiceName(name)
-	_ = service.Stop(unitName)
-	_ = service.Remove(unitName)
+	_ = collectCore(name)
+	if err := service.Stop(unitName); err != nil {
+		return err
+	}
+	if err := service.Remove(unitName); err != nil {
+		return err
+	}
+	if err := network.ReleaseOwnedPort("core:"+name, m.Port, m.Proto); err != nil {
+		return err
+	}
 	return os.RemoveAll(filepath.Join(Root, name))
 }

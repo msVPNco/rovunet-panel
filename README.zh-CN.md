@@ -21,8 +21,8 @@ Rovunet Panel 是一个开源工具，可将 Linux 服务器变成多协议接�
 
 ## 特性
 
-- **14 种协议**，涵盖代理、SSH、DNS 隧道和 Xray 内核，由一个带交互式菜单的命令行工具统一管理。
-- **每个用户一个登录**即可用于所有隧道，并为每个用户提供可在几秒内撤销的独立 VLESS 身份。
+- **统一管理代理、SSH、DNS 隧道和协议内核**，包括 AmneziaWG、Shadowsocks 2022、Trojan TLS 和 VLESS Encryption，提供交互式命令行菜单。
+- **在支持认证的路径上管理独立用户凭据**，四种新增协议支持定向用户更新。直连 Soar 使用共享密钥。
 - **可直接导入的配置**：供 [Rovunet 应用](https://github.com/msVPNco/rovunet-app) 使用的原生 `rovunet://` 链接，以及供其他客户端使用的标准 `vless://`、`hysteria2://` 链接和 WireGuard 文件。
 - **443 端口前置**：VLESS 和 SSH over TLS 与 NaïveProxy 共用域名、端口和 Let's Encrypt 证书，隐藏在伪装网站之后。
 - **安全运维**：带校验和与回滚的更新、部署前验证配置、整机备份与恢复。
@@ -30,6 +30,7 @@ Rovunet Panel 是一个开源工具，可将 Linux 服务器变成多协议接�
 - **流量限额与订阅链接**：不限量或限量用户（天数和/或 GB，每 5 分钟检查），每个用户一条订阅链接，包含其全部配置，可导入应用的订阅菜单。
 - **同一服务器的多个地址**：添加服务器的其他 IP，链接会为每个地址各提供一份依赖地址的配置，单个 IP 被封不会让用户断线。
 - **REALITY 目标自动选择**：伪装站点从一批高流量、很少被封锁的网站中选取。全新安装还会在另一个端口上添加第二个 REALITY 内核，伪装成另一家公司的网站，让用户有两条入口。
+- **固定订阅地址与清晰名称**：常规更新保留原有令牌和配置 ID。Android 使用 `<token>.json`，Windows 使用 `<token>.windows.json`，分别提供客户端支持的协议。更新已保存的订阅即可获得新的显示名称。
 
 ## 协议
 
@@ -49,8 +50,14 @@ Rovunet Panel 是一个开源工具，可将 Linux 服务器变成多协议接�
 | **VLESS + XHTTP**（Xray） | 基于 TLS 的 HTTP 请求 | 任意 TCP | 在 CDN 后，或 WebSocket 被封锁时 |
 | **Hysteria 2**（Xray） | QUIC | 任意 UDP | UDP 可通过的高丢包网络 |
 | **WireGuard**（Xray） | UDP | 任意 UDP | WireGuard 未被封锁时 |
+| **AmneziaWG** | 用户空间 UDP 隧道 | 任意 UDP | WireGuard 的可选替代方案 |
+| **Shadowsocks 2022**（Xray） | TCP 和 UDP | 任意 TCP/UDP | 可选兼容协议；固定版本 Xray 已标记弃用 |
+| **Trojan TLS**（Xray） | TCP + 受信任证书的 TLS | 任意 TCP | 可选 TLS 兼容；固定版本 Xray 已弃用无 Flow 的 Trojan |
+| **VLESS Encryption**（Xray） | TCP + ML-KEM/X25519 加密 | 任意 TCP | 支持固定加密格式的客户端 |
 
 协议是否合适取决于服务器、运营商和网络；以上为建议而非保证。详见 [协议](docs/zh-CN/protocols.md)。
+
+**v1.21.0：**已测试的完整配置提供 **24 个 Android 配置和 22 个 Windows 配置**，并非 24 种独立协议。数量取决于已安装服务及账户资格。已发布的 Windows 客户端不接收 AmneziaWG 和 SS2022。四种新增协议均不提供给流量受限账户；三种新增 Xray 协议在到期或删除后拒绝新会话，但现有流可能继续。尚未实现精确的同时在线设备限制。参见[托管协议与兼容性](docs/MANAGED-PROTOCOLS.md)。
 
 ## 快速开始
 

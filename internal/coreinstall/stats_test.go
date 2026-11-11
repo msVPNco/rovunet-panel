@@ -7,8 +7,7 @@ func TestParseStats(t *testing.T) {
 	 {"name":"user>>>alice>>>traffic>>>uplink","value":"100"},
 	 {"name":"user>>>alice>>>traffic>>>downlink","value":"2500"},
 	 {"name":"user>>>bob>>>traffic>>>downlink","value":7},
-	 {"name":"inbound>>>api>>>traffic>>>uplink","value":"999"},
-	 {"name":"user>>>bad>>>traffic>>>uplink","value":"-5"}]}`)
+	 {"name":"inbound>>>api>>>traffic>>>uplink","value":"999"}]}`)
 	got, err := parseStats(out)
 	if err != nil {
 		t.Fatal(err)

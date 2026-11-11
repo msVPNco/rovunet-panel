@@ -77,6 +77,14 @@ func iptablesFiltering() bool {
 
 // AllowPort opens a port using the first available firewall tool.
 func AllowPort(port int, proto string) error {
+	if strings.Contains(proto, ",") {
+		for _, p := range strings.Split(proto, ",") {
+			if err := AllowPort(port, p); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	// Try UFW first — but only if it's active
 	if _, err := exec.LookPath("ufw"); err == nil && ufwActive() {
 		return ufwAllow(port, proto)
@@ -98,6 +106,14 @@ func AllowPort(port int, proto string) error {
 
 // RemovePort removes a firewall rule for a port.
 func RemovePort(port int, proto string) error {
+	if strings.Contains(proto, ",") {
+		for _, p := range strings.Split(proto, ",") {
+			if err := RemovePort(port, p); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	if _, err := exec.LookPath("ufw"); err == nil && ufwActive() {
 		return run("ufw", "delete", "allow", fmt.Sprintf("%d/%s", port, proto))
 	}
@@ -106,12 +122,16 @@ func RemovePort(port int, proto string) error {
 		return run("firewall-cmd", "--reload")
 	}
 	if _, err := exec.LookPath("iptables"); err == nil {
-		if err := run("iptables", "-D", "INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT"); err != nil {
+		// A retry after a partial cleanup must still clear persistent state.
+		if exec.Command("iptables", "-C", "INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT").Run() == nil {
+			if err := run("iptables", "-D", "INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT"); err != nil {
+				return err
+			}
+		}
+		if err := trackPort(port, proto, false); err != nil {
 			return err
 		}
-		_ = trackPort(port, proto, false)
-		_ = iptablesPersist()
-		return nil
+		return iptablesPersist()
 	}
 	return nil
 }
@@ -150,12 +170,11 @@ func iptablesAllow(port int, proto string) error {
 	rule := []string{"INPUT", "-p", proto, "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT"}
 	// Record the port even when the rule is already in place, so ports an
 	// older rovunet opened (before it tracked them) still survive reboot.
-	tracked := trackPort(port, proto, true) == nil
+	if err := trackPort(port, proto, true); err != nil {
+		return err
+	}
 	if iptablesRuleFirst(rule) {
-		if tracked {
-			_ = iptablesPersist()
-		}
-		return nil
+		return iptablesPersist()
 	}
 	for exec.Command("iptables", append([]string{"-D"}, rule...)...).Run() == nil {
 	}
@@ -164,8 +183,7 @@ func iptablesAllow(port int, proto string) error {
 	}
 	// Best-effort: persist so the rule survives reboot. The runtime rule is
 	// already in effect either way, so we don't surface persistence failures.
-	_ = iptablesPersist()
-	return nil
+	return iptablesPersist()
 }
 
 // iptablesRuleFirst reports whether rule is already ahead of every DROP or
@@ -353,6 +371,14 @@ func run(name string, args ...string) error {
 // PortFree reports an error if something on this host already listens on
 // port/proto, by trying to bind it briefly.
 func PortFree(port int, proto string) error {
+	if strings.Contains(proto, ",") {
+		for _, p := range strings.Split(proto, ",") {
+			if err := PortFree(port, p); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	addr := net.JoinHostPort("", strconv.Itoa(port))
 	if proto == "udp" {
 		c, err := net.ListenPacket("udp", addr)

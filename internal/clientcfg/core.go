@@ -33,6 +33,9 @@ func GenerateCoreURI(name, link string, cfg *config.Config, opts URIOptions) (st
 		return "", fmt.Errorf("unexpected profile layout")
 	}
 	fields[FTunnelType] = "xray"
+	if opts.DisplayName != "" {
+		name = opts.DisplayName
+	}
 	fields[FName] = stripFieldDelimiter(name)
 	fields[FCoreLink] = base64.StdEncoding.EncodeToString([]byte(strings.TrimSpace(link)))
 	return "rovunet://" + base64.StdEncoding.EncodeToString([]byte(strings.Join(fields, "|"))), nil

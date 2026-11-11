@@ -3,6 +3,7 @@ package coreinstall
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"os/exec"
@@ -18,9 +19,9 @@ import (
 )
 
 // REALITY and XHTTP cores expose Xray's statistics API on a loopback port.
-// Xray keeps its counters in memory and clears them when the core restarts,
-// so each reading is taken with -reset (a delta) and added to a running total
-// saved in the usage directory.
+// Xray keeps counters in memory. Read absolute values and atomically persist
+// both the last sample and durable totals. An engine epoch change preserves
+// the totals and explicitly records that unsampled traffic is unknown.
 
 const apiPortBase = 10085
 
@@ -54,17 +55,30 @@ func pickAPIPort(self string) int {
 }
 
 // runStats runs `xray api statsquery`; variable for tests.
-var runStats = func(port int, reset bool) ([]byte, error) {
-	args := []string{"api", "statsquery", "-s", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), "-t", "5", "-pattern", "user>>>"}
+var runStats = func(endpoint string, reset bool) ([]byte, error) {
+	args := []string{"api", "statsquery", "-s", endpoint, "-t", "5", "-pattern", "user>>>"}
 	if reset {
 		args = append(args, "-reset=true")
 	}
 	return exec.Command(XrayPath, args...).Output()
 }
 
+var runEpoch = func(name string) (string, error) {
+	out, err := exec.Command("systemctl", "show", ServiceName(name), "--property=InvocationID", "--value").Output()
+	epoch := strings.TrimSpace(string(out))
+	if err != nil || epoch == "" {
+		return "", fmt.Errorf("cannot identify the running engine epoch")
+	}
+	return epoch, nil
+}
+
 // parseStats sums each user's up and down bytes from statsquery output:
 // {"stat":[{"name":"user>>>alice>>>traffic>>>uplink","value":"123"}]}.
 func parseStats(out []byte) (map[string]int64, error) {
+	return parseStatsValues(out, false)
+}
+
+func parseStatsValues(out []byte, perDirection bool) (map[string]int64, error) {
 	var doc struct {
 		Stat []struct {
 			Name  string          `json:"name"`
@@ -81,10 +95,17 @@ func parseStats(out []byte) (map[string]int64, error) {
 			continue
 		}
 		v, err := strconv.ParseInt(strings.Trim(string(s.Value), `"`), 10, 64)
-		if err != nil || v < 0 {
-			continue
+		if err != nil || v < 0 || (parts[3] != "uplink" && parts[3] != "downlink") {
+			return nil, fmt.Errorf("invalid per-user statistics")
 		}
-		totals[parts[1]] += v
+		key := parts[1]
+		if perDirection {
+			key += ">>>" + parts[3]
+		}
+		if v > math.MaxInt64-totals[key] {
+			return nil, fmt.Errorf("per-user statistics overflow")
+		}
+		totals[key] += v
 	}
 	return totals, nil
 }
@@ -96,6 +117,24 @@ func corePort(name string) int {
 		return 0
 	}
 	return st.APIPort
+}
+
+func apiEndpoint(st coreplan.State) string {
+	if st.APISocket != "" {
+		return "unix://" + st.APISocket
+	}
+	if st.APIPort > 0 {
+		return net.JoinHostPort("127.0.0.1", strconv.Itoa(st.APIPort))
+	}
+	return ""
+}
+
+func coreEndpoint(name string) string {
+	var st coreplan.State
+	if readJSON(filepath.Join(Root, name, stateFile), &st) != nil {
+		return ""
+	}
+	return apiEndpoint(st)
 }
 
 func lockUsage() (func(), error) {
@@ -115,8 +154,19 @@ func lockUsage() (func(), error) {
 
 // collectCore moves one core's counters into the running totals.
 func collectCore(name string) error {
-	port := corePort(name)
-	if port == 0 {
+	return collectCoreSample(name, false)
+}
+
+func collectCoreSample(name string, final bool) error {
+	_, st, managed, err := loadUserCore(name)
+	if err != nil {
+		return err
+	}
+	if !managed || (!final && (st.Paused || st.Disabled)) {
+		return nil
+	}
+	endpoint := coreEndpoint(name)
+	if endpoint == "" {
 		return nil
 	}
 	unlock, err := lockUsage()
@@ -124,22 +174,19 @@ func collectCore(name string) error {
 		return err
 	}
 	defer unlock()
-	out, err := runStats(port, true)
-	if err != nil {
-		return fmt.Errorf("core %s: statistics: %w", name, err)
-	}
-	delta, err := parseStats(out)
+	epoch, err := runEpoch(name)
 	if err != nil {
 		return fmt.Errorf("core %s: %w", name, err)
 	}
-	if len(delta) == 0 {
-		return nil
+	out, err := runStats(endpoint, false)
+	if err != nil {
+		return fmt.Errorf("core %s: statistics: %w", name, err)
 	}
-	c := usage.NewCounter("xray")
-	for user, n := range delta {
-		c.Add(user, n)
+	delta, err := parseStatsValues(out, true)
+	if err != nil {
+		return fmt.Errorf("core %s: %w", name, err)
 	}
-	return c.Flush()
+	return usage.RecordAbsolute("xray-"+name, epoch, delta)
 }
 
 // CollectUsage reads every metered core's counters into the running totals.
@@ -159,24 +206,29 @@ func CollectUsage() error {
 
 var (
 	workingMu    sync.Mutex
-	workingCache = map[string]bool{}
+	workingCache = map[string]workingResult{}
 )
 
+type workingResult struct {
+	ok bool
+	at time.Time
+}
+
 // StatsWorking reports whether a core's statistics answer, which is what
-// lets a traffic-limited user be given that core's config. It is checked
-// once per process.
+// lets a traffic-limited user be given an eligible core's config. The result
+// is cached briefly so one feed refresh does not query the same core per user.
 func StatsWorking(name string) bool {
 	workingMu.Lock()
 	defer workingMu.Unlock()
-	if v, ok := workingCache[name]; ok {
-		return v
+	if v, ok := workingCache[name]; ok && time.Since(v.at) < 5*time.Second {
+		return v.ok
 	}
-	port := corePort(name)
+	endpoint := coreEndpoint(name)
 	ok := false
-	if port > 0 {
+	if endpoint != "" {
 		done := make(chan bool, 1)
 		go func() {
-			out, err := runStats(port, false)
+			out, err := runStats(endpoint, false)
 			if err != nil {
 				done <- false
 				return
@@ -189,6 +241,6 @@ func StatsWorking(name string) bool {
 		case <-time.After(8 * time.Second):
 		}
 	}
-	workingCache[name] = ok
+	workingCache[name] = workingResult{ok: ok, at: time.Now()}
 	return ok
 }

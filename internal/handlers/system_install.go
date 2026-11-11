@@ -21,6 +21,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/keys"
 	"github.com/msVPNco/rovunet-panel/internal/network"
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
+	"github.com/msVPNco/rovunet-panel/internal/protocols"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
 	"github.com/msVPNco/rovunet-panel/internal/system"
 	"github.com/msVPNco/rovunet-panel/internal/transport"
@@ -658,6 +659,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 		}
 		out.Info(fmt.Sprintf("Creating service for %q...", allTunnels[i].Tag))
 		if err := transport.CreateService(&allTunnels[i], cfg); err != nil {
+			markTunnelFailed(cfg, &allTunnels[i], out)
 			return actions.NewError(actions.SystemInstall, fmt.Sprintf("failed to create service for %s", allTunnels[i].Tag), err)
 		}
 		out.Success(fmt.Sprintf("Tunnel %q started", allTunnels[i].Tag))
@@ -839,6 +841,9 @@ func handleSystemInstall(ctx *actions.Context) error {
 
 	ensureServerAddress(cfg, out, allTunnels)
 	installCores(cfg, out, cores)
+	if err := WriteSubscriptions(cfg, out); err != nil {
+		return actions.NewError(actions.SystemInstall, "failed to finalize subscriptions", err)
+	}
 
 	// ── Step 7: Summary ────────────────────────────────────────────
 	out.Print("")
@@ -958,92 +963,13 @@ func printClientConfigs(cfg *config.Config, out actions.OutputWriter, tunnels []
 	printed := 0
 	users := cfg.Users
 	if len(users) == 0 {
-		// Show configs without credentials when no user was created
 		users = []config.UserConfig{{}}
 	}
-	hidden := 0
 	for _, u := range users {
-		// Fastest first: this user's Xray cores are slotted in by rank.
-		flushCores := func(int) int { return 0 }
-		limited := u.QuotaGB > 0
-		if u.Username != "" {
-			flushCores = coreProfilePrinterFor(cfg, u, out, limited)
-		}
-		hidden = 0
-		for _, t := range clientcfg.SortByRank(tunnels, tunnelRank) {
-			printed += flushCores(clientcfg.TunnelRank(t.Transport))
-			if skipPlainSOCKS(&t) {
-				hidden++
-				continue
-			}
-			// A traffic-limited user gets only VLESS: only its traffic is counted
-			if limited && t.Transport != config.TransportVLESS {
-				continue
-			}
-			// VLESS has one UUID per user and no shared backend
-			if t.Transport == config.TransportVLESS {
-				if u.Username == "" {
-					continue
-				}
-				uri, err := clientcfg.GeneratePortableURI(&t, nil, cfg, clientcfg.URIOptions{Username: u.Username, Password: u.Password}, "rovunet")
-				if err != nil {
-					continue
-				}
-				link, err := clientcfg.GenerateVLESSLink(&t, cfg, u.Username, u.Password)
-				if err != nil {
-					continue
-				}
-				out.Print(fmt.Sprintf("    [%s] %s", t.Tag, u.Username))
-				out.Print(fmt.Sprintf("    %s", uri))
-				out.Print(fmt.Sprintf("    %s", link))
-				out.Print("")
-				printed++
-				continue
-			}
-			for _, v := range naiveAwareVariants(&t) {
-				backendCfg := cfg.GetBackend(v.backend)
-				if backendCfg == nil {
-					continue
-				}
-				variantTunnel := t
-				variantTunnel.Backend = v.backend
-				variantTunnel.Tag = v.tag
-
-				modes := []string{""}
-				if t.Transport == config.TransportDNSTT {
-					modes = []string{clientcfg.ClientModeDNSTT, clientcfg.ClientModeNoizDNS}
-				}
-
-				for _, mode := range modes {
-					opts := clientcfg.URIOptions{
-						ClientMode: mode,
-						Username:   u.Username,
-						Password:   u.Password,
-					}
-					uri, err := clientcfg.GeneratePortableURI(&variantTunnel, backendCfg, cfg, opts, "rovunet")
-					if err != nil {
-						continue
-					}
-					label := variantTunnel.Tag
-					if mode == clientcfg.ClientModeNoizDNS {
-						label = strings.ReplaceAll(label, "dnstt", "noizdns")
-					}
-					if u.Username != "" {
-						out.Print(fmt.Sprintf("    [%s] %s", label, u.Username))
-					} else {
-						out.Print(fmt.Sprintf("    [%s] (no auth)", label))
-					}
-					out.Print(fmt.Sprintf("    %s", uri))
-					out.Print("")
-					printed++
-				}
-			}
-		}
-		printed += flushCores(1 << 30)
+		printed += printStructuredProfiles(cfg, u, tunnels, out, true)
 		printSubscriptionLink(cfg, u, out)
 	}
-	noteHidden(out, hidden)
-	return printed + printSoarLinks(cfg, out, tunnels)
+	return printed
 }
 
 // printSoarLinks prints, for each direct-backend Soar tunnel, its SlipNet
@@ -1055,7 +981,7 @@ func printSoarLinks(cfg *config.Config, out actions.OutputWriter, tunnels []conf
 	printed := 0
 	for i := range tunnels {
 		t := &tunnels[i]
-		if t.Transport != config.TransportSoar || t.Backend != config.BackendDirect || t.Soar == nil {
+		if !t.Enabled || t.Transport != config.TransportSoar || t.Backend != config.BackendDirect || t.Soar == nil {
 			continue
 		}
 		// The config needs no login, but the app groups configs by server
@@ -1088,7 +1014,7 @@ func soarRecipients(cfg *config.Config) []config.UserConfig {
 	// A traffic-limited user is not given the shared, unmeasured Soar config.
 	var out []config.UserConfig
 	for _, u := range cfg.Users {
-		if u.QuotaGB == 0 {
+		if !u.Expired(time.Now()) && protocols.Allowed("soar-direct", u.MeteredOnly(), u.ExpiresAt != "") {
 			out = append(out, u)
 		}
 	}
@@ -1208,6 +1134,9 @@ func installCores(cfg *config.Config, out actions.OutputWriter, protocols []stri
 	firstReality, realityInstalled := "", false
 	for _, job := range jobs {
 		name, protocol := job.name, job.protocol
+		for _, warning := range coreplan.Warnings(protocol) {
+			out.Warning(warning)
+		}
 		ports := []int{9443, 2096, 8880}
 		o := coreplan.Options{Protocol: protocol, Host: host}
 		switch protocol {
@@ -1237,9 +1166,17 @@ func installCores(cfg *config.Config, out actions.OutputWriter, protocols []stri
 			}
 		case "wireguard":
 			ports = []int{51820, 51821, 51822}
-		case "xhttp", "hysteria2":
+		case "amneziawg":
+			ports = []int{51840, 51841, 51842}
+		case "ss2022":
+			ports = []int{28444, 28445, 28446}
+		case "vlessenc":
+			ports = []int{31444, 31445, 31446}
+		case "xhttp", "hysteria2", "trojan":
 			if protocol == "hysteria2" {
 				ports = []int{8443, 4443, 2096}
+			} else if protocol == "trojan" {
+				ports = []int{30444, 30445, 30446}
 			} else {
 				ports = []int{2096, 2087, 8880}
 			}

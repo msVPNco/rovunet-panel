@@ -51,6 +51,17 @@ var InstallTransportOptions = []SelectOption{
 	{Value: "xray-wireguard", Label: "WireGuard — Xray core, one configuration per user"},
 }
 
+func init() {
+	managed := []SelectOption{
+		{Value: "xray-amneziawg", Label: "AmneziaWG — official userspace engine; unlimited/time accounts; Android"},
+		{Value: "xray-ss2022", Label: "Shadowsocks 2022 — separate account keys; Android; deprecated in pinned Xray"},
+		{Value: "xray-trojan", Label: "Trojan TLS — valid domain certificate; deprecated in pinned Xray"},
+		{Value: "xray-vlessenc", Label: "VLESS Encryption — ML-KEM-768 authentication, raw TCP"},
+	}
+	TransportOptions = append(TransportOptions, managed...)
+	InstallTransportOptions = append(InstallTransportOptions, managed...)
+}
+
 // ClientModeOptions is used during `tunnel share` to pick the slipnet:// URL type.
 var ClientModeOptions = []SelectOption{
 	{Value: "dnstt", Label: "DNSTT — Classic DNS tunnel client"},

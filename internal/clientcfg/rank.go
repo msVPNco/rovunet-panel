@@ -2,13 +2,8 @@ package clientcfg
 
 import "sort"
 
-// Output order. Configurations are listed from the fastest, most dependable
-// way in to the slowest, so the first ones a client imports are the ones most
-// people should try first. The order follows what works on a filtered
-// network: TCP carrying ordinary TLS first (VLESS over WebSocket, XHTTP,
-// REALITY, NaïveProxy, SSH over TLS, plain SSH), then the UDP-based and
-// unencrypted ones, which depend on the network, and the DNS tunnels last:
-// slow, but often the only thing that works during a shutdown.
+// Output order is a fixed presentation policy. It is not a measurement of
+// latency, throughput or reliability on the user's network.
 //
 // Ranks are spaced so a new protocol can be slotted in between.
 
@@ -44,10 +39,18 @@ func CoreRank(protocol string) int {
 		return 20
 	case "reality":
 		return 30
+	case "trojan":
+		return 35
+	case "vlessenc":
+		return 37
 	case "hysteria2":
 		return 70
 	case "wireguard":
 		return 80
+	case "amneziawg":
+		return 82
+	case "ss2022":
+		return 85
 	}
 	return 85
 }

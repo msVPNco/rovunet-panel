@@ -14,7 +14,9 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/coreplan"
 	"github.com/msVPNco/rovunet-panel/internal/network"
+	"github.com/msVPNco/rovunet-panel/internal/protocols"
 	"github.com/msVPNco/rovunet-panel/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/usage"
 )
 
 // A user core serves the panel's users: every user gets credentials derived
@@ -28,20 +30,24 @@ const (
 	stateFile   = "state.json"
 )
 
+var generateUserBundle = coreplan.GenerateFor
+
 // Profile is one user's client profile on one core.
 type Profile struct {
 	Core, Protocol, Link string
 }
 
-// usersFor is who may hold a credential on a core of this protocol. Cores whose
-// traffic the panel counts (REALITY, XHTTP) serve every user; the others
-// (Hysteria 2, WireGuard) would let a traffic-limited user move traffic that is
-// never counted, so those users are left out of them.
+// usersFor applies the same expiry and quota eligibility policy as exports.
 func usersFor(protocol string, users []config.UserConfig) []config.UserConfig {
-	if coreplan.Metered(protocol) {
-		return users
+	var allowed []config.UserConfig
+	totals, _ := usage.TotalsChecked()
+	for _, u := range users {
+		spent := u.QuotaGB > 0 && totals[u.Username] >= u.UsageBase+u.QuotaBytes()
+		if !spent && !u.Expired(time.Now()) && protocols.Allowed(protocol, u.MeteredOnly(), u.ExpiresAt != "") {
+			allowed = append(allowed, u)
+		}
 	}
-	return config.UnmeteredUsers(users)
+	return allowed
 }
 
 func clientsFor(users []config.UserConfig) []coreplan.Client {
@@ -90,17 +96,21 @@ func loadUserCore(name string) (o coreplan.Options, st coreplan.State, ok bool, 
 func writeUserCore(dir string, o coreplan.Options, st *coreplan.State, users []config.UserConfig) (changed bool, err error) {
 	clients := clientsFor(usersFor(o.Protocol, users))
 	st.Paused = len(clients) == 0
-	if st.APIPort == 0 && coreplan.Metered(o.Protocol) {
+	if liveUserProtocol(o.Protocol) {
+		st.APISocket = filepath.Join(dir, "api.sock")
+		st.APIPort = 0
+	}
+	if st.APIPort == 0 && st.APISocket == "" && coreplan.Metered(o.Protocol) {
 		st.APIPort = pickAPIPort(filepath.Base(dir))
 	}
 	o.CoreName = filepath.Base(dir)
-	b, err := coreplan.GenerateFor(o, st, clients)
+	b, err := generateUserBundle(o, st, clients)
 	if err != nil {
 		return false, err
 	}
 	serverPath := filepath.Join(dir, "server.json")
 	old, _ := os.ReadFile(serverPath)
-	changed = !bytes.Equal(old, b.Server)
+	changed = !sameJSON(old, b.Server)
 	if changed {
 		if err := os.WriteFile(serverPath, b.Server, 0600); err != nil {
 			return false, err
@@ -144,6 +154,30 @@ func InstallForUsers(name string, o coreplan.Options, users []config.UserConfig)
 	if err := coreplan.Validate(&o); err != nil {
 		return "", err
 	}
+	if existing, _, managed, readErr := loadUserCore(name); readErr == nil && managed {
+		if o.Protocol == "amneziawg" && o.Egress == "" {
+			o.Egress = existing.Egress
+		}
+		want, _ := json.Marshal(o)
+		have, _ := json.Marshal(existing)
+		if !bytes.Equal(want, have) {
+			return "", fmt.Errorf("core already exists with different options; use an explicit lifecycle command")
+		}
+		if err := syncCore(name, users); err != nil {
+			return "", err
+		}
+		return filepath.Join(Root, name), nil
+	} else if readErr != nil {
+		return "", readErr
+	}
+	if service.Exists(ServiceName(name)) {
+		return "", fmt.Errorf("service name already exists; refusing to overwrite it")
+	}
+	if o.Protocol == "amneziawg" {
+		if err := CheckAWGNetwork(&o); err != nil {
+			return "", err
+		}
+	}
 	proto := Proto(o.Protocol)
 	if err := PortFree(o.Port, proto); err != nil {
 		return "", err
@@ -152,7 +186,7 @@ func InstallForUsers(name string, o coreplan.Options, users []config.UserConfig)
 	if err != nil {
 		return "", err
 	}
-	if err := EnsureXray(); err != nil {
+	if err := ensureEngine(o.Protocol); err != nil {
 		return "", err
 	}
 	dir = filepath.Join(Root, name)
@@ -163,18 +197,19 @@ func InstallForUsers(name string, o coreplan.Options, users []config.UserConfig)
 		return "", fmt.Errorf("core already exists or cannot be created: %w", err)
 	}
 	unitName := ServiceName(name)
+	firewallAttempted := false
 	defer func() {
 		if err != nil {
-			_ = service.Stop(unitName)
-			_ = service.Remove(unitName)
-			_ = os.RemoveAll(dir)
+			if cleanupErr := cleanupCreated(name, filepath.Join(Root, name), o.Port, proto, firewallAttempted); cleanupErr != nil {
+				err = fmt.Errorf("%w; cleanup incomplete: %v", err, cleanupErr)
+			}
 		}
 	}()
 	if _, err = writeUserCore(dir, o, &st, users); err != nil {
 		return "", err
 	}
 	if len(users) > 0 && st.Paused {
-		err = fmt.Errorf("no user may use %s: every user has a traffic limit, and only VLESS, REALITY and XHTTP are counted", o.Protocol)
+		err = fmt.Errorf("no active account is eligible for %s; this protocol cannot enforce traffic limits", o.Protocol)
 		return "", err
 	}
 	if err = TestConfig(filepath.Join(dir, "server.json")); err != nil {
@@ -183,13 +218,27 @@ func InstallForUsers(name string, o coreplan.Options, users []config.UserConfig)
 	if err = service.Create(Unit(name, dir)); err != nil {
 		return "", err
 	}
-	if err = service.Start(unitName); err != nil {
+	if !st.Paused {
+		err = service.Start(unitName)
+	}
+	if err != nil {
+		return "", err
+	}
+	if !st.Paused {
+		if err = waitReady(name); err != nil {
+			return "", err
+		}
+	}
+	if err = saveApplied(dir); err != nil {
 		return "", err
 	}
 	RecordCert(name)
-	_ = EnsureCertTimer() // best effort; the post-update step retries it
-	if ferr := network.AllowPort(o.Port, proto); ferr != nil {
-		return dir, fmt.Errorf("core started, but opening %d/%s failed: %w", o.Port, proto, ferr)
+	if err = EnsureCertTimer(); err != nil {
+		return "", err
+	}
+	firewallAttempted = true
+	if ferr := network.AllowOwnedPort("core:"+name, o.Port, proto); ferr != nil {
+		return "", fmt.Errorf("opening %d/%s failed; installation rolled back: %w", o.Port, proto, ferr)
 	}
 	return dir, nil
 }
@@ -266,6 +315,14 @@ func applyOnce(name, serverPath string, start bool) (retry bool, err error) {
 // access away stops the core, because running the old configuration would
 // leave that user's access in place. The new file stays on disk either way.
 func applyCore(name, serverPath string, previous []byte, revoking, start bool) error {
+	if m, err := ReadMeta(name); err == nil && m.Protocol == "amneziawg" && !start {
+		return SyncAWG(name)
+	}
+	if !start {
+		if handled, err := liveUsers(name, previous, serverPath); handled {
+			return err
+		}
+	}
 	var err error
 	for attempt := 1; attempt <= applyAttempts; attempt++ {
 		if attempt > 1 {
@@ -294,7 +351,18 @@ func syncCore(name string, users []config.UserConfig) error {
 	dir := filepath.Join(Root, name)
 	serverPath := filepath.Join(dir, "server.json")
 	previous, _ := os.ReadFile(serverPath)
-	wasPaused, wasPending := st.Paused, st.Revocation != ""
+	prior, err := loadApplied(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		prior, err = snapshotApplied(dir)
+		if err == nil {
+			err = commitApplied(dir, prior)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	previous = prior.Server
+	wasPaused, wasPending := st.Paused, st.Revocation != "" || st.ApplyError != ""
 	before := clientNames(dir)
 	changed, err := writeUserCore(dir, o, &st, users)
 	if err != nil {
@@ -307,22 +375,48 @@ func syncCore(name string, users []config.UserConfig) error {
 			revoking = true
 		}
 	}
+	current, err := snapshotApplied(dir)
+	if err != nil {
+		return err
+	}
+	changed = changed || !sameJSON(prior.Server, current.Server)
+	for name, credential := range prior.Clients {
+		if current.Clients[name] != credential {
+			revoking = true
+		}
+	}
 
+	if st.Disabled {
+		return saveState(dir, &st)
+	}
 	if st.Paused {
 		// No user may use this core. server.json holds no credential, so
 		// stopping it ends every session; it is started again by the next
 		// allowed user.
 		if !wasPaused {
-			_ = collectCore(name)
+			_ = collectCoreSample(name, true)
 		}
-		_ = stopUnit(ServiceName(name))
+		if err := stopUnit(ServiceName(name)); err != nil {
+			st.Revocation = "stopping an empty core was not confirmed"
+			_ = saveState(dir, &st)
+			return err
+		}
 		st.Revocation = ""
+		st.ApplyError = ""
 		return saveState(dir, &st)
 	}
 	if !changed && !wasPaused && !wasPending {
 		return nil
 	}
-	applyErr := applyCore(name, serverPath, previous, revoking, wasPaused || wasPending)
+	start := wasPaused || (wasPending && !liveUserProtocol(o.Protocol) && o.Protocol != "amneziawg")
+	applyErr := applyCore(name, serverPath, previous, revoking, start)
+	if applyErr == nil {
+		applyErr = saveApplied(dir)
+	}
+	st.ApplyError = ""
+	if applyErr != nil {
+		st.ApplyError = applyErr.Error()
+	}
 	if revoking {
 		st.Revocation = ""
 		if applyErr != nil {
@@ -332,11 +426,14 @@ func syncCore(name string, users []config.UserConfig) error {
 			return err
 		}
 	}
+	if err := saveState(dir, &st); err != nil && applyErr == nil {
+		return err
+	}
 	return applyErr
 }
 
-// PendingRevocations lists the cores where taking a user's access away has not
-// been confirmed, as "core: reason". The limits timer retries them.
+// PendingRevocations lists unconfirmed removals and additions as "core: reason".
+// The limits timer retries both, including a partially successful API request.
 func PendingRevocations() []string {
 	cores, err := List()
 	if err != nil {
@@ -344,8 +441,12 @@ func PendingRevocations() []string {
 	}
 	var out []string
 	for _, c := range cores {
-		if _, st, ok, err := loadUserCore(c.Name); err == nil && ok && st.Revocation != "" {
-			out = append(out, c.Name+": "+st.Revocation)
+		if _, st, ok, err := loadUserCore(c.Name); err == nil && ok && (st.Revocation != "" || st.ApplyError != "") {
+			reason := st.Revocation
+			if reason == "" {
+				reason = st.ApplyError
+			}
+			out = append(out, c.Name+": "+reason)
 		}
 	}
 	return out
@@ -353,6 +454,9 @@ func PendingRevocations() []string {
 
 // Profiles returns user's profile on every user core, sorted by core name.
 func Profiles(user config.UserConfig) ([]Profile, error) {
+	if err := config.ValidateUsername(user.Username); err != nil {
+		return nil, err
+	}
 	cores, err := List()
 	if err != nil {
 		return nil, err
@@ -364,6 +468,9 @@ func Profiles(user config.UserConfig) ([]Profile, error) {
 			return out, fmt.Errorf("core %s: %w", c.Name, err)
 		}
 		if !ok {
+			continue
+		}
+		if !protocols.Allowed(o.Protocol, user.MeteredOnly(), user.ExpiresAt != "") || st.Paused || st.Disabled || (st.Revocation != "" && !liveUserProtocol(o.Protocol) && o.Protocol != "amneziawg") {
 			continue
 		}
 		// Generate for this user alone: credentials depend only on the user,
@@ -379,6 +486,20 @@ func Profiles(user config.UserConfig) ([]Profile, error) {
 		b, err := coreplan.GenerateFor(o, &st, []coreplan.Client{{Name: user.Username, Secret: user.Password}})
 		if err != nil {
 			return out, fmt.Errorf("core %s: %w", c.Name, err)
+		}
+		// Only export a credential actually provisioned for this account.
+		// Generating from an arbitrary username used to manufacture profiles
+		// for accounts the server had deliberately excluded.
+		stored, err := os.ReadFile(filepath.Join(Root, c.Name, "clients", user.Username+"."+b.Extension))
+		if err != nil || strings.TrimSpace(string(stored)) != strings.TrimSpace(b.Clients[0]) {
+			continue
+		}
+		if a, err := loadApplied(filepath.Join(Root, c.Name)); err == nil {
+			if a.Clients[user.Username+"."+b.Extension] != string(stored) {
+				continue
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return out, fmt.Errorf("core %s: applied state is unreadable", c.Name)
 		}
 		out = append(out, Profile{Core: c.Name, Protocol: o.Protocol, Link: b.Clients[0]})
 	}
