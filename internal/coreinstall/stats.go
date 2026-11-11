@@ -60,7 +60,7 @@ var runStats = func(endpoint string, reset bool) ([]byte, error) {
 	if reset {
 		args = append(args, "-reset=true")
 	}
-	return exec.Command(XrayPath, args...).Output()
+	return exec.Command(apiXrayPath(), args...).Output()
 }
 
 var runEpoch = func(name string) (string, error) {

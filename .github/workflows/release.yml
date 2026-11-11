@@ -117,6 +117,16 @@ jobs:
             --engine "$RELEASE_ASSETS/amneziawg-go-linux-amd64" --tool "$RELEASE_ASSETS/awg-linux-amd64" \
             --work "$RUNNER_TEMP/awg-network-test"
 
+      - name: Exercise automatic setup with release binaries
+        if: steps.tag.outputs.skip != 'true'
+        run: |
+          sudo env "PATH=$PATH" "GOPATH=$(go env GOPATH)" "GOCACHE=$(go env GOCACHE)" \
+            GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory "GIT_CONFIG_VALUE_0=$PWD" \
+            python3 scripts/test-complete-setup.py \
+            --panel "$RELEASE_ASSETS/rovunet-linux-amd64" --xray "$RELEASE_ASSETS/xray-linux-amd64" \
+            --engine "$RELEASE_ASSETS/amneziawg-go-linux-amd64" \
+            --tool "$RELEASE_ASSETS/awg-linux-amd64" --work "$RUNNER_TEMP/complete-setup-test"
+
       - name: Package accepted preview upgrade and checksums
         if: steps.tag.outputs.skip != 'true'
         run: |

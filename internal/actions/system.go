@@ -5,6 +5,7 @@ func init() {
 		ID:       SystemInstall,
 		Name:     "Install",
 		Category: "system",
+		Inputs:   []InputField{{Key: "custom", Label: "Select a custom subset instead of the complete setup", Bool: true, CLIOnly: true}},
 	})
 
 	Register(&Action{
@@ -92,6 +93,7 @@ func init() {
 		ID:       QuickWizard,
 		Name:     "Quick Wizard",
 		Category: "system",
+		Inputs:   []InputField{{Key: "custom", Label: "Use the selective tunnel wizard instead of the complete setup", Bool: true, CLIOnly: true}},
 	})
 
 	Register(&Action{

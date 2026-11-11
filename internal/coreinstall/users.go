@@ -186,7 +186,7 @@ func InstallForUsers(name string, o coreplan.Options, users []config.UserConfig)
 	if err != nil {
 		return "", err
 	}
-	if err := ensureEngine(o.Protocol); err != nil {
+	if err := ensureOptionsEngine(o); err != nil {
 		return "", err
 	}
 	dir = filepath.Join(Root, name)

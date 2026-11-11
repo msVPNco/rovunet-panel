@@ -86,9 +86,7 @@ func handleSystemUpdate(ctx *actions.Context) error {
 	postCmd.Stderr = os.Stderr
 	postCmd.Stdin = os.Stdin
 	if err := postCmd.Run(); err != nil {
-		out.Warning(fmt.Sprintf("Post-update handoff failed: %v", err))
-		out.Info("Falling back to current process...")
-		return runPostUpdate(ctx)
+		return actions.NewError(actions.SystemUpdate, "New panel installed, but post-update failed; retry using the installed panel instead of replaying old migration code", err)
 	}
 	return nil
 }
@@ -263,6 +261,14 @@ func runPostUpdate(ctx *actions.Context) error {
 	}
 
 	out.Print("")
+	if err := completeAfterUpdate(ctx, cfg); err != nil {
+		// v1.21.0's updater replays its OLD migration if post-update exits
+		// nonzero. Never allow it to rewrite the new runtime options. Report
+		// the pending setup explicitly, and expose a retry-only command.
+		out.Error("Panel updated; complete setup is pending: " + err.Error())
+		out.Info("After fixing the reported prerequisite, run: rovunet complete-setup")
+		return nil
+	}
 	out.Success("Update complete!")
 	return nil
 }

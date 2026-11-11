@@ -47,3 +47,13 @@ jobs:
         run: go test -race ./...
       - name: Build
         run: make build-linux
+
+      - name: Exercise automatic 20-to-24 setup with actual engines
+        run: |
+          go build -o "$RUNNER_TEMP/complete-panel" .
+          sudo env "PATH=$PATH" "GOPATH=$(go env GOPATH)" "GOCACHE=$(go env GOCACHE)" \
+            GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory "GIT_CONFIG_VALUE_0=$PWD" \
+            python3 scripts/test-complete-setup.py \
+            --panel "$RUNNER_TEMP/complete-panel" --xray "$XRAY" \
+            --engine "$RUNNER_TEMP/awg-assets/amneziawg-go-linux-amd64" \
+            --tool "$RUNNER_TEMP/awg-assets/awg-linux-amd64" --work "$RUNNER_TEMP/complete-setup-test"

@@ -46,7 +46,7 @@ func runtimeProcess(t *testing.T, path string, data []byte, cert string, port in
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(XrayPath, "run", "-c", path)
+	cmd := exec.Command(XrayForCore(filepath.Base(filepath.Dir(path))), "run", "-c", path)
 	cmd.Env = append(os.Environ(), "SSL_CERT_FILE="+cert)
 	var logs bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &logs, &logs
@@ -183,14 +183,33 @@ func TestManagedProtocolsRuntime(t *testing.T) {
 		b.Server, err = json.Marshal(root)
 		return b, err
 	}
-	for _, protocol := range []string{"ss2022", "trojan", "vlessenc"} {
-		t.Run(protocol, func(t *testing.T) {
+	for _, mode := range []struct {
+		protocol  string
+		dedicated bool
+	}{{"ss2022", false}, {"trojan", false}, {"vlessenc", false}, {"ss2022", true}, {"trojan", true}, {"vlessenc", true}} {
+		protocol := mode.protocol
+		label := protocol
+		if mode.dedicated {
+			label += "-dedicated"
+		}
+		if mode.dedicated && protocol == "ss2022" {
+			// Repeat the three-source accounting suite in a separate ledger;
+			// these are a new set of test cores, not the old cores restarting.
+			usage.Dir = filepath.Join(testRoot, "dedicated-usage")
+		}
+		t.Run(label, func(t *testing.T) {
 			epoch := "first-" + protocol
 			runEpoch = func(string) (string, error) { return epoch, nil }
 			Root = t.TempDir()
 			previousTotals := usage.Totals()
 			cert, key := runtimeTLS(t, t.TempDir())
 			o := coreplan.Options{Protocol: protocol, Host: "127.0.0.1", Port: freeTCP(t), SNI: "example.test", Cert: cert, Key: key}
+			o.DedicatedXray = mode.dedicated
+			if mode.dedicated {
+				if err := ensureOptionsEngine(o); err != nil {
+					t.Fatal(err)
+				}
+			}
 			alice := config.UserConfig{Username: "alice", Password: "fixture-a"}
 			bob := config.UserConfig{Username: "bob", Password: "fixture-b"}
 			newUserCore(t, protocol, o, []config.UserConfig{alice, bob})
@@ -373,7 +392,7 @@ func TestManagedProtocolsRuntime(t *testing.T) {
 			if _, err := bundle.RestoreCores(Root); err != nil {
 				t.Fatal(err)
 			}
-			usage.Dir = filepath.Join(testRoot, "restored-usage-"+protocol)
+			usage.Dir = filepath.Join(testRoot, "restored-usage-"+label)
 			if err := usage.RestoreHistory(history); err != nil {
 				t.Fatal(err)
 			}

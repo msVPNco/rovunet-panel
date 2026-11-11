@@ -28,7 +28,7 @@ type liveConfig struct {
 
 var runUserAPI = func(endpoint string, action string, args ...string) ([]byte, error) {
 	base := []string{"api", action, "-s", endpoint, "-t", "5"}
-	return exec.Command(XrayPath, append(base, args...)...).CombinedOutput()
+	return exec.Command(apiXrayPath(), append(base, args...)...).CombinedOutput()
 }
 
 // liveUsers applies only credential changes without restarting healthy users.

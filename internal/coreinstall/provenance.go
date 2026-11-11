@@ -50,17 +50,21 @@ func recordEngine(path, source, commit, license string, args ...string) error {
 }
 
 func verifyXray() error {
-	if err := verifyGoSource(XrayPath, XrayCommit); err != nil {
+	return verifyXrayFile(XrayPath)
+}
+
+func verifyXrayFile(path string) error {
+	if err := verifyGoSource(path, XrayCommit); err != nil {
 		return err
 	}
-	out, err := exec.Command(XrayPath, "version").Output()
+	out, err := exec.Command(path, "version").Output()
 	if err != nil {
 		return err
 	}
 	if !strings.Contains(string(out), "26.10.31") || !strings.Contains(string(out), "63ca2e0") {
 		return fmt.Errorf("new protocols require pinned Xray 26.10.31 / 63ca2e0; existing engine was preserved")
 	}
-	return recordEngine(XrayPath, "https://github.com/XTLS/Xray-core", XrayCommit, "MPL-2.0", "version")
+	return recordEngine(path, "https://github.com/XTLS/Xray-core", XrayCommit, "MPL-2.0", "version")
 }
 
 func recordAWG() error {

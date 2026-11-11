@@ -70,7 +70,7 @@ func Unit(name, dir string) *service.Unit {
 	return &service.Unit{
 		Name:          ServiceName(name),
 		Description:   "Rovunet Panel Xray core: " + name,
-		ExecStart:     fmt.Sprintf("%s run -c %s", XrayPath, filepath.Join(dir, "server.json")),
+		ExecStart:     fmt.Sprintf("%s run -c %s", XrayForCore(name), filepath.Join(dir, "server.json")),
 		ExecCondition: condition,
 		ExecStartPost: confirm,
 		User:          "root", // same as the VLESS service: binds privileged ports
@@ -192,7 +192,7 @@ func TestConfig(path string) error {
 		_, err := readAWG(path)
 		return err
 	}
-	if out, err := exec.Command(XrayPath, "run", "-test", "-c", path).CombinedOutput(); err != nil {
+	if out, err := exec.Command(XrayForCore(filepath.Base(filepath.Dir(path))), "run", "-test", "-c", path).CombinedOutput(); err != nil {
 		_ = out // engine errors may contain credential material
 		return fmt.Errorf("xray rejected the private configuration: %v", err)
 	}
@@ -268,7 +268,7 @@ func Activate(name string) error {
 	if err != nil {
 		return err
 	}
-	if err := ensureEngine(m.Protocol); err != nil {
+	if err := ensureCoreEngine(name, m.Protocol); err != nil {
 		return err
 	}
 	dir := filepath.Join(Root, name)

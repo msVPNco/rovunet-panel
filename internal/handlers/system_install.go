@@ -45,9 +45,16 @@ func handleSystemInstall(ctx *actions.Context) error {
 	out.Print("")
 	out.Print("  Which transports do you want to install?")
 
-	transports, err := prompt.MultiSelect("Transports", actions.InstallTransportOptions)
-	if err != nil {
-		return err
+	complete := ctx.GetArg("custom") != "true"
+	transports := completeTransports()
+	var err error
+	if complete {
+		out.Info("Complete setup: both DNS backends and all nine protocol cores (24 Android / 22 Windows profiles for an eligible account)")
+	} else {
+		transports, err = prompt.MultiSelect("Transports", actions.InstallTransportOptions)
+		if err != nil {
+			return err
+		}
 	}
 	// Xray cores are not tunnels: they are installed after the users exist,
 	// so every user gets a configuration on them (see installCores).
@@ -180,6 +187,13 @@ func handleSystemInstall(ctx *actions.Context) error {
 
 	out.Print("")
 	out.Success("Dependencies installed!")
+	if complete && len(cfg.Users) > 0 && !completeBaseTunnels(cfg) {
+		path, err := setupBackup(cfg)
+		if err != nil {
+			return actions.NewError(actions.SystemInstall, "Cannot back up existing installation before completing tunnels", err)
+		}
+		out.Info("Validated pre-install backup: " + path)
+	}
 
 	// ── Step 5: Set up tunnels ─────────────────────────────────────
 	var allTunnels []config.TunnelConfig
@@ -203,9 +217,12 @@ func handleSystemInstall(ctx *actions.Context) error {
 		out.Print("")
 
 		var err error
-		backend, err = prompt.Select("Backend", actions.BackendOptions)
-		if err != nil {
-			return err
+		backend = "both"
+		if !complete {
+			backend, err = prompt.Select("Backend", actions.BackendOptions)
+			if err != nil {
+				return err
+			}
 		}
 		backends = []string{backend}
 		if backend == "both" {
@@ -233,7 +250,9 @@ func handleSystemInstall(ctx *actions.Context) error {
 					knownParent = baseDomain(t.Domain)
 				}
 			}
-			continue
+			if !complete || len(missingCompleteBackends(cfg, selectedTransport)) == 0 {
+				continue
+			}
 		}
 
 		// Direct transports (SSH, SOCKS5, StunTLS) have no domain and an implicit backend
@@ -382,6 +401,21 @@ func handleSystemInstall(ctx *actions.Context) error {
 		default:
 			domainHint = "t.example.com"
 		}
+		if complete && knownParent != "" {
+			missing := missingCompleteBackends(cfg, selectedTransport)
+			if len(missing) == 1 && missing[0] == config.BackendSSH {
+				prefix := map[string]string{config.TransportDNSTT: "ts", config.TransportSlipstream: "ss", config.TransportVayDNS: "vs", config.TransportSoar: "rs"}[selectedTransport]
+				if prefix != "" {
+					domainHint, domainDefault = prefix+"."+knownParent, prefix+"."+knownParent
+				}
+			}
+			for _, existing := range cfg.Tunnels {
+				if domainDefault != "" && strings.EqualFold(existing.Domain, domainDefault) {
+					domainDefault = strings.SplitN(domainDefault, ".", 2)[0] + "-new." + knownParent
+					domainHint = domainDefault
+				}
+			}
+		}
 		domain, err := prompt.String(fmt.Sprintf("Domain for %s (e.g. %s)", displayName, domainHint), domainDefault)
 		if err != nil {
 			return err
@@ -430,9 +464,13 @@ func handleSystemInstall(ctx *actions.Context) error {
 		soarAllowPorts := ""
 		tunnelBackends := backends
 		if selectedTransport == config.TransportSoar {
-			soarBackend, err := prompt.Select("Backend", actions.SoarBackendOptions)
-			if err != nil {
-				return err
+			soarBackend := "both"
+			if !complete {
+				var err error
+				soarBackend, err = prompt.Select("Backend", actions.SoarBackendOptions)
+				if err != nil {
+					return err
+				}
 			}
 			tunnelBackends = []string{soarBackend}
 			if soarBackend == "both" {
@@ -448,6 +486,9 @@ func handleSystemInstall(ctx *actions.Context) error {
 				}
 			}
 		}
+		if complete {
+			tunnelBackends = missingCompleteBackends(cfg, selectedTransport)
+		}
 
 		for bIdx, b := range tunnelBackends {
 			// NaiveProxy is a single Caddy forward-proxy — one instance on :443
@@ -458,10 +499,11 @@ func handleSystemInstall(ctx *actions.Context) error {
 			}
 			tag := cfg.UniqueTag(selectedTransport)
 			tunnelDomain := domain
-			if len(tunnelBackends) > 1 && selectedTransport != config.TransportNaive {
+			dual := selectedTransport == config.TransportDNSTT || selectedTransport == config.TransportSlipstream || selectedTransport == config.TransportVayDNS || selectedTransport == config.TransportSoar
+			if (len(tunnelBackends) > 1 && selectedTransport != config.TransportNaive) || (complete && dual) {
 				tag = cfg.UniqueTag(selectedTransport + "-" + b)
 				// SSH backend needs its own subdomain (separate dnstt/slipstream instance)
-				if b == config.BackendSSH {
+				if b == config.BackendSSH && len(tunnelBackends) > 1 {
 					parentDomain := baseDomain(domain)
 					sshHint := "ts." + parentDomain
 					if selectedTransport == config.TransportSlipstream {
@@ -618,6 +660,9 @@ func handleSystemInstall(ctx *actions.Context) error {
 	}
 
 	if len(cfg.Tunnels) == 0 {
+		if complete {
+			return actions.NewError(actions.SystemInstall, "Complete setup pending: no tunnels were created", nil)
+		}
 		out.Warning("No tunnels created.")
 		return nil
 	}
@@ -690,11 +735,9 @@ func handleSystemInstall(ctx *actions.Context) error {
 		}
 	}
 
-	socksUser := ""
-	socksPass := ""
 	createUser := false
 
-	if needsUser {
+	if needsUser && len(cfg.Users) == 0 {
 		out.Print("")
 		out.Print("  ── User Setup ──────────────────────────────────────")
 		out.Print("")
@@ -726,9 +769,6 @@ func handleSystemInstall(ctx *actions.Context) error {
 			return actions.NewError(actions.SystemInstall, "failed to create user", err)
 		}
 
-		socksUser = username
-		socksPass = password
-
 		cfg.AddUser(config.UserConfig{Username: username, Password: password})
 		if err := cfg.Save(); err != nil {
 			return actions.NewError(actions.SystemInstall, "failed to save config", err)
@@ -757,6 +797,10 @@ func handleSystemInstall(ctx *actions.Context) error {
 				}
 			}
 		}
+	}
+
+	if complete && len(cfg.Users) == 0 {
+		return actions.NewError(actions.SystemInstall, "Complete setup needs at least one account; create a user before completing setup", nil)
 	}
 
 	// ── Step 6b: WARP outbound (default off) ──────────────────────
@@ -825,24 +869,29 @@ func handleSystemInstall(ctx *actions.Context) error {
 	if setupSOCKS {
 		if directSOCKS {
 			// Direct SOCKS5 transport: listen on all interfaces
-			if err := proxy.SetupSOCKSExternal(socksUser, socksPass); err != nil {
-				out.Warning("Failed to setup SOCKS5 proxy: " + err.Error())
-			}
-		} else if socksUser != "" {
-			if err := proxy.SetupSOCKSWithAuth(socksUser, socksPass); err != nil {
+			if err := proxy.SetupSOCKSExternalWithUsers(cfg.Users); err != nil {
 				out.Warning("Failed to setup SOCKS5 proxy: " + err.Error())
 			}
 		} else {
-			if err := proxy.SetupSOCKS(); err != nil {
+			if err := proxy.SetupSOCKSWithUsers(cfg.Users); err != nil {
 				out.Warning("Failed to setup SOCKS5 proxy: " + err.Error())
 			}
 		}
 	}
 
 	ensureServerAddress(cfg, out, allTunnels)
-	installCores(cfg, out, cores)
+	var completeErr error
+	if complete {
+		completeErr = EnsureCompleteSetup(cfg, out)
+	} else {
+		installCores(cfg, out, cores)
+	}
 	if err := WriteSubscriptions(cfg, out); err != nil {
 		return actions.NewError(actions.SystemInstall, "failed to finalize subscriptions", err)
+	}
+
+	if completeErr != nil {
+		return actions.NewError(actions.SystemInstall, "Complete setup is pending; existing services and links were retained. Resolve the reported prerequisite and run 'rovunet complete-setup'", completeErr)
 	}
 
 	// ── Step 7: Summary ────────────────────────────────────────────

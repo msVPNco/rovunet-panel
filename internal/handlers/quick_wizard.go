@@ -22,6 +22,11 @@ import (
 )
 
 func handleQuickWizard(ctx *actions.Context) error {
+	// The standard quick entry and install use the same complete setup.
+	// Explicit --custom retains the older selective tunnel workflow.
+	if ctx.GetArg("custom") != "true" {
+		return handleSystemInstall(ctx)
+	}
 	out := ctx.Output
 
 	if runtime.GOOS != "linux" {
