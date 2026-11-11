@@ -1,10 +1,7 @@
 name: Release
 
-# Publishes rovunet-linux-amd64 / -arm64 (what install.sh and
-# `rovunet update` download) as release v<VERSION>, VERSION being the one in
-# the Makefile. A release is published only when VERSION changes on main
-# (a release for that version doesn't exist yet), by hand, or from a v* tag.
-# Other pushes to main skip, because their version is already released.
+# main's version bump is the release request. Draft assets are complete and
+# tested before publication; later pushes for an existing version skip it.
 on:
   push:
     branches: [main]
@@ -23,67 +20,105 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Pick the release tag
         id: tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            tag="$GITHUB_REF_NAME"
-          else
-            tag="v$(make -s print-version)"
-          fi
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then tag="$GITHUB_REF_NAME"; else tag="v$(make -s print-version)"; fi
+          test "$tag" = "v$(make -s print-version)"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Release $tag already exists; nothing to do"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" 2>/dev/null || true)
+          if [[ -n "$existing" ]]; then
+            if [[ "$(jq -r .draft <<< "$existing")" == false ]]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              test "$(jq -r .target_commitish <<< "$existing")" = "$GITHUB_SHA"
+            fi
           fi
 
       - uses: actions/setup-go@v5
         if: steps.tag.outputs.skip != 'true'
         with:
-          go-version-file: go.mod
+          go-version: '1.27.4'
 
-      - name: Build pinned validation core
+      - name: Build pinned validation core and source archive
         if: steps.tag.outputs.skip != 'true'
         run: |
+          assets="$RUNNER_TEMP/release-assets"
+          mkdir -p "$assets"
+          echo "RELEASE_ASSETS=$assets" >> "$GITHUB_ENV"
           git clone https://github.com/XTLS/Xray-core.git "$RUNNER_TEMP/xray-src"
-          git -C "$RUNNER_TEMP/xray-src" checkout 63ca2e0c1d31b89f67700c33842431f541fedd25
           cd "$RUNNER_TEMP/xray-src"
+          git checkout 63ca2e0c1d31b89f67700c33842431f541fedd25
+          test -z "$(git status --porcelain)"
           go build -ldflags='-checklinkname=0' -o "$RUNNER_TEMP/xray" ./main
           echo "XRAY=$RUNNER_TEMP/xray" >> "$GITHUB_ENV"
-          # The same pinned core, shipped for core-install (checksummed below)
           for arch in amd64 arm64; do
-            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags='-s -w -checklinkname=0' -o "$GITHUB_WORKSPACE/xray-linux-$arch" ./main
+            CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -buildvcs=true -ldflags='-s -w -checklinkname=0' -o "$assets/xray-linux-$arch" ./main
           done
+          git archive --format=tar.gz --prefix=Xray-core/ --output="$assets/xray-source.tar.gz" HEAD
+          cp LICENSE "$assets/LICENSE-xray.txt"
 
-      - name: Test
+      - name: Validate panel and recovery scripts
         if: steps.tag.outputs.skip != 'true'
-        run: go test ./...
+        run: |
+          go vet ./...
+          bash -n scripts/managed-preview-server.sh scripts/build-managed-awg.sh
+          python3 scripts/test-preview-rollback-usage.py
+          python3 scripts/test-managed-preview-upgrade.py
+          go test -count=1 ./...
+          go test -race -count=1 ./...
 
-      - name: Build
+      - name: Build pinned AmneziaWG runtime assets and source archives
+        if: steps.tag.outputs.skip != 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-aarch64-linux-gnu
+          GOARCH=amd64 CC=gcc bash scripts/build-managed-awg.sh "$RELEASE_ASSETS"
+          GOARCH=arm64 CC=aarch64-linux-gnu-gcc bash scripts/build-managed-awg.sh "$RELEASE_ASSETS"
+
+      - name: Build panel and exercise actual AmneziaWG data path
+        if: steps.tag.outputs.skip != 'true'
+        run: |
+          test -z "$(git status --porcelain)"
+          tag="${{ steps.tag.outputs.tag }}"
+          make build-linux VERSION="${tag#v}" COMMIT="${GITHUB_SHA::7}"
+          for arch in amd64 arm64; do
+            mv "rovunet-linux-$arch" "$RELEASE_ASSETS/"
+            cp "$RELEASE_ASSETS/rovunet-linux-$arch" "$RELEASE_ASSETS/slipgate-linux-$arch"
+          done
+          test "$("$RELEASE_ASSETS/rovunet-linux-amd64" --version 2>&1)" = "rovunet ${tag} (${GITHUB_SHA::7})"
+          go version -m "$RELEASE_ASSETS/rovunet-linux-amd64" | tee "$RELEASE_ASSETS/BUILD-INFO.txt"
+          grep -q 'vcs.modified=false' "$RELEASE_ASSETS/BUILD-INFO.txt"
+          go build -o "$RUNNER_TEMP/awg-helper" ./internal/coreinstall/testdata/awg-helper
+          mkdir -p "$RUNNER_TEMP/awg-network-test"
+          sudo python3 -u scripts/test-managed-awg.py \
+            --panel "$RELEASE_ASSETS/rovunet-linux-amd64" --helper "$RUNNER_TEMP/awg-helper" \
+            --engine "$RELEASE_ASSETS/amneziawg-go-linux-amd64" --tool "$RELEASE_ASSETS/awg-linux-amd64" \
+            --work "$RUNNER_TEMP/awg-network-test"
+
+      - name: Package accepted preview upgrade and checksums
         if: steps.tag.outputs.skip != 'true'
         run: |
           tag="${{ steps.tag.outputs.tag }}"
-          make build-linux VERSION="${tag#v}" COMMIT="${GITHUB_SHA::7}"
-          # One-time bridge: servers still on a pre-rename release update by
-          # downloading the old asset name; the new binary they get migrates
-          # them (internal/migrate). Drop this once no such server remains.
-          for arch in amd64 arm64; do cp "rovunet-linux-$arch" "slipgate-linux-$arch"; done
-          sha256sum rovunet-linux-* slipgate-linux-* xray-linux-* > SHA256SUMS
+          python3 scripts/package-preview-promotion.py --panel "$RELEASE_ASSETS/rovunet-linux-amd64" \
+            --commit "$GITHUB_SHA" --version "${tag#v}" --output "$RELEASE_ASSETS"
+          cp LICENSE "$RELEASE_ASSETS/LICENSE-panel.txt"
+          cd "$RELEASE_ASSETS"
+          sha256sum * > SHA256SUMS
+          sha256sum --check SHA256SUMS
 
-      - name: Publish
+      - name: Publish verified assets
         if: steps.tag.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ steps.tag.outputs.tag }}"
-          # Notes come from this version's CHANGELOG.md section when there is one
-          awk -v h="## $tag" '$0==h{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md > notes.md || true
-          if [ -s notes.md ]; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
-          gh release create "$tag" \
-            rovunet-linux-amd64 rovunet-linux-arm64 slipgate-linux-amd64 slipgate-linux-arm64 xray-linux-amd64 xray-linux-arm64 SHA256SUMS \
-            --target "$GITHUB_SHA" \
-            --title "Rovunet Panel $tag" \
-            "${notes[@]}"
+          awk -v h="## $tag" '$0==h{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          test -s "$RUNNER_TEMP/notes.md"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Rovunet Panel $tag" --notes-file "$RUNNER_TEMP/notes.md"
+          fi
+          gh release upload "$tag" "$RELEASE_ASSETS"/* --clobber
+          gh release edit "$tag" --draft=false --latest --notes-file "$RUNNER_TEMP/notes.md"

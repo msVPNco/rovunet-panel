@@ -31,26 +31,13 @@ func subTestConfig() *config.Config {
 	}
 }
 
-func TestSubscriptionItems(t *testing.T) {
-	lines := []string{
-		"  [naive-socks] user=alice", "  rovunet://AAA", "",
-		"  [naive-ssh] user=alice", "  rovunet://BBB", "",
-		"  [reality] reality, user=alice", "  rovunet://CCC", "  # Standard link for other apps:", "  vless://zzz",
-		"  [wg] wireguard, user=alice", "  rovunet://DDD", "  [Interface]", "  PrivateKey = x",
-		"  [naive-ssh] user=alice", "  rovunet://EEE",
-	}
-	got := subscriptionItems(lines)
-	want := []subItem{{"naive-socks", "rovunet://AAA"}, {"naive-ssh", "rovunet://BBB"}, {"reality", "rovunet://CCC"}, {"wg", "rovunet://DDD"}, {"naive-ssh-2", "rovunet://EEE"}}
-	if len(got) != len(want) {
-		t.Fatalf("got %+v", got)
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("item %d: got %+v, want %+v", i, got[i], want[i])
-		}
+func TestStructuredSubscriptionItems(t *testing.T) {
+	cfg := subTestConfig()
+	items, err := userSubscriptionItems(cfg, cfg.Users[0])
+	if err != nil || len(items) != 2 || items[0].ID != "naive-socks" || items[1].ID != "naive-ssh" {
+		t.Fatalf("structured feed: count=%d err=%v", len(items), err)
 	}
 }
-
 func TestSubscriptionURL(t *testing.T) {
 	cfg := subTestConfig()
 	got := SubscriptionURL(cfg, cfg.Users[0])
@@ -120,7 +107,7 @@ func TestWriteSubscriptionsFeedsAndCleanup(t *testing.T) {
 	for _, e := range entries {
 		names = append(names, e.Name())
 	}
-	want := []string{cfg.Users[0].SubToken + ".json", cfg.Users[0].SubToken + ".status.json"}
+	want := []string{cfg.Users[0].SubToken + ".json", cfg.Users[0].SubToken + ".status.json", cfg.Users[0].SubToken + ".windows.json", cfg.Users[0].SubToken + ".windows.status.json"}
 	if strings.Join(names, " ") != strings.Join(want, " ") {
 		t.Fatalf("got files %v, want %v", names, want)
 	}
@@ -154,7 +141,7 @@ func TestAllConfigsPrintSubscriptionLinks(t *testing.T) {
 	}
 	out := &printOutput{}
 	printClientConfigs(cfg, out, cfg.Tunnels)
-	if out.count("https://n.example.com/sub/") != 2 {
+	if out.count("https://n.example.com/sub/") != 4 {
 		t.Fatalf("want a link per user:\n%s", strings.Join(out.lines, "\n"))
 	}
 	if cfg.Users[1].SubToken == "" {

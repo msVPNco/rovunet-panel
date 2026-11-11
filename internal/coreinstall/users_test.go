@@ -108,3 +108,17 @@ func TestDeviceCoresAreLeftAlone(t *testing.T) {
 		t.Fatalf("device core produced user profiles: %v %v", p, err)
 	}
 }
+
+func TestProfilesCannotManufactureUnprovisionedOrUncountedCredentials(t *testing.T) {
+	Root = t.TempDir()
+	user := config.UserConfig{Username: "alice", Password: "fixture"}
+	newUserCore(t, "wg", coreplan.Options{Protocol: "wireguard", Host: "192.0.2.1", Port: 51820}, []config.UserConfig{user})
+	newUserCore(t, "hy2", hy2, []config.UserConfig{user})
+	user.QuotaGB = 1
+	if profiles, err := Profiles(user); err != nil || len(profiles) != 0 {
+		t.Fatalf("traffic-limited export included an uncounted credential: count=%d err=%v", len(profiles), err)
+	}
+	if profiles, err := Profiles(config.UserConfig{Username: "bob", Password: "fixture"}); err != nil || len(profiles) != 0 {
+		t.Fatal("export manufactured a credential for an unprovisioned user")
+	}
+}

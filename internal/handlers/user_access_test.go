@@ -156,6 +156,11 @@ func TestUserAccessSummary(t *testing.T) {
 	if got := userAccessSummary(config.UserConfig{QuotaGB: 1}); strings.Contains(got, "SSH") {
 		t.Fatalf("a traffic-limited user has no SSH account, got %q", got)
 	}
+	for _, protocol := range []string{"SS2022", "Trojan", "VLESS Encryption"} {
+		if strings.Contains(userAccessSummary(config.UserConfig{QuotaGB: 1}), protocol) {
+			t.Fatalf("quota summary promised an excluded protocol: %s", protocol)
+		}
+	}
 	if got := userAccessSummary(config.UserConfig{ExpiresAt: "2026-12-01T00:00:00Z"}); got != "SSH + SOCKS" {
 		t.Fatalf("a user with only an expiry keeps SSH, got %q", got)
 	}

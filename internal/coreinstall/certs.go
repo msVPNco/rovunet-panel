@@ -69,12 +69,29 @@ func RestartIfCertChanged() ([]string, error) {
 	var restarted []string
 	var firstErr error
 	for _, c := range cores {
+		if err := refreshRestoredCerts(c.Name); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		if _, st, managed, err := loadUserCore(c.Name); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		} else if managed && (st.Disabled || st.Paused) {
+			continue
+		}
 		p := certPath(c.Name)
 		if p == "" {
 			continue
 		}
 		sum, ok := certSum(p)
 		if !ok {
+			if firstErr == nil {
+				firstErr = fmt.Errorf("core %s: certificate cannot be read", c.Name)
+			}
 			continue
 		}
 		sumPath := filepath.Join(Root, c.Name, certSumFile)
@@ -86,6 +103,7 @@ func RestartIfCertChanged() ([]string, error) {
 		if string(old) == sum {
 			continue
 		}
+		_ = collectCoreSample(c.Name, true)
 		if err := restartCore(ServiceName(c.Name)); err != nil {
 			if firstErr == nil {
 				firstErr = err

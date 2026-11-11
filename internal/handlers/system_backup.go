@@ -176,6 +176,9 @@ func handleSystemRestore(ctx *actions.Context) error {
 		return actions.NewError(actions.SystemRestore, "failed to save config", err)
 	}
 	out.Success("Config, keys and users restored")
+	if err := usage.RestoreHistory(b.UsageHistory); err != nil {
+		out.Warning("Failed to restore counter history: " + err.Error())
+	}
 	if len(b.Usage) > 0 {
 		if err := usage.Restore(b.Usage); err != nil {
 			out.Warning("Failed to restore traffic usage: " + err.Error())
@@ -258,6 +261,9 @@ func handleSystemRestore(ctx *actions.Context) error {
 	}
 
 	out.Print("")
+	if err := WriteSubscriptions(cfg, out); err != nil {
+		return actions.NewError(actions.SystemRestore, "setup restored but refreshing subscriptions failed", err)
+	}
 	out.Success(fmt.Sprintf("Restore complete: %d tunnel(s), %d user(s)", len(cfg.Tunnels), len(cfg.Users)))
 	records := cfg.ServerHostnames()
 	var vlessDomains []string
@@ -292,6 +298,10 @@ func encodeBackup(cfg *config.Config) (string, []string, error) {
 		return "", nil, err
 	}
 	b.Usage = usage.Totals()
+	b.UsageHistory, err = usage.History()
+	if err != nil {
+		return "", nil, err
+	}
 	text, err := b.Encode()
 	return text, b.Skipped, err
 }

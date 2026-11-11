@@ -105,7 +105,7 @@ func pendingRevocationNotes() []string {
 // after the user is added.
 func userAccessSummary(u config.UserConfig) string {
 	if u.MeteredOnly() {
-		return "VLESS, REALITY and XHTTP only"
+		return "counted VLESS / REALITY / XHTTP paths only"
 	}
 	return "SSH + SOCKS"
 }

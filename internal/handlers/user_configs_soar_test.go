@@ -14,7 +14,7 @@ func TestUserConfigsIncludeSoarDirect(t *testing.T) {
 	cfg := &config.Config{
 		PublicAddress: "203.0.113.7",
 		Tunnels: []config.TunnelConfig{{
-			Tag: "soar", Transport: config.TransportSoar, Backend: config.BackendDirect,
+			Tag: "soar", Enabled: true, Transport: config.TransportSoar, Backend: config.BackendDirect,
 			Domain: "r.example.com", Port: 5316,
 			Soar: &config.SoarConfig{PublicKey: strings.Repeat("ab", 32)},
 		}},
@@ -33,8 +33,8 @@ func TestFullPanelTextContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := &config.Config{PublicAddress: "192.0.2.1", Backends: config.DefaultBackends(), Tunnels: []config.TunnelConfig{
-		{Tag: "soar", Transport: config.TransportSoar, Backend: config.BackendDirect, Domain: "r.example.org", Soar: &config.SoarConfig{PublicKey: strings.Repeat("ab", 32)}},
-		{Tag: "vless", Transport: config.TransportVLESS, Backend: config.BackendDirect, Domain: "example.org", VLESS: &config.VLESSConfig{Port: 443, Path: "/test", TLS: true, CDN: true, Cert: "test-cert", Key: "test-key", SecretFile: secret}},
+		{Tag: "soar", Enabled: true, Transport: config.TransportSoar, Backend: config.BackendDirect, Domain: "r.example.org", Soar: &config.SoarConfig{PublicKey: strings.Repeat("ab", 32)}},
+		{Tag: "vless", Enabled: true, Transport: config.TransportVLESS, Backend: config.BackendDirect, Domain: "example.org", VLESS: &config.VLESSConfig{Port: 443, Path: "/test", TLS: true, CDN: true, Cert: "test-cert", Key: "test-key", SecretFile: secret}},
 	}}
 	out := &printOutput{}
 	for _, user := range []string{"alice", "bob"} {

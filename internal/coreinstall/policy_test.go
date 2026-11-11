@@ -212,7 +212,8 @@ func TestFailedAdditionKeepsThePreviousConfigurationRunning(t *testing.T) {
 	if string(after) != string(before) || s.stops != 0 {
 		t.Fatalf("an addition that failed must leave the running config alone (stops=%d)", s.stops)
 	}
-	if len(PendingRevocations()) != 0 {
-		t.Fatal("no access was being removed")
+	_, st, _, _ := loadUserCore("hy2")
+	if st.Revocation != "" || st.ApplyError == "" || len(PendingRevocations()) != 1 {
+		t.Fatal("failed addition must be retried without being labelled an access removal")
 	}
 }

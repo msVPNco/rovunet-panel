@@ -7,12 +7,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/binary"
 	"github.com/msVPNco/rovunet-panel/internal/certs"
-	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/dnsrouter"
 	"github.com/msVPNco/rovunet-panel/internal/keys"
@@ -579,6 +577,7 @@ func handleQuickWizard(ctx *actions.Context) error {
 		}
 		out.Info(fmt.Sprintf("Starting %s...", allTunnels[i].Tag))
 		if err := transport.CreateService(&allTunnels[i], cfg); err != nil {
+			markTunnelFailed(cfg, &allTunnels[i], out)
 			return actions.NewError(actions.QuickWizard, fmt.Sprintf("failed to start %s", allTunnels[i].Tag), err)
 		}
 		out.Success(fmt.Sprintf("Tunnel %q running", allTunnels[i].Tag))
@@ -598,6 +597,10 @@ func handleQuickWizard(ctx *actions.Context) error {
 	}
 
 	ensureServerAddress(cfg, out, allTunnels)
+
+	if err := WriteSubscriptions(cfg, out); err != nil {
+		return actions.NewError(actions.QuickWizard, "failed to finalize subscriptions", err)
+	}
 
 	// ── Summary ────────────────────────────────────────────────
 	out.Print("")
@@ -653,41 +656,7 @@ func handleQuickWizard(ctx *actions.Context) error {
 	out.Print("")
 	out.Print("    Client Configs:")
 	out.Print("")
-	for _, t := range allTunnels {
-		for _, v := range naiveAwareVariants(&t) {
-			backendCfg := cfg.GetBackend(v.backend)
-			if backendCfg == nil {
-				continue
-			}
-			variantTunnel := t
-			variantTunnel.Backend = v.backend
-			variantTunnel.Tag = v.tag
-
-			modes := []string{""}
-			if t.Transport == config.TransportDNSTT {
-				modes = []string{clientcfg.ClientModeDNSTT, clientcfg.ClientModeNoizDNS}
-			}
-			for _, mode := range modes {
-				opts := clientcfg.URIOptions{
-					ClientMode: mode,
-					Username:   username,
-					Password:   password,
-				}
-				uri, uriErr := clientcfg.GeneratePortableURI(&variantTunnel, backendCfg, cfg, opts, "rovunet")
-				if uriErr != nil {
-					continue
-				}
-				label := variantTunnel.Tag
-				if mode == clientcfg.ClientModeNoizDNS {
-					label = strings.ReplaceAll(label, "dnstt", "noizdns")
-				}
-				out.Print(fmt.Sprintf("    [%s] %s", label, username))
-				out.Print(fmt.Sprintf("    %s", uri))
-				out.Print("")
-			}
-		}
-	}
-	printSoarLinks(cfg, out, allTunnels)
+	printClientConfigs(cfg, out, cfg.Tunnels)
 
 	out.Print("  ══════════════════════════════════════════════════════")
 	out.Print("")

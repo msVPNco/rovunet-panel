@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/usage"
 )
 
 // The first and last lines of a backup.
@@ -62,7 +63,8 @@ type Bundle struct {
 	// Usage is each user's traffic counted so far (see package usage), so a
 	// restored server doesn't give limited users their quota again. Additive
 	// like Cores.
-	Usage map[string]int64 `json:"usage,omitempty"`
+	Usage        map[string]int64  `json:"usage,omitempty"`
+	UsageHistory map[string][]byte `json:"usage_history,omitempty"`
 
 	// Skipped lists files left out of a new backup (too large to be keys).
 	Skipped []string `json:"-"`
@@ -305,6 +307,11 @@ func (b *Bundle) validate() error {
 			}
 		}
 	}
+	for name, data := range b.UsageHistory {
+		if !usage.ValidHistoryName(name) || len(data) > maxFileSize {
+			return fmt.Errorf("invalid usage history file")
+		}
+	}
 	for name, files := range b.Cores {
 		if !coreNameRegex.MatchString(name) {
 			return fmt.Errorf("invalid core name %q", name)
@@ -393,7 +400,10 @@ var coreNameRegex = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,30}$`)
 // files, nothing that could escape the core's directory.
 func validCorePath(rel string) bool {
 	switch rel {
-	case "meta", "server.json", "options.json", "state.json":
+	case "meta", "server.json", "options.json", "state.json", "applied.json", "cert.sha256", "tls-sources.json":
+		return true
+	}
+	if coreTLSName(rel) {
 		return true
 	}
 	dir, name, ok := strings.Cut(rel, "/")
@@ -416,9 +426,9 @@ func (b *Bundle) AddCores(root string) error {
 		}
 		dir := filepath.Join(root, e.Name())
 		files := make(map[string]File)
-		for _, rel := range []string{"meta", "server.json", "options.json", "state.json"} {
+		for _, rel := range []string{"meta", "server.json", "options.json", "state.json", "applied.json", "cert.sha256", "tls-sources.json"} {
 			f, err := readFile(filepath.Join(dir, rel))
-			if errors.Is(err, os.ErrNotExist) && (rel == "options.json" || rel == "state.json") {
+			if errors.Is(err, os.ErrNotExist) && rel != "meta" && rel != "server.json" {
 				continue // a per-device core has neither
 			}
 			if err != nil {
@@ -440,6 +450,9 @@ func (b *Bundle) AddCores(root string) error {
 			}
 			files["clients/"+c.Name()] = f
 		}
+		if err := captureCoreTLS(files, dir); err != nil {
+			return fmt.Errorf("core %s: %w", e.Name(), err)
+		}
 		if b.Cores == nil {
 			b.Cores = make(map[string]map[string]File)
 		}
@@ -458,6 +471,9 @@ func (b *Bundle) RestoreCores(root string) ([]string, error) {
 	sort.Strings(names)
 	for _, name := range names {
 		dir := filepath.Join(root, name)
+		if err := restoreCoreTLS(b.Cores[name], dir); err != nil {
+			return nil, err
+		}
 		if err := os.MkdirAll(filepath.Join(dir, "clients"), 0700); err != nil {
 			return nil, err
 		}

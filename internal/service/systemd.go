@@ -17,16 +17,18 @@ func TunnelServiceName(tag string) string {
 
 // Unit represents a systemd unit file.
 type Unit struct {
-	Name        string
-	Description string
-	ExecStart   string
-	ExecReload  string
-	User        string
-	Group       string
-	After       string
-	Restart     string
-	WorkingDir  string
-	Environment []string
+	Name          string
+	Description   string
+	ExecStart     string
+	ExecReload    string
+	ExecCondition string
+	ExecStartPost string
+	User          string
+	Group         string
+	After         string
+	Restart       string
+	WorkingDir    string
+	Environment   []string
 }
 
 // Create writes a systemd unit file and reloads the daemon.
@@ -50,6 +52,12 @@ LogRateLimitBurst=100
 
 	if u.ExecReload != "" {
 		content += fmt.Sprintf("ExecReload=%s\n", u.ExecReload)
+	}
+	if u.ExecCondition != "" {
+		content += fmt.Sprintf("ExecCondition=%s\n", u.ExecCondition)
+	}
+	if u.ExecStartPost != "" {
+		content += fmt.Sprintf("ExecStartPost=%s\n", u.ExecStartPost)
 	}
 	if u.WorkingDir != "" {
 		content += fmt.Sprintf("WorkingDirectory=%s\n", u.WorkingDir)
@@ -81,9 +89,10 @@ func Stop(name string) error {
 	if !Exists(name) {
 		return nil
 	}
-	_ = runQuiet("systemctl", "stop", name+".service")
-	_ = runQuiet("systemctl", "disable", name+".service")
-	return nil
+	if err := runQuiet("systemctl", "stop", name+".service"); err != nil {
+		return err
+	}
+	return runQuiet("systemctl", "disable", name+".service")
 }
 
 // Restart restarts a service.

@@ -1,4 +1,4 @@
-VERSION ?= 1.20.1
+VERSION ?= 1.21.0
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 LDFLAGS  = -X github.com/msVPNco/rovunet-panel/internal/version.Version=$(VERSION) \
            -X github.com/msVPNco/rovunet-panel/internal/version.Commit=$(COMMIT) \
@@ -19,8 +19,8 @@ build:
 	go build -trimpath -ldflags "$(LDFLAGS)" -o rovunet .
 
 build-linux:
-	GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(LDFLAGS)" -o rovunet-linux-amd64 .
-	GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(LDFLAGS)" -o rovunet-linux-arm64 .
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=true -ldflags "$(LDFLAGS)" -o rovunet-linux-amd64 .
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -buildvcs=true -ldflags "$(LDFLAGS)" -o rovunet-linux-arm64 .
 
 build-dev: RELEASE_TAG = dev-$(COMMIT)
 build-dev: build-linux

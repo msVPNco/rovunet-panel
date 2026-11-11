@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/msVPNco/rovunet-panel/internal/actions"
+
 	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/msVPNco/rovunet-panel/internal/coreplan"
+	"github.com/msVPNco/rovunet-panel/internal/handlers"
+	"github.com/msVPNco/rovunet-panel/internal/service"
 	"github.com/spf13/cobra"
 )
 
@@ -14,8 +18,11 @@ func init() {
 	var name string
 	install := &cobra.Command{
 		Use:   "core-install",
-		Short: "Install an Xray core (REALITY, XHTTP, Hysteria2, WireGuard) as a managed service",
+		Short: "Install a managed protocol with per-account credentials",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			for _, warning := range coreplan.Warnings(o.Protocol) {
+				fmt.Fprintln(cmd.ErrOrStderr(), warning)
+			}
 			var dir string
 			var err error
 			if host, perr := coreplan.AutoReality(&o); perr != nil {
@@ -27,7 +34,10 @@ func init() {
 			if perDevice {
 				dir, err = coreinstall.Install(name, o)
 			} else {
-				cfg, _ := loadOrDefaultConfig()
+				cfg, loadErr := loadOrDefaultConfig()
+				if loadErr != nil {
+					return loadErr
+				}
 				dir, err = coreinstall.InstallForUsers(name, o, cfg.Users)
 			}
 			if dir == "" && err != nil {
@@ -36,25 +46,38 @@ func init() {
 			if err != nil {
 				fmt.Println("Warning:", err)
 			}
-			fmt.Printf("Core %q is running as %s\n", name, coreinstall.ServiceName(name))
+			state, _ := service.Status(coreinstall.ServiceName(name))
+			fmt.Printf("Core %q installed as %s (state: %s)\n", name, coreinstall.ServiceName(name), state)
 			if perDevice {
 				fmt.Printf("Per-device client configs: %s\n", filepath.Join(dir, "clients"))
 				fmt.Println("Give each device its own file; never share one WireGuard file between devices.")
 			} else {
-				fmt.Println("Every panel user has a configuration on it: 'rovunet users configs' prints them with the rest.")
+				cfg, loadErr := loadOrDefaultConfig()
+				if loadErr != nil {
+					return loadErr
+				}
+				if err := handlers.WriteSubscriptions(cfg, &actions.StdOutput{}); err != nil {
+					return err
+				}
+				if err := handlers.EnsureExpiryTimer(cfg); err != nil {
+					return err
+				}
+				fmt.Println("Eligible panel users have private profiles; subscriptions have been refreshed.")
 			}
 			return nil
 		},
 	}
 	f := install.Flags()
 	f.StringVar(&name, "name", "", "Core name (a-z, 0-9, '-')")
-	f.StringVar(&o.Protocol, "protocol", "", "reality, xhttp, hysteria2, wireguard")
+	f.StringVar(&o.Protocol, "protocol", "", "reality, xhttp, hysteria2, wireguard, amneziawg, ss2022, trojan, vlessenc")
+	f.StringVar(&o.Subnet, "subnet", "", "AmneziaWG: unused IPv4 /24 (default 10.203.72.0/24)")
+	f.StringVar(&o.Egress, "egress", "", "AmneziaWG: Internet interface (default: current route)")
 	f.StringVar(&o.Host, "host", "", "Public endpoint hostname or IP")
 	f.StringVar(&o.SNI, "sni", "", "Certificate name or REALITY server name")
 	f.IntVar(&o.Port, "port", 8443, "Listener port (must be free)")
 	f.IntVar(&o.Devices, "devices", 1, "Per-device mode: this many standalone credentials instead of one per panel user (1..1000)")
-	f.StringVar(&o.Cert, "cert", "", "Server TLS certificate path (xhttp, hysteria2)")
-	f.StringVar(&o.Key, "key", "", "Server TLS private key path (xhttp, hysteria2)")
+	f.StringVar(&o.Cert, "cert", "", "Server TLS certificate path (xhttp, hysteria2, trojan)")
+	f.StringVar(&o.Key, "key", "", "Server TLS private key path (xhttp, hysteria2, trojan)")
 	f.StringVar(&o.RealityTarget, "target", "", "REALITY TLS target host:port (default: a random working site from the built-in list)")
 	for _, r := range []string{"name", "protocol", "host"} {
 		_ = install.MarkFlagRequired(r)
@@ -69,7 +92,7 @@ func init() {
 				return err
 			}
 			fmt.Printf("Core %q removed\n", args[0])
-			return nil
+			return refreshCoreSubscriptions()
 		},
 	}
 

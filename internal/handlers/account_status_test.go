@@ -113,6 +113,41 @@ func TestStatusRevisionChangesOnlyWithContent(t *testing.T) {
 	}
 }
 
+func TestStatusKeepsKnownLowerBoundOnReadFailureButAllowsRenewal(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "account.status.json")
+	u := config.UserConfig{Username: "a", AccountID: "account", PeriodID: "first", QuotaGB: 1}
+	previous := buildStatus(statusTestInput(map[string]int64{"a": 2 << 30}, true, true), u, "")
+	old, err := statusBody(previous, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, old, 0600); err != nil {
+		t.Fatal(err)
+	}
+	body, err := statusBody(buildStatus(statusTestInput(nil, false, false), u, ""), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var st accountStatus
+	if err := json.Unmarshal(body, &st); err != nil {
+		t.Fatal(err)
+	}
+	if st.UsedBytes == nil || *st.UsedBytes != 2<<30 || st.Metering != meteringPartial || st.Status != statusLimitReached {
+		t.Fatal("failed read erased a known count or made the account healthy")
+	}
+	u.PeriodID = "renewed"
+	body, err = statusBody(buildStatus(statusTestInput(nil, false, false), u, ""), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(body, &st); err != nil {
+		t.Fatal(err)
+	}
+	if st.UsedBytes == nil || *st.UsedBytes != 0 || st.Metering != meteringUnavailable || st.Status != statusActive {
+		t.Fatal("renewal did not start a new period, or broke the released Android numeric count contract")
+	}
+}
+
 // The status file carries exactly the documented keys, and a stopped user
 // keeps it while the subscription goes.
 func TestWriteSubscriptionsStatusFiles(t *testing.T) {

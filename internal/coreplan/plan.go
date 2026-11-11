@@ -5,6 +5,7 @@ package coreplan
 import (
 	"crypto/ecdh"
 	"crypto/hmac"
+	"crypto/mlkem"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -17,6 +18,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/msVPNco/rovunet-panel/internal/protocols"
 )
 
 type Options struct {
@@ -32,6 +35,8 @@ type Options struct {
 	// only lets a second core of the same protocol (reality2) name its links
 	// apart from the first.
 	CoreName string `json:"-"`
+	Subnet   string `json:"subnet,omitempty"`
+	Egress   string `json:"egress,omitempty"`
 }
 
 // linkLabel is the protocol part of a client link's name: the protocol, or the
@@ -50,24 +55,30 @@ func (o Options) linkLabel() string {
 // the server keys and paths, the seed client credentials are derived from,
 // and each WireGuard client's address.
 type State struct {
-	ServerPrivate string            `json:"serverPrivate"` // X25519, standard base64
-	ShortID       string            `json:"shortId"`
-	Path          string            `json:"path"`
-	Seed          string            `json:"seed"` // hex, 32 bytes
-	WGAddrs       map[string]string `json:"wgAddrs,omitempty"`
+	ServerPrivate   string            `json:"serverPrivate"` // X25519, standard base64
+	ShortID         string            `json:"shortId"`
+	Path            string            `json:"path"`
+	Seed            string            `json:"seed"` // hex, 32 bytes
+	WGAddrs         map[string]string `json:"wgAddrs,omitempty"`
+	VLESSDecryption string            `json:"vlessDecryption,omitempty"`
+	VLESSEncryption string            `json:"vlessEncryption,omitempty"`
+	AWG             *AWGObfuscation   `json:"awg,omitempty"`
 	// APIPort is the loopback port of the core's Xray statistics API, used to
 	// count each user's traffic (REALITY and XHTTP). 0 means none.
-	APIPort int `json:"apiPort,omitempty"`
+	APIPort    int    `json:"apiPort,omitempty"`
+	APISocket  string `json:"apiSocket,omitempty"`
+	ApplyError string `json:"applyError,omitempty"`
 	// Paused is set while no user may use this core, so it is stopped. It is
 	// not the operator switching the core off: the next allowed user starts it.
-	Paused bool `json:"paused,omitempty"`
+	Paused   bool `json:"paused,omitempty"`
+	Disabled bool `json:"disabled,omitempty"`
 	// Revocation is why a user's access to this core could not be taken away
 	// yet; empty when nothing is pending. It is retried on every limits run.
 	Revocation string `json:"revocation,omitempty"`
 }
 
 // Metered reports whether a protocol's per-user traffic can be read from Xray.
-func Metered(protocol string) bool { return protocol == "reality" || protocol == "xhttp" }
+func Metered(protocol string) bool { return protocols.Metered(protocol) }
 
 // Client is one credential holder. Secret takes part in the derivation, so a
 // changed password revokes the client's previous credentials.
@@ -235,14 +246,14 @@ func Validate(o *Options) error {
 		return fmt.Errorf("invalid host")
 	}
 	switch o.Protocol {
-	case "reality", "xhttp", "hysteria2", "wireguard":
+	case "reality", "xhttp", "hysteria2", "wireguard", "ss2022", "trojan", "vlessenc", "amneziawg":
 	default:
 		return fmt.Errorf("unsupported protocol")
 	}
 	if o.SNI == "" {
 		o.SNI = o.Host
 	}
-	if (o.Protocol == "xhttp" || o.Protocol == "hysteria2") && (o.Cert == "" || o.Key == "") {
+	if (o.Protocol == "xhttp" || o.Protocol == "hysteria2" || o.Protocol == "trojan") && (o.Cert == "" || o.Key == "") {
 		return fmt.Errorf("TLS certificate and key paths required")
 	}
 	if o.Protocol == "reality" {
@@ -254,6 +265,22 @@ func Validate(o *Options) error {
 			return fmt.Errorf("REALITY target %q has an invalid port", o.RealityTarget)
 		}
 	}
+	if o.Protocol == "amneziawg" {
+		if o.Subnet == "" {
+			o.Subnet = "10.203.72.0/24"
+		}
+		ip, block, err := net.ParseCIDR(o.Subnet)
+		if err != nil || ip.To4() == nil {
+			return fmt.Errorf("AmneziaWG needs an IPv4 /24 subnet")
+		}
+		ones, bits := block.Mask.Size()
+		if ones != 24 || bits != 32 || !ip.Equal(block.IP) {
+			return fmt.Errorf("AmneziaWG needs a canonical IPv4 /24 subnet")
+		}
+		if o.Egress != "" && !regexp.MustCompile(`^[a-zA-Z0-9_.:-]{1,15}$`).MatchString(o.Egress) {
+			return fmt.Errorf("invalid egress interface")
+		}
+	}
 	return nil
 }
 
@@ -263,6 +290,17 @@ func Validate(o *Options) error {
 func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 	if err := Validate(&o); err != nil {
 		return Bundle{}, err
+	}
+	if o.Protocol == "amneziawg" {
+		return generateAWG(o, st, clients)
+	}
+	if o.Protocol == "vlessenc" && st.VLESSDecryption == "" {
+		key, err := mlkem.GenerateKey768()
+		if err != nil {
+			return Bundle{}, err
+		}
+		st.VLESSDecryption = "mlkem768x25519plus.native.600s." + base64.RawURLEncoding.EncodeToString(key.Bytes())
+		st.VLESSEncryption = "mlkem768x25519plus.native.1rtt." + base64.RawURLEncoding.EncodeToString(key.EncapsulationKey().Bytes())
 	}
 	private, err := ecdh.X25519().NewPrivateKey(mustDecode(st.ServerPrivate))
 	if err != nil {
@@ -276,7 +314,7 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 			return Bundle{}, err
 		}
 	}
-	inbound := object{"listen": "0.0.0.0", "port": o.Port}
+	inbound := object{"listen": "0.0.0.0", "port": o.Port, "tag": "proxy"}
 	stream := object{}
 	users := []object{}
 	profiles := []string{}
@@ -287,7 +325,7 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 		q := url.Values{}
 		var scheme, credential string
 		switch o.Protocol {
-		case "reality", "xhttp":
+		case "reality", "xhttp", "vlessenc":
 			b, err := st.derive(o.Protocol, c, 16)
 			if err != nil {
 				return Bundle{}, err
@@ -300,7 +338,9 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 			q.Set("encryption", "none")
 			q.Set("sni", o.SNI)
 			q.Set("fp", "chrome")
-			if o.Protocol == "reality" {
+			if o.Protocol == "vlessenc" {
+				q = url.Values{"encryption": {st.VLESSEncryption}, "type": {"tcp"}, "security": {"none"}}
+			} else if o.Protocol == "reality" {
 				u["flow"] = "xtls-rprx-vision"
 				q.Set("flow", "xtls-rprx-vision")
 				q.Set("type", "tcp")
@@ -317,6 +357,28 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 			users = append(users, u)
 			scheme = "vless"
 			credential = id
+		case "trojan":
+			b, err := st.derive(o.Protocol, c, 32)
+			if err != nil {
+				return Bundle{}, err
+			}
+			credential = base64.RawURLEncoding.EncodeToString(b)
+			users = append(users, object{"password": credential, "email": c.Name})
+			scheme = "trojan"
+			q = url.Values{"type": {"tcp"}, "security": {"tls"}, "sni": {o.SNI}, "alpn": {"http/1.1"}}
+		case "ss2022":
+			master, err := st.derive("ss2022-server", Client{}, 32)
+			if err != nil {
+				return Bundle{}, err
+			}
+			key, err := st.derive(o.Protocol, c, 32)
+			if err != nil {
+				return Bundle{}, err
+			}
+			password := base64.StdEncoding.EncodeToString(key)
+			users = append(users, object{"password": password, "email": c.Name})
+			credential = base64.RawURLEncoding.EncodeToString([]byte("2022-blake3-aes-256-gcm:" + base64.StdEncoding.EncodeToString(master) + ":" + password))
+			scheme = "ss"
 		case "hysteria2":
 			b, err := st.derive(o.Protocol, c, 24)
 			if err != nil {
@@ -346,6 +408,21 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 		profiles = append(profiles, link.String())
 	}
 	switch o.Protocol {
+	case "vlessenc":
+		inbound["protocol"] = "vless"
+		inbound["settings"] = object{"clients": users, "decryption": st.VLESSDecryption}
+		stream = object{"network": "raw", "security": "none"}
+	case "trojan":
+		inbound["protocol"] = "trojan"
+		inbound["settings"] = object{"clients": users}
+		stream = object{"network": "raw", "security": "tls"}
+	case "ss2022":
+		master, err := st.derive("ss2022-server", Client{}, 32)
+		if err != nil {
+			return Bundle{}, err
+		}
+		inbound["protocol"] = "shadowsocks"
+		inbound["settings"] = object{"method": "2022-blake3-aes-256-gcm", "password": base64.StdEncoding.EncodeToString(master), "clients": users, "network": "tcp,udp"}
 	case "reality":
 		inbound["protocol"] = "vless"
 		inbound["settings"] = object{"clients": users, "decryption": "none"}
@@ -363,10 +440,12 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 		inbound["settings"] = object{"secretKey": serverPrivate, "address": []string{"10.77.0.1/32"}, "peers": peers, "noKernelTun": true, "mtu": 1280}
 		extension = "conf"
 	}
-	if o.Protocol == "xhttp" || o.Protocol == "hysteria2" {
+	if o.Protocol == "xhttp" || o.Protocol == "hysteria2" || o.Protocol == "trojan" {
 		alpn := []string{"h2", "http/1.1"}
 		if o.Protocol == "hysteria2" {
 			alpn = []string{"h3"}
+		} else if o.Protocol == "trojan" {
+			alpn = []string{"http/1.1"}
 		}
 		stream["tlsSettings"] = object{"alpn": alpn, "certificates": []object{{"certificateFile": o.Cert, "keyFile": o.Key}}}
 	}
@@ -374,7 +453,7 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 		inbound["streamSettings"] = stream
 	}
 	root := object{"log": object{"loglevel": "warning"}, "inbounds": []object{inbound}, "outbounds": []object{{"protocol": "freedom"}}}
-	if st.APIPort > 0 && Metered(o.Protocol) {
+	if (st.APIPort > 0 || st.APISocket != "") && Metered(o.Protocol) {
 		// Loopback-only statistics API (the classic form: a dokodemo-door
 		// inbound routed to the api handler), plus per-user counters.
 		root["inbounds"] = []object{inbound, {
@@ -385,6 +464,11 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 		root["api"] = object{"tag": "api", "services": []string{"StatsService"}}
 		root["policy"] = object{"levels": object{"0": object{"statsUserUplink": true, "statsUserDownlink": true}}}
 		root["routing"] = object{"rules": []object{{"type": "field", "inboundTag": []string{"api"}, "outboundTag": "api"}}}
+		if st.APISocket != "" {
+			root["inbounds"] = []object{inbound}
+			root["api"] = object{"tag": "api", "listen": st.APISocket, "services": []string{"StatsService", "HandlerService"}}
+			delete(root, "routing")
+		}
 	}
 	server, err := json.MarshalIndent(root, "", "  ")
 	return Bundle{Server: server, Clients: profiles, Extension: extension}, err
