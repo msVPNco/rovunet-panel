@@ -57,7 +57,9 @@ Rovunet Panel is an open-source tool that turns a Linux server into a multi-prot
 
 Suitability depends on the server, operator and network; these are guidelines, not guarantees. See [Protocols](docs/en/protocols.md) for details.
 
-**v1.21.0:** the tested full setup exports **24 Android configurations and 22 Windows configurations**, not 24 independent protocols. Counts depend on installed services and account eligibility. The released Windows client excludes AmneziaWG and SS2022. All four added protocols are excluded from traffic-limited accounts; the three new Xray protocols deny new sessions after expiry/removal, but established streams may continue. An exact simultaneous-device cap is not implemented. See [managed protocols and compatibility](docs/MANAGED-PROTOCOLS.md).
+**v1.21.1:** the tested full setup exports **24 Android configurations and 22 Windows configurations**, not 24 independent protocols. Counts depend on installed services and account eligibility. The released Windows client excludes AmneziaWG and SS2022. All four added protocols are excluded from traffic-limited accounts; the three new Xray protocols deny new sessions after expiry/removal, but established streams may continue. An exact simultaneous-device cap is not implemented. See [managed protocols and compatibility](docs/MANAGED-PROTOCOLS.md).
+
+**Automatic complete setup (v1.21.1):** normal installation and Quick Wizard select the full tunnel set and both backends. Update adds missing protocol cores automatically, preserving existing users, keys, core names and subscription URLs. A configured 20-profile server grows to 24 Android / 22 Windows profiles without four manual installations. Incomplete base setups ask for missing DNS/domain settings during an interactive update. A valid NaiveProxy certificate, usable TUN device and free candidate ports are required; failures report the actual counts and a pending setup instead of claiming completion. `sudo rovunet complete-setup` resumes setup; `sudo rovunet install --custom` keeps selective installation available. Traffic-limited accounts retain their restricted protocol set.
 
 ## Quick start
 

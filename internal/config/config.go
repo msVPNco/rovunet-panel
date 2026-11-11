@@ -201,6 +201,21 @@ func (c *Config) Path() string {
 	return c.path
 }
 
+// Reload refreshes configuration without copying the in-process mutex.
+func (c *Config) Reload() error {
+	fresh, err := LoadFrom(c.Path())
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(fresh)
+	if err != nil {
+		return err
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return json.Unmarshal(data, c)
+}
+
 // Default returns a new config with sensible defaults.
 func Default() *Config {
 	return &Config{

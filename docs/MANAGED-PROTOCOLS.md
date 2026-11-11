@@ -1,6 +1,6 @@
-# Managed protocols — v1.21.0
+# Managed protocols — v1.21.1
 
-v1.21.0 adds optional, account-managed AmneziaWG, Shadowsocks 2022,
+v1.21.1 adds optional, account-managed AmneziaWG, Shadowsocks 2022,
 Trojan TLS and VLESS Encryption. Existing test services are never adopted.
 The accepted private preview established the staged server/name-update path;
 protocol limits and the remaining validation boundaries are documented below.
@@ -89,8 +89,8 @@ optional core automatically.
 
 The accepted `1.20.1-managed-preview.3 (2ecfe96)` amd64 build intentionally blocks
 the public updater. Its release asset
-`rovunet-preview-to-v1.21.0-linux-amd64.tar.gz` contains a reviewed panel-only
-bridge to v1.21.0. Extract it into a private directory and run
+`rovunet-preview-to-v1.21.1-linux-amd64.tar.gz` contains a reviewed panel-only
+bridge to v1.21.1. Extract it into a private directory and run
 `python3 upgrade-managed-preview.py apply`, followed by `status`. It verifies
 the exact preview binary, creates a validated backup, retains existing core
 keys/URLs, and checks all native fields before accepting the replacement.
@@ -101,6 +101,34 @@ The fresh-server `install.sh` is not the migration command for this preview.
 
 Other private preview helpers below describe their original audited baselines;
 they are historical staging tools, not general public updaters.
+
+### Automatic installation and upgrade completion
+
+Since v1.21.1, the standard installer and Quick Wizard use the same complete
+preset. They configure both DNS/Soar backends and nine cores, yielding 24
+Android and 22 Windows profiles for the supported single-address, unmetered
+account setup. Use `rovunet install --custom` or `rovunet wizard --custom`
+for a deliberately smaller set. The direct public SOCKS5 listener is not
+needed by the full preset.
+
+`rovunet update` runs automatic completion in the newly installed binary.
+The existing 20-profile setup needs no manual four-core installation. Missing
+base tunnels enter the same installer during an interactive update, asking
+for their domain/DNS settings; noninteractive updates report the required
+interactive step. Existing tunnels/users are kept. A private, validated
+backup under `/etc/rovunet/setup-backups` precedes creating missing cores.
+Retries preserve previously created keys and do not duplicate protocols.
+The three new Xray protocols use `/usr/local/bin/rovunet-xray-managed`, verified
+against the pinned source; the legacy Xray executable is preserved. Stored
+`dedicatedXray` options retain this choice across lifecycle operations and
+restore. Existing manually installed/new-preview cores keep their old runtime.
+
+The final output reports actual per-user counts. Missing/invalid certificates,
+occupied ports, unavailable TUN or disabled/missing tunnels produce a pending
+setup message; incomplete setup is never announced as a completed 24-profile
+installation. Resolve the stated prerequisite and run `rovunet complete-setup`.
+Provider/cloud firewall rules and DNS records are outside panel control.
+Traffic-limited or expired accounts never receive otherwise excluded protocols.
 
 ### Stable subscription URLs
 
@@ -213,4 +241,4 @@ The owner exercised staged server installation/rollback, subscription refresh
 and the approved display names. Those reports do not establish whole-host
 reboot, long-run traffic or end-to-end ACME renewal. Release CI validates the
 exact published source and runtime assets. The four README translations cover
-v1.21.0; app source is unchanged by this panel release.
+v1.21.1; app source is unchanged by this panel release.

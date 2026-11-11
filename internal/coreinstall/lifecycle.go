@@ -63,7 +63,7 @@ func Start(name string) error {
 			return err
 		}
 	}
-	if err := ensureEngine(m.Protocol); err != nil {
+	if err := ensureCoreEngine(name, m.Protocol); err != nil {
 		return err
 	}
 	if err := TestConfig(filepath.Join(dir, "server.json")); err != nil {

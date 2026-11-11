@@ -2,6 +2,35 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.21.1
+
+### English
+
+- Make normal installation and Quick Wizard use the complete preset: both DNS/Soar backends and all nine protocol cores. Updating an existing 20-profile setup adds AmneziaWG, SS2022, Trojan TLS and VLESS Encryption automatically; interactive updates of incomplete base setups request missing domain/DNS settings.
+- Keep existing users, passwords, tokens, profile IDs, core files and stopped-core choices. Validate a private backup before creating missing cores, select free ports without killing listeners, and resume partial setup without duplicate cores or regenerated keys. Report actual Android/Windows profile counts and explicit pending prerequisites; `rovunet complete-setup` retries setup without rerunning all transport updates.
+- Put automatically added SS2022/Trojan/VLESS Encryption cores on a separately verified pinned Xray executable. Preserve the legacy Xray file and retain runtime selection through account changes, start/stop and backup restore.
+- Recognize legacy display tags `xhttp`, `hysteria2`, `soar-direct` and the four protocol-name tags. Only display names change. Reinstalling with existing users no longer offers an implicit credential reset or replaces the proxy credential list with a single user.
+- The full supported setup remains **24 Android / 22 Windows profiles** for an active account without a traffic quota and one public address. Valid DNS/certificates, free ports and a usable TUN device remain prerequisites; cloud firewall rules are external. Traffic-limited accounts retain their existing restrictions. Established-stream/device-limit limitations from v1.21.0 remain unchanged.
+
+### فارسی
+
+- نصب معمولی و Quick Wizard به‌صورت پیش‌فرض چیدمان کامل را می‌سازند. آپدیتِ سرور ۲۰تایی چهار پروتکل جدید را خودکار اضافه می‌کند؛ برای تنظیمات پایهٔ ناقص، دامنه‌ها و DNS بخش‌های غایب در همان مسیر تعاملی پرسیده می‌شوند.
+- کاربران، رمزها، کلیدها، شناسه‌ها و لینک‌های قبلی حفظ می‌شوند. قبل از ساخت هسته‌های غایب بکاپ خصوصی معتبر گرفته می‌شود؛ پورت اشغال‌شده آزادسازی اجباری نمی‌شود و اجرای مجدد کار نیمه‌تمام را بدون هستهٔ تکراری ادامه می‌دهد. تعداد واقعی کانفیگ و علت ناتمام‌ماندن نمایش داده می‌شود؛ دستور بازیابی `rovunet complete-setup` است.
+- موتور سه پروتکل جدید Xray جدا از موتور قبلی نصب می‌شود. نام‌های قدیمی xhttp، hysteria2 و soar-direct نیز به نام‌های نمایشی مصوب نگاشت می‌شوند. نصب مجدد با کاربران موجود، اعتبارنامهٔ قبلی را بازنویسی نمی‌کند.
+- خروجی چیدمان کامل برای حساب فعالِ بدون سهمیهٔ حجمی و یک آدرس عمومی Android=24 و Windows=22 است؛ DNS، گواهی معتبر، TUN و پورت آزاد لازم‌اند. محدودیت‌های حساب حجمی، جریان‌های باز و سقف دستگاه مطابق نسخهٔ قبل باقی‌اند.
+
+### Русский
+
+- Полная установка и Quick Wizard используют общий полный набор; обновление сервера с 20 профилями автоматически добавляет четыре новых протокола. Частичная настройка запрашивает недостающие домены/DNS интерактивно.
+- Сохраняются пользователи, ключи, ID и подписки; перед добавлением создаётся проверенная приватная копия, выбираются свободные порты, повторный запуск не создаёт дубликатов. `rovunet complete-setup` продолжает незавершённую настройку.
+- Новые Xray-ядра используют отдельный закреплённый runtime. Исправлены старые отображаемые имена. Полная конфигурация: Android 24 / Windows 22 при выполненных требованиях; ограничения аккаунтов с лимитом трафика сохранены.
+
+### 简体中文
+
+- 常规安装及 Quick Wizard 默认使用完整配置；已有 20 个配置的服务器更新后自动补齐四种新协议。基础配置不完整时，交互式流程询问缺失的域名/DNS。
+- 保留用户、密钥、配置 ID 和订阅地址；新增前验证私有备份，选择空闲端口，重复执行不会生成重复内核。`rovunet complete-setup` 可继续未完成的配置。
+- 新 Xray 协议使用独立的固定版本运行时，并修复旧显示名称。在满足前提的完整配置下提供 Android 24 个 / Windows 22 个；保留流量配额和其他既有限制。
+
 ## v1.21.0
 
 ### English

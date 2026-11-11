@@ -126,16 +126,17 @@ func registerActionCommands() {
 
 	// System-level commands go directly on root
 	systemActions := map[string]string{
+		actions.QuickWizard:     "wizard",
 		actions.SystemInstall:   "install",
 		actions.SystemUninstall: "uninstall",
 		actions.SystemUpdate:    "update",
 		actions.SystemRestart:   "restart",
-		actions.SystemUsers: "users",
-		actions.SystemStats: "stats",
-		actions.SystemDiag:  "diag",
-		actions.SystemMTU:   "mtu",
-		actions.SystemBackup:  "backup",
-		actions.SystemRestore: "restore",
+		actions.SystemUsers:     "users",
+		actions.SystemStats:     "stats",
+		actions.SystemDiag:      "diag",
+		actions.SystemMTU:       "mtu",
+		actions.SystemBackup:    "backup",
+		actions.SystemRestore:   "restore",
 	}
 
 	for id, use := range systemActions {

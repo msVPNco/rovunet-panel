@@ -37,6 +37,8 @@ type Options struct {
 	CoreName string `json:"-"`
 	Subnet   string `json:"subnet,omitempty"`
 	Egress   string `json:"egress,omitempty"`
+	// DedicatedXray keeps automatic setup's new protocols off the legacy engine.
+	DedicatedXray bool `json:"dedicatedXray,omitempty"`
 }
 
 // linkLabel is the protocol part of a client link's name: the protocol, or the

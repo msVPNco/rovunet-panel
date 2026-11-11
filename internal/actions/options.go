@@ -49,6 +49,8 @@ var InstallTransportOptions = []SelectOption{
 	{Value: "direct-socks5", Label: "SOCKS5 — Direct SOCKS5 proxy"},
 	{Value: "xray-reality", Label: "VLESS + REALITY — Xray core, no domain or certificate needed"},
 	{Value: "xray-wireguard", Label: "WireGuard — Xray core, one configuration per user"},
+	{Value: "xray-xhttp", Label: "VLESS + XHTTP — uses the NaiveProxy domain and certificate"},
+	{Value: "xray-hysteria2", Label: "Hysteria 2 — uses the NaiveProxy domain and certificate"},
 }
 
 func init() {

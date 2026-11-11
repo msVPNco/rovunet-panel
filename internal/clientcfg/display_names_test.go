@@ -79,3 +79,43 @@ func TestCoreDisplayNamePreservesEmbeddedProfileAndCollection(t *testing.T) {
 		t.Fatal("custom names must remain configured")
 	}
 }
+
+func TestLegacyInstallationNamesPreserveConnectionAndCollection(t *testing.T) {
+	cfg := &config.Config{PublicAddress: "192.0.2.1", Backends: config.DefaultBackends()}
+	for _, tc := range []struct{ tag, want string }{
+		{"xhttp", "VLESS XHTTP TLS"},
+		{"hysteria2", "Hysteria 2"},
+	} {
+		t.Run(tc.tag, func(t *testing.T) {
+			opts := URIOptions{Username: "alice"}
+			embedded := "fixture-private-core-profile"
+			before, err := GenerateCoreURI(tc.tag, embedded, cfg, opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			opts.DisplayName = ProfileDisplayName(tc.tag)
+			after, err := GenerateCoreURI(tc.tag, embedded, cfg, opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertOnlyDisplayNameChanged(t, before, after, tc.want)
+		})
+	}
+	t.Run("soar-direct", func(t *testing.T) {
+		tunnel := &config.TunnelConfig{Tag: "soar-direct", Transport: config.TransportSoar, Backend: config.BackendDirect, Domain: "example.test"}
+		opts := URIOptions{Username: "alice", Password: "fixture-private"}
+		before, err := GeneratePortableURI(tunnel, cfg.GetBackend(config.BackendDirect), cfg, opts, "rovunet")
+		if err != nil {
+			t.Fatal(err)
+		}
+		opts.DisplayName = ProfileDisplayName(tunnel.Tag)
+		after, err := GeneratePortableURI(tunnel, cfg.GetBackend(config.BackendDirect), cfg, opts, "rovunet")
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertOnlyDisplayNameChanged(t, before, after, "Soar · Direct")
+		if tunnel.Tag != "soar-direct" {
+			t.Fatal("legacy tunnel tag changed")
+		}
+	})
+}
