@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -139,10 +140,16 @@ def main():
     if os.geteuid()!=0:p.error('Use an authorized dedicated Linux lab')
     if args.inside:return inside(args)
     args.work.mkdir(parents=True,exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix='backup-cli-',dir=args.work) as directory:
+    # Hosted runners keep RUNNER_TEMP and the checkout beneath /home, which
+    # this test intentionally masks. Stage both fixture and executable outside
+    # every covered mount before entering the private namespace.
+    with tempfile.TemporaryDirectory(prefix='rovunet-backup-cli-',dir='/var/tmp') as directory:
+        panel=Path(directory)/'panel-under-test'
+        shutil.copyfile(args.panel,panel)
+        panel.chmod(0o755)
         env=dict(os.environ,**{'ROVUNET_BACKUP_PARENT_'+n.upper():os.readlink('/proc/self/ns/'+n) for n in ('mnt','net','pid')})
         subprocess.run(['unshare','--mount','--net','--pid','--fork','--kill-child','--mount-proc',
-                        sys.executable,str(Path(__file__).resolve()),'--inside','--panel',str(args.panel),
+                        sys.executable,str(Path(__file__).resolve()),'--inside','--panel',str(panel),
                         '--work',directory],env=env,check=True)
 
 
