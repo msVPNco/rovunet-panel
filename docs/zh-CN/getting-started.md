@@ -6,7 +6,7 @@
 
 | 项目 | 要求 |
 |---|---|
-| 操作系统 | 带 systemd 的 Linux：Ubuntu 20.04+、Debian 10+ 或类似系统 |
+| 操作系统 | 带 systemd 的 Linux；已测试 Ubuntu 24.04 LTS。其他发行版需检查运行时与 ABI 兼容性 |
 | 权限 | 通过 SSH 的 root（或 sudo） |
 | 域名 | 你能控制 DNS 记录的域名。DNS 隧道、NaïveProxy、VLESS 以及基于 TLS 的 Xray 内核需要 |
 | 硬件 | 1 vCPU、1 GB 内存和 20 GB 磁盘足以满足小团体；带宽比 CPU 更重要 |

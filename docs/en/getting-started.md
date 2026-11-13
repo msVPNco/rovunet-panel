@@ -6,7 +6,7 @@
 
 | Item | Requirement |
 |---|---|
-| Operating system | Linux with systemd: Ubuntu 20.04+, Debian 10+ or similar |
+| Operating system | Linux with systemd; Ubuntu 24.04 LTS tested. Other distributions require runtime/ABI compatibility checks |
 | Access | Root (or sudo) over SSH |
 | Domain | A domain whose DNS records you control. Needed for DNS tunnels, NaïveProxy, VLESS and the TLS-based Xray cores |
 | Hardware | 1 vCPU, 1 GB RAM and 20 GB disk are enough for a small group; bandwidth matters more than CPU |
