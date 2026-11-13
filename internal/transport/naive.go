@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 
@@ -38,6 +39,14 @@ func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config, preserv
 		}
 	}
 	caddyfile := buildCaddyfile(tunnel, cfg.Users, vlessRoutes(cfg, tunnel.Tag))
+	if cfg.SubscriptionV2 {
+		caddyfile = withV2Route(caddyfile)
+	} else {
+		caddyfile = withDisabledV2Route(caddyfile)
+	}
+	if old, e := os.ReadFile(caddyfilePath); e == nil {
+		caddyfile = preserveLockedAuth(string(old), caddyfile)
+	}
 	if err := validateAndWriteCaddy(filepath.Join(config.DefaultBinDir, "caddy-naive"), caddyfilePath, []byte(caddyfile)); err != nil {
 		return err
 	}
@@ -62,15 +71,16 @@ func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config, preserv
 	}
 
 	unit := &service.Unit{
-		Name:        service.TunnelServiceName(tunnel.Tag),
-		Description: fmt.Sprintf("Rovunet Panel NaiveProxy: %s", tunnel.Tag),
-		ExecStart:   fmt.Sprintf("%s run --config %s --adapter caddyfile", binPath, caddyfilePath),
-		User:        svcUser,
-		Group:       svcGroup,
-		After:       "network.target",
-		Restart:     "always",
-		WorkingDir:  tunnelDir,
-		Environment: env,
+		Name:         service.TunnelServiceName(tunnel.Tag),
+		Description:  fmt.Sprintf("Rovunet Panel NaiveProxy: %s", tunnel.Tag),
+		ExecStartPre: "+/usr/local/bin/rovunet subscriptions-before-serve",
+		ExecStart:    fmt.Sprintf("%s run --config %s --adapter caddyfile", binPath, caddyfilePath),
+		User:         svcUser,
+		Group:        svcGroup,
+		After:        "network.target",
+		Restart:      "always",
+		WorkingDir:   tunnelDir,
+		Environment:  env,
 	}
 
 	return service.Apply(unit, preserve)
@@ -174,7 +184,7 @@ var SubscriptionDir = "/var/lib/rovunet/subscriptions"
 // a path that is not a token's file is a 404. Nothing may keep a copy: the
 // status changes every few minutes and the files name the user's token.
 func subscriptionRouteLines() string {
-	return "    @rovunet_sub path /sub/*\n" +
+	return "    @rovunet_sub path_regexp ^/sub/[0-9a-f]{32}(\\.windows)?(\\.status)?\\.json$\n" +
 		"    header @rovunet_sub Cache-Control \"no-store\"\n" +
 		"    root @rovunet_sub " + SubscriptionDir + "\n" +
 		"    file_server @rovunet_sub\n"
@@ -268,6 +278,12 @@ func SyncNaive(cfg *config.Config) error {
 			t.Naive.DecoyURL = existingDecoy(string(old))
 		}
 		next := buildCaddyfile(t, cfg.Users, vlessRoutes(cfg, t.Tag))
+		if cfg.SubscriptionV2 {
+			next = withV2Route(next)
+		} else {
+			next = withDisabledV2Route(next)
+		}
+		next = preserveLockedAuth(string(old), next)
 		if next == string(old) {
 			continue
 		}
@@ -345,4 +361,24 @@ func validateAndWriteCaddy(bin, path string, body []byte) error {
 		return fmt.Errorf("Caddy rejected the private configuration; existing Caddyfile and subscription route were retained")
 	}
 	return safefile.Write(path, body, 0600)
+}
+
+func withV2Route(body string) string {
+	route := "    @rovunet_v2 path /v2/sub/*\n    header @rovunet_v2 Cache-Control \"no-store\"\n    reverse_proxy @rovunet_v2 unix/" + config.SubscriptionV2Socket + "\n"
+	return strings.Replace(body, "  route {\n", "  route {\n"+route, 1)
+}
+
+var lockedAuth = regexp.MustCompile("(?m)^ *basic_auth locked-[0-9a-f]+ [0-9a-f]+$")
+
+func preserveLockedAuth(old, next string) string {
+	prior := lockedAuth.FindString(old)
+	if prior == "" || lockedAuth.FindString(next) == "" {
+		return next
+	}
+	return lockedAuth.ReplaceAllString(next, prior)
+}
+
+func withDisabledV2Route(body string) string {
+	route := "    @rovunet_v2 path /v2/sub/*\n    header @rovunet_v2 Cache-Control \"no-store\"\n    respond @rovunet_v2 404\n"
+	return strings.Replace(body, "  route {\n", "  route {\n"+route, 1)
 }

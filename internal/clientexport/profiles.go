@@ -52,7 +52,7 @@ func Build(cfg *config.Config, user config.UserConfig, tunnels []config.TunnelCo
 			errs = append(errs, err)
 		}
 		for _, p := range cores {
-			if user.MeteredOnly() && !opts.StatsWorking(p.Core) {
+			if user.SQLiteMeter != nil || (user.MeteredOnly() && !opts.StatsWorking(p.Core)) {
 				continue
 			}
 			file := p.Protocol == "wireguard" || p.Protocol == "amneziawg"
@@ -101,7 +101,7 @@ func Build(cfg *config.Config, user config.UserConfig, tunnels []config.TunnelCo
 		if protocol == config.TransportSoar && t.Backend == config.BackendDirect {
 			protocol = "soar-direct"
 		}
-		if !t.Enabled || !protocols.Allowed(protocol, user.MeteredOnly(), user.ExpiresAt != "") || (clientcfg.PlainSOCKS(&t) && !opts.All) {
+		if (user.SQLiteMeter != nil && t.Transport != config.TransportVLESS) || !t.Enabled || !protocols.Allowed(protocol, user.MeteredOnly(), user.ExpiresAt != "") || (clientcfg.PlainSOCKS(&t) && !opts.All) {
 			continue
 		}
 		if t.Transport == config.TransportVLESS && user.Username == "" {

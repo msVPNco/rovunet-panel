@@ -23,6 +23,7 @@ import (
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/keys"
+	"github.com/msVPNco/rovunet-panel/internal/quota"
 )
 
 // VLESS over WebSocket server.
@@ -73,19 +74,24 @@ var (
 
 // VLESSOptions configures a VLESS server.
 type VLESSOptions struct {
-	Listen     string // host:port to listen on
-	Path       string // WebSocket path, e.g. "/a1b2c3"
-	CertFile   string // TLS certificate; empty serves plain HTTP (e.g. behind a CDN on port 80)
-	KeyFile    string
-	SecretFile string // secret that turns user credentials into VLESS UUIDs
-	UsersFile  string // rovunet config.json holding the users
-	BlockPorts []int  // destination ports refused for every user
+	quotaFault  func(point, user, dir string) error // instance-local test seam; nil in service
+	QuotaStore  *quota.Store
+	QuotaServer string
+	Listen      string // host:port to listen on
+	Path        string // WebSocket path, e.g. "/a1b2c3"
+	CertFile    string // TLS certificate; empty serves plain HTTP (e.g. behind a CDN on port 80)
+	KeyFile     string
+	SecretFile  string // secret that turns user credentials into VLESS UUIDs
+	UsersFile   string // rovunet config.json holding the users
+	BlockPorts  []int  // destination ports refused for every user
 
 	// AllowPrivate lets streams reach loopback, private and other
 	// non-public addresses. Off in production: those would expose
 	// services on the server and its network to every user.
 	AllowPrivate bool
 	Verbose      bool
+	testStage    func(string)
+	QuotaUsed    func(string) int64
 
 	// dial reaches destinations; tests override it.
 	dial func(ctx context.Context, network, address string) (net.Conn, error)
@@ -101,11 +107,16 @@ type VLESSServer struct {
 	blocked   map[uint16]bool
 
 	users     atomic.Pointer[map[[16]byte]string] // id → username
-	usersStat atomic.Value                        // fileStamp of the last load
+	limits    atomic.Pointer[map[[16]byte]int64]
+	usersStat atomic.Value // fileStamp of the last load
 
-	httpSrv *http.Server
+	httpSrv      *http.Server
+	serveContext context.Context
 
+	handlers sync.WaitGroup
+	closing  bool
 	sessMu   sync.Mutex
+	hijacked map[net.Conn]struct{}
 	sessions map[*wsConn][16]byte // live sessions → the id they authenticated with
 }
 
@@ -180,9 +191,17 @@ func (s *VLESSServer) ReloadUsers() (int, error) {
 		return 0, fmt.Errorf("vless: users file: %w", err)
 	}
 	users := make(map[[16]byte]string, len(cfg.Users))
+	limits := make(map[[16]byte]int64)
 	for _, u := range cfg.Users {
+		if u.SQLiteMeter != nil && s.opts.QuotaStore == nil {
+			continue
+		}
+		if u.QuotaGB > 0 {
+			limits[keys.VLESSUserID(s.secret, u.Username, u.Password)] = u.UsageBase + u.QuotaBytes()
+		}
 		users[keys.VLESSUserID(s.secret, u.Username, u.Password)] = u.Username
 	}
+	s.limits.Store(&limits)
 	s.users.Store(&users)
 	s.usersStat.Store(fileStamp{st.ModTime(), st.Size()})
 	s.dropRevoked(users)
@@ -236,17 +255,40 @@ func (s *VLESSServer) dropRevoked(valid map[[16]byte]string) {
 	}
 }
 
-func (s *VLESSServer) trackSession(ws *wsConn, id [16]byte, add bool) {
+func (s *VLESSServer) trackSession(ws *wsConn, id [16]byte, add bool) bool {
 	s.sessMu.Lock()
 	defer s.sessMu.Unlock()
 	if !add {
 		delete(s.sessions, ws)
-		return
+		return true
+	}
+	if s.closing {
+		_ = ws.conn.Close()
+		return false
 	}
 	if s.sessions == nil {
 		s.sessions = make(map[*wsConn][16]byte)
 	}
 	s.sessions[ws] = id
+	return true
+}
+
+func (s *VLESSServer) trackHijacked(conn net.Conn, add bool) bool {
+	s.sessMu.Lock()
+	defer s.sessMu.Unlock()
+	if !add {
+		delete(s.hijacked, conn)
+		return true
+	}
+	if s.closing {
+		_ = conn.Close()
+		return false
+	}
+	if s.hijacked == nil {
+		s.hijacked = make(map[net.Conn]struct{})
+	}
+	s.hijacked[conn] = struct{}{}
+	return true
 }
 
 func (s *VLESSServer) lookupUser(id [16]byte) (string, bool) {
@@ -255,7 +297,32 @@ func (s *VLESSServer) lookupUser(id [16]byte) (string, bool) {
 		return "", false
 	}
 	name, ok := (*users)[id]
+	if ok && s.exhausted(id, name) {
+		return "", false
+	}
 	return name, ok
+}
+
+func (s *VLESSServer) exhausted(id [16]byte, user string) bool {
+	limits := s.limits.Load()
+	if limits == nil || s.opts.QuotaUsed == nil {
+		return false
+	}
+	ceiling, limited := (*limits)[id]
+	return limited && s.opts.QuotaUsed(user) >= ceiling
+}
+
+func (s *VLESSServer) cutoff(id [16]byte, user string) {
+	if !s.exhausted(id, user) {
+		return
+	}
+	s.sessMu.Lock()
+	defer s.sessMu.Unlock()
+	for ws, peer := range s.sessions {
+		if peer == id {
+			_ = ws.conn.Close()
+		}
+	}
 }
 
 func (s *VLESSServer) logf(format string, args ...any) {
@@ -275,6 +342,9 @@ func (s *VLESSServer) ListenAndServe(ctx context.Context) error {
 
 // Serve serves on ln until ctx ends.
 func (s *VLESSServer) Serve(ctx context.Context, ln net.Listener) error {
+	serving, cancelServing := context.WithCancel(ctx)
+	defer cancelServing()
+	s.serveContext = serving
 	if s.tlsConfig != nil {
 		ln = tls.NewListener(ln, s.tlsConfig)
 	}
@@ -289,10 +359,23 @@ func (s *VLESSServer) Serve(ctx context.Context, ln net.Listener) error {
 	}
 
 	go s.watchUsers(ctx)
-	go func() {
-		<-ctx.Done()
-		_ = s.httpSrv.Close()
-	}()
+	var closeOnce sync.Once
+	shutdown := func() {
+		closeOnce.Do(func() {
+			cancelServing()
+			s.sessMu.Lock()
+			s.closing = true
+			for ws := range s.sessions {
+				_ = ws.conn.Close()
+			}
+			for conn := range s.hijacked {
+				_ = conn.Close()
+			}
+			s.sessMu.Unlock()
+			_ = s.httpSrv.Close()
+		})
+	}
+	go func() { <-ctx.Done(); shutdown() }()
 
 	scheme := "http"
 	if s.tlsConfig != nil {
@@ -300,6 +383,8 @@ func (s *VLESSServer) Serve(ctx context.Context, ln net.Listener) error {
 	}
 	log.Printf("vless: listening on %s (%s, path %s)", ln.Addr(), scheme, s.opts.Path)
 	err := s.httpSrv.Serve(ln)
+	shutdown()
+	s.handlers.Wait()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
@@ -309,6 +394,15 @@ func (s *VLESSServer) Serve(ctx context.Context, ln net.Listener) error {
 // ServeHTTP upgrades WebSocket requests on the VLESS path and answers
 // everything else like a stock nginx.
 func (s *VLESSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.sessMu.Lock()
+	if s.closing {
+		s.sessMu.Unlock()
+		http.Error(w, "service stopping", http.StatusServiceUnavailable)
+		return
+	}
+	s.handlers.Add(1)
+	s.sessMu.Unlock()
+	defer s.handlers.Done()
 	if r.URL.Path != s.opts.Path || r.Method != http.MethodGet || !isWebSocketUpgrade(r) {
 		serveDecoy(w, r)
 		return
@@ -337,11 +431,17 @@ func (s *VLESSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		serveDecoy(w, r)
 		return
 	}
+	s.stage("before-hijack")
 	conn, rw, err := hj.Hijack()
 	if err != nil {
 		return
 	}
 	defer conn.Close()
+	s.stage("after-hijack")
+	if !s.trackHijacked(conn, true) {
+		return
+	}
+	defer s.trackHijacked(conn, false)
 	_ = conn.SetDeadline(time.Time{})
 
 	resp := "HTTP/1.1 101 Switching Protocols\r\n" +
@@ -472,6 +572,7 @@ func (s *VLESSServer) handleSession(ws *wsConn, early []byte, remote string) {
 	// frames, so a slow client can't hold the connection open.
 	ws.readTimeout = vlessHandshakeTimeout
 	handshakeTimer := time.AfterFunc(vlessHandshakeTimeout, func() { _ = ws.conn.Close() })
+	s.stage("before-handshake")
 	req, err := s.readVLESSRequest(r)
 	if !handshakeTimer.Stop() && err == nil {
 		err = errors.New("vless: handshake timed out")
@@ -489,14 +590,92 @@ func (s *VLESSServer) handleSession(ws *wsConn, early []byte, remote string) {
 
 	// Register before checking again, so a reload between the two cannot
 	// leave a removed user's session unnoticed.
-	s.trackSession(ws, req.id, true)
+	s.stage("before-register")
+	if !s.trackSession(ws, req.id, true) {
+		return
+	}
+	s.stage("after-register")
 	defer s.trackSession(ws, req.id, false)
 	if _, ok := s.lookupUser(req.id); !ok {
 		ws.writeClose(1008)
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), vlessDialTimeout)
+	parent := s.serveContext
+	if parent == nil {
+		parent = context.Background()
+	}
+	var qkey quota.Key
+	var lease *config.AccessLease
+	if s.opts.QuotaStore != nil {
+		lease, err = config.AdmitFinite(s.opts.UsersFile, req.user)
+		if err != nil {
+			ws.writeClose(1008)
+			return
+		}
+		defer lease.Close()
+		cfg, e := config.LoadFrom(s.opts.UsersFile)
+		if e != nil {
+			return
+		}
+		u := cfg.GetUser(req.user)
+		if u == nil {
+			return
+		}
+		var expires time.Time
+		if u.ExpiresAt != "" {
+			expires, e = time.Parse(time.RFC3339, u.ExpiresAt)
+			if e != nil || !time.Now().Before(expires) {
+				return
+			}
+		}
+		var stop context.CancelFunc
+		if expires.IsZero() {
+			parent, stop = context.WithCancel(parent)
+		} else {
+			parent, stop = context.WithDeadline(parent, expires)
+		}
+		defer stop()
+		// A held live lease pins the old generation; Join includes this watcher.
+		watchDone := make(chan struct{})
+		watchCtx := parent
+		go func(expected quota.Key) {
+			defer close(watchDone)
+			tick := time.NewTicker(25 * time.Millisecond)
+			defer tick.Stop()
+			// Idle connections have no next Reserve. Check their authority even
+			// when a sibling stream consumed the last byte or the ledger closed.
+			policy := time.NewTicker(250 * time.Millisecond)
+			defer policy.Stop()
+			for {
+				select {
+				case <-watchCtx.Done():
+					return
+				case <-policy.C:
+					key, _, e := s.quotaBinding(watchCtx, req.id, req.user)
+					if e != nil || key != expected {
+						stop()
+						return
+					}
+				case <-tick.C:
+					if lease.Check() != nil {
+						stop()
+						return
+					}
+				}
+			}
+		}(quota.Key{Account: u.AccountID, Period: u.PeriodID})
+		defer func() { stop(); <-watchDone }()
+		closeWS := context.AfterFunc(parent, func() { _ = ws.conn.Close() })
+		defer closeWS()
+		var free int64
+		qkey, free, err = s.quotaBinding(parent, req.id, req.user)
+		if err != nil || free <= 0 || req.command != vlessCmdTCP {
+			ws.writeClose(1008)
+			return
+		}
+	}
+	ctx, cancel := context.WithTimeout(parent, vlessDialTimeout)
 	network := "tcp"
 	if req.command == vlessCmdUDP {
 		network = "udp"
@@ -521,18 +700,23 @@ func (s *VLESSServer) handleSession(ws *wsConn, early []byte, remote string) {
 	defer close(stop)
 	go ws.keepAlive(stop)
 
+	if s.opts.QuotaStore != nil {
+		s.quotaTCP(parent, req, qkey, lease, ws, r, up)
+		return
+	}
 	// Traffic is counted per user in both directions (see Meter).
-	r = &countReader{r: r, user: req.user}
+	check := func() { s.cutoff(req.id, req.user) }
+	r = &checkedReader{Reader: &countReader{r: r, user: req.user}, check: check}
 	if req.command == vlessCmdUDP {
-		relayVLESSUDP(ws, r, up, req.user)
+		relayVLESSUDP(ws, r, up, req.user, check)
 	} else {
-		relayVLESSTCP(ws, r, up, req.user)
+		relayVLESSTCP(ws, r, up, req.user, check)
 	}
 }
 
 // relayVLESSTCP copies both ways until either side finishes, then tears
 // both down: a WebSocket close ends the stream in both directions.
-func relayVLESSTCP(ws *wsConn, client io.Reader, up net.Conn, user string) {
+func relayVLESSTCP(ws *wsConn, client io.Reader, up net.Conn, user string, check func()) {
 	done := make(chan struct{}, 2)
 	go func() {
 		_, _ = io.Copy(up, client)
@@ -547,6 +731,7 @@ func relayVLESSTCP(ws *wsConn, client io.Reader, up net.Conn, user string) {
 					break
 				}
 				meterAdd(user, int64(n))
+				check()
 			}
 			if err != nil {
 				break
@@ -562,7 +747,7 @@ func relayVLESSTCP(ws *wsConn, client io.Reader, up net.Conn, user string) {
 }
 
 // relayVLESSUDP carries length-prefixed packets to and from one destination.
-func relayVLESSUDP(ws *wsConn, client io.Reader, up net.Conn, user string) {
+func relayVLESSUDP(ws *wsConn, client io.Reader, up net.Conn, user string, check func()) {
 	done := make(chan struct{}, 2)
 	go func() {
 		var lenBuf [2]byte
@@ -594,6 +779,7 @@ func relayVLESSUDP(ws *wsConn, client io.Reader, up net.Conn, user string) {
 				break
 			}
 			meterAdd(user, int64(n))
+			check()
 		}
 		done <- struct{}{}
 	}()
@@ -830,7 +1016,10 @@ func (c *wsConn) writeFrameLocked(opcode byte, payload []byte) error {
 	}
 	frame = append(frame, payload...)
 	_ = c.conn.SetWriteDeadline(time.Now().Add(vlessWriteTimeout))
-	_, err := c.conn.Write(frame)
+	written, err := c.conn.Write(frame)
+	if err == nil && written != len(frame) {
+		return io.ErrShortWrite
+	}
 	return err
 }
 
@@ -918,3 +1107,23 @@ const nginxNotFoundPage = `<html>
 </body>
 </html>
 `
+
+type checkedReader struct {
+	io.Reader
+	check func()
+}
+
+func (r *checkedReader) Read(p []byte) (int, error) {
+	n, e := r.Reader.Read(p)
+	if n > 0 {
+		r.check()
+	}
+	return n, e
+}
+
+// stage provides deterministic scheduling barriers to package tests.
+func (s *VLESSServer) stage(name string) {
+	if s.opts.testStage != nil {
+		s.opts.testStage(name)
+	}
+}

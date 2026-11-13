@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"github.com/msVPNco/rovunet-panel/internal/quota"
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
@@ -37,7 +40,37 @@ func init() {
 			if err != nil {
 				return err
 			}
+			meter := usage.NewCounter("vless")
+			initial, readErr := usage.TotalsChecked()
+			baseline := meter.Snapshot()
+			quotaUsed := func(user string) int64 {
+				if readErr != nil {
+					return 1<<63 - 1
+				}
+				return initial[user] + (meter.Value(user) - baseline[user])
+			}
+			var store *quota.Store
+			var server string
+			dir, _ := cmd.Flags().GetString("preview-quota-directory")
+			if dir != "" {
+				if !strings.HasPrefix(listen, "127.0.0.1:") {
+					return errors.New("quota preview requires isolated loopback listener")
+				}
+				cfg, e := config.LoadFrom(users)
+				if e != nil {
+					return e
+				}
+				server = cfg.ServerID
+				storeID, _ := cmd.Flags().GetString("preview-quota-id")
+				store, e = quota.Open(cmd.Context(), dir, server, storeID)
+				if e != nil {
+					return e
+				}
+				defer store.Close()
+				quotaUsed = nil
+			}
 			srv, err := proxy.NewVLESSServer(proxy.VLESSOptions{
+				QuotaUsed: quotaUsed, QuotaStore: store, QuotaServer: server,
 				Listen:       listen,
 				Path:         path,
 				CertFile:     cert,
@@ -69,14 +102,22 @@ func init() {
 				}
 			}()
 
-			meter := usage.NewCounter("vless")
 			proxy.Meter = meter
-			go meter.Run(ctx)
-			return srv.ListenAndServe(ctx)
+			flushed := make(chan struct{})
+			go func() { defer close(flushed); meter.Run(ctx) }()
+			serveErr := srv.ListenAndServe(ctx)
+			stop()
+			<-flushed
+			if err := meter.Flush(); err != nil {
+				return err
+			}
+			return serveErr
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	serveCmd.Flags().String("preview-quota-directory", "", "Private SQL canary")
+	serveCmd.Flags().String("preview-quota-id", "", "Expected store identity")
 	serveCmd.Flags().String("listen", "0.0.0.0:443", "Listen address")
 	serveCmd.Flags().String("path", "/", "WebSocket path")
 	serveCmd.Flags().String("cert", "", "TLS certificate file (omit for plain HTTP)")

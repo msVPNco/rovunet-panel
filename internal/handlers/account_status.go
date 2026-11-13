@@ -112,12 +112,27 @@ func buildStatus(in statusInput, u config.UserConfig, reason string) accountStat
 		st.Status = statusLimitReached
 	case u.Expired(in.now):
 		st.Status = statusExpired // the next limits check stops the user
-	case overQuota(u, in.totals):
+	case u.SQLiteMeter == nil && overQuota(u, in.totals):
 		st.Status = statusLimitReached
 	}
 	if t, err := time.Parse(time.RFC3339, u.ExpiresAt); err == nil && u.ExpiresAt != "" {
 		s := t.UTC().Format(time.RFC3339)
 		st.ExpiresAt = &s
+	}
+	if u.SQLiteMeter != nil {
+		limit := u.QuotaBytes()
+		st.LimitBytes = &limit
+		a, lim, e := boundAmount(in.serverID, u)
+		if e != nil {
+			st.Metering = meteringUnavailable
+			return st
+		}
+		st.UsedBytes = &a.Confirmed
+		st.Metering = meteringPartial
+		if a.Confirmed >= lim && st.Status == statusActive {
+			st.Status = statusLimitReached
+		}
+		return st
 	}
 	if u.QuotaGB > 0 {
 		limit, used := u.QuotaBytes(), UsedBytes(u, in.totals)

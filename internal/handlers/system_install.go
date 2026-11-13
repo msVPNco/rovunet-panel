@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -30,6 +31,9 @@ import (
 
 func handleSystemInstall(ctx *actions.Context) error {
 	out := ctx.Output
+	if cfg, ok := ctx.Config.(*config.Config); ok && (cfg.SubscriptionV2 || requiresCoherent(cfg)) {
+		return errors.New("coordinated accounting installation: stop-and-reviewed upgrade or recovery is required before replacing writers")
+	}
 
 	if runtime.GOOS != "linux" {
 		return actions.NewError(actions.SystemInstall, "rovunet only supports Linux servers", nil)

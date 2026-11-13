@@ -54,3 +54,13 @@ func subscriptionRefreshCommand(load func() (*config.Config, error)) *cobra.Comm
 }
 
 func init() { rootCmd.AddCommand(subscriptionRefreshCommand(config.Load)) }
+
+func init() {
+	rootCmd.AddCommand(&cobra.Command{Use: "subscriptions-before-serve", Hidden: true, Args: cobra.NoArgs, PersistentPreRunE: func(*cobra.Command, []string) error { return nil }, RunE: func(*cobra.Command, []string) error {
+		cfg, e := config.Load()
+		if e != nil {
+			return e
+		}
+		return handlers.RecoverBeforeServing(cfg)
+	}})
+}

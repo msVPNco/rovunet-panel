@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -110,6 +111,9 @@ func handleSystemRestore(ctx *actions.Context) error {
 		return actions.NewError(actions.SystemRestore, err.Error(), nil)
 	}
 	incoming := b.Config
+	if requiresCoherent(incoming) || requiresCoherent(ctx.Config.(*config.Config)) {
+		return errors.New("this installation requires coherent forward recovery; legacy restore is disabled before any writes")
+	}
 	for _, reason := range b.DroppedUsers {
 		out.Warning("Skipping a user: " + reason)
 	}
@@ -337,6 +341,9 @@ func (p *restoreProgress) Warning(message string) {
 // encodeBackup returns cfg and its tunnels' files as backup text, and the
 // files left out because they were too large.
 func encodeBackup(cfg *config.Config) (string, []string, error) {
+	if requiresCoherent(cfg) {
+		return "", nil, errors.New("coherent snapshot required for SQLite or operation receipts")
+	}
 	b, err := backup.Create(cfg, config.DefaultTunnelDir, version.String())
 	if err != nil {
 		return "", nil, err

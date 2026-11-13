@@ -47,6 +47,7 @@ func init() {
 			{Key: "prefix", Label: "Username prefix", DependsOn: "action", DependsOnValues: []string{"bulk_add"}},
 			{Key: "days", Label: "Days until the user expires (blank or 0 = unlimited)", DependsOn: "action", DependsOnValues: []string{"add", "bulk_add", "renew"}},
 			{Key: "gb", Label: "Traffic limit in GB (blank or 0 = unlimited)", DependsOn: "action", DependsOnValues: []string{"add", "bulk_add", "renew"}},
+			{Key: "operation-id", Label: "Rotation request ID (32 lowercase hex); reuse for retries", CLIOnly: true},
 		},
 	})
 

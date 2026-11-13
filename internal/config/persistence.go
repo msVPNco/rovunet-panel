@@ -14,6 +14,14 @@ import (
 var ErrConcurrentChange = errors.New("configuration changed in another command; reload and retry; no configuration was overwritten")
 
 func (c *Config) saveLocked(path string, explicit bool) error {
+	return c.saveObserved(path, explicit, nil)
+}
+func (c *Config) saveObserved(path string, explicit bool, observe func(string) error) error {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	path = absolute
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
@@ -37,12 +45,15 @@ func (c *Config) saveLocked(path string, explicit bool) error {
 	} else if err == nil && !explicit {
 		return errors.New("existing configuration was not loaded; refusing to overwrite it")
 	}
+	if _, e := os.Lstat(path + ".carry.pending"); e == nil || !os.IsNotExist(e) {
+		return ErrCoordinatedRecovery
+	}
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return err
 	}
 	data = append(data, '\n')
-	if err := safefile.Write(path, data, 0600); err != nil {
+	if err := fencedSave(path, old, c, func() error { return safefile.WriteObserved(path, data, 0600, observe) }); err != nil {
 		return err
 	}
 	c.path = path
@@ -62,8 +73,14 @@ func (c *Config) replaceLocked(f *Config) {
 	c.Route = f.Route
 	c.Warp = f.Warp
 	c.PublicAddress = f.PublicAddress
+	c.ExtraAddressIDs = f.ExtraAddressIDs
 	c.ExtraAddresses = f.ExtraAddresses
 	c.ServerID = f.ServerID
+	c.SubscriptionV2 = f.SubscriptionV2
+	c.V2Authority = f.V2Authority
+	c.InstanceID = f.InstanceID
+	c.RecoverySealOperation = f.RecoverySealOperation
+	c.RecoverySealed = f.RecoverySealed
 	c.RouterLimits = f.RouterLimits
 	c.path = f.path
 	c.loaded = f.loaded
@@ -86,4 +103,13 @@ func (c *Config) RefreshIfChanged() error {
 		c.replaceLocked(fresh)
 	}
 	return nil
+}
+
+func (c *Config) SaveObserved(observe func(string) error) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.loaded {
+		return ErrConcurrentChange
+	}
+	return c.saveObserved(c.path, false, observe)
 }

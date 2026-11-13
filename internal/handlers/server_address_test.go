@@ -66,6 +66,12 @@ func TestSetPublicAddressWithExtras(t *testing.T) {
 	if got := addressList(cfg); got != "auto,198.51.100.9,198.51.100.10" {
 		t.Fatalf("list %q", got)
 	}
+	if err := setPublicAddress(cfg, "auto,198.51.100.10,198.51.100.9"); err != nil {
+		t.Fatal(err)
+	}
+	if saved, err := config.LoadFrom(path); err != nil || addressList(saved) != "auto,198.51.100.9,198.51.100.10" {
+		t.Fatalf("reordering aliases moved saved subscription IDs: %v", err)
+	}
 	if saved, _ := config.LoadFrom(path); len(saved.ExtraAddresses) != 2 {
 		t.Fatalf("saved %v", saved.ExtraAddresses)
 	}

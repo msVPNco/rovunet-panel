@@ -6,14 +6,17 @@
 package usage
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/msVPNco/rovunet-panel/internal/safefile"
 	"math"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -25,11 +28,13 @@ const FlushEvery = 15 * time.Second
 
 // Counter is the running total of one server.
 type Counter struct {
-	path    string
-	mu      sync.Mutex
-	m       map[string]int64
-	dirty   bool
-	loadErr error
+	needsSync bool
+	path      string
+	mu        sync.Mutex
+	m         map[string]int64
+	pending   map[string]int64
+	dirty     bool
+	loadErr   error
 }
 
 // NewCounter starts from the totals the named server saved earlier, so a
@@ -63,35 +68,84 @@ func (c *Counter) Add(user string, n int64) {
 		c.mu.Unlock()
 		return
 	}
+	if c.pending == nil {
+		c.pending = make(map[string]int64)
+	}
+	c.pending[user] += n
 	c.m[user] += n
 	c.dirty = true
 	c.mu.Unlock()
 }
 
+var writeCounter = safefile.Write
+
 // Flush writes the totals if they changed.
 func (c *Counter) Flush() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.needsSync {
+		if err := safefile.SyncDir(filepath.Dir(c.path)); err != nil {
+			return err
+		}
+		c.needsSync = false
+	}
 	if c.loadErr != nil {
 		return c.loadErr
 	}
 	if !c.dirty {
 		return nil
 	}
-	data, err := json.Marshal(c.m)
-	if err != nil {
-		return err
-	}
 	if err := os.MkdirAll(Dir, 0755); err != nil {
 		return err
 	}
-	tmp := c.path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0644); err != nil {
+	lock, err := os.OpenFile(c.path+".lock", os.O_CREATE|os.O_RDWR|syscall.O_NOFOLLOW, 0600)
+	if err != nil {
 		return err
 	}
-	if err := os.Rename(tmp, c.path); err != nil {
+	defer lock.Close()
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
 		return err
 	}
+	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+	latest := make(map[string]int64)
+	if data, err := os.ReadFile(c.path); err == nil {
+		if err := json.Unmarshal(data, &latest); err != nil {
+			return err
+		}
+		if latest == nil {
+			return fmt.Errorf("invalid persisted usage counter")
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	for user, amount := range latest {
+		if amount < 0 {
+			return fmt.Errorf("negative persisted usage counter for %s", user)
+		}
+	}
+	for user, amount := range c.pending {
+		if amount > math.MaxInt64-latest[user] {
+			return fmt.Errorf("usage counter overflow")
+		}
+		latest[user] += amount
+	}
+	data, err := json.Marshal(latest)
+	if err != nil {
+		return err
+	}
+	if err := writeCounter(c.path, data, 0644); err != nil {
+		// Rename can have committed before a directory sync reports failure.
+		// Remember that visible commit and retry only its durability barrier.
+		if visible, readErr := os.ReadFile(c.path); readErr == nil && bytes.Equal(visible, data) {
+			c.m = latest
+			c.pending = nil
+			c.dirty = false
+			c.needsSync = true
+		}
+		return err
+	}
+	c.m = latest
+	c.pending = nil
 	c.dirty = false
 	return nil
 }
@@ -257,4 +311,15 @@ func LastCollected() (Collection, bool) {
 		return Collection{}, false
 	}
 	return c, true
+}
+
+func (c *Counter) Value(u string) int64 { c.mu.Lock(); defer c.mu.Unlock(); return c.m[u] }
+func (c *Counter) Snapshot() map[string]int64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	m := map[string]int64{}
+	for u, n := range c.m {
+		m[u] = n
+	}
+	return m
 }

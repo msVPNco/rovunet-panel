@@ -30,6 +30,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 	action := ctx.GetArg("action")
 	username := ctx.GetArg("username")
 
+	menuSelected := action == ""
 	if action == "" {
 		var err error
 		action, err = prompt.Select("Action", []actions.SelectOption{
@@ -65,7 +66,14 @@ func handleSystemUsers(ctx *actions.Context) error {
 		totals := usage.Totals()
 		for _, u := range cfg.Users {
 			line := limitSummary(u)
-			if u.QuotaGB > 0 {
+			if u.SQLiteMeter != nil {
+				a, _, e := boundAmount(cfg.ServerID, u)
+				if e != nil {
+					line += " (usage unavailable)"
+				} else {
+					line += fmt.Sprintf(" (used %s)", formatGB(a.Confirmed))
+				}
+			} else if u.QuotaGB > 0 {
 				line += fmt.Sprintf(" (used %s)", formatGB(UsedBytes(u, totals)))
 			}
 			out.Print(fmt.Sprintf("  %-20s %s", u.Username, line))
@@ -228,7 +236,26 @@ func handleSystemUsers(ctx *actions.Context) error {
 				return err
 			}
 		}
-		if err := RotateSubscriptionLink(cfg, strings.TrimSpace(username), out); err != nil {
+		id := ctx.GetArg("operation-id")
+		if menuSelected && id == "" {
+			choice, e := prompt.Select("Replacement request", []actions.SelectOption{{Value: "retry", Label: "Repeat default request (returns the same link)"}, {Value: "new", Label: "Start a new replacement"}, {Value: "id", Label: "Retry a saved request ID"}})
+			if e != nil {
+				return e
+			}
+			if choice == "new" {
+				id = config.NewID()
+				out.Info("Save this request ID to retry: " + id)
+			} else if choice == "id" {
+				id, e = prompt.String("Saved request ID", "")
+				if e != nil {
+					return e
+				}
+				if !tokenOK(id) {
+					return fmt.Errorf("invalid saved request ID")
+				}
+			}
+		}
+		if err := RotateSubscriptionOperation(cfg, strings.TrimSpace(username), id); err != nil {
 			return actions.NewError(actions.SystemUsers, "subscription link replacement did not complete", err)
 		}
 		u := cfg.GetUser(strings.TrimSpace(username))

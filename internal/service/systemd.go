@@ -21,6 +21,7 @@ type Unit struct {
 	Name            string
 	Description     string
 	ExecStart       string
+	ExecStartPre    string
 	ExecReload      string
 	ExecCondition   string
 	ExecStartPost   string
@@ -55,6 +56,9 @@ LogRateLimitBurst=100
 		content += "NoNewPrivileges=yes\n"
 	}
 
+	if u.ExecStartPre != "" {
+		content += fmt.Sprintf("ExecStartPre=%s\n", u.ExecStartPre)
+	}
 	if u.ExecReload != "" {
 		content += fmt.Sprintf("ExecReload=%s\n", u.ExecReload)
 	}

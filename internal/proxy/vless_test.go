@@ -28,6 +28,7 @@ import (
 const testWSPath = "/t3st-path"
 
 type vlessTestEnv struct {
+	done      chan struct{}
 	srv       *VLESSServer
 	addr      string
 	secret    []byte
@@ -86,9 +87,10 @@ func startVLESS(t *testing.T, useTLS, allowPrivate bool, mutate func(*VLESSOptio
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	go srv.Serve(ctx, ln)
+	done := make(chan struct{})
+	go func() { defer close(done); _ = srv.Serve(ctx, ln) }()
 	t.Cleanup(cancel)
-	return &vlessTestEnv{srv: srv, addr: ln.Addr().String(), secret: secret, usersFile: usersFile, tls: useTLS}
+	return &vlessTestEnv{done: done, srv: srv, addr: ln.Addr().String(), secret: secret, usersFile: usersFile, tls: useTLS}
 }
 
 func (e *vlessTestEnv) userID(user, pass string) [16]byte {

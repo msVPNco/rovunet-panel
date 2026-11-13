@@ -42,6 +42,9 @@ func usersFor(protocol string, users []config.UserConfig) []config.UserConfig {
 	var allowed []config.UserConfig
 	totals, _ := usage.TotalsChecked()
 	for _, u := range users {
+		if u.SQLiteMeter != nil {
+			continue
+		} // finite native TCP is the only admitted SQL domain
 		spent := u.QuotaGB > 0 && totals[u.Username] >= u.UsageBase+u.QuotaBytes()
 		if !spent && !u.Expired(time.Now()) && protocols.Allowed(protocol, u.MeteredOnly(), u.ExpiresAt != "") {
 			allowed = append(allowed, u)
@@ -470,7 +473,7 @@ func Profiles(user config.UserConfig) ([]Profile, error) {
 		if !ok {
 			continue
 		}
-		if !protocols.Allowed(o.Protocol, user.MeteredOnly(), user.ExpiresAt != "") || st.Paused || st.Disabled || (st.Revocation != "" && !liveUserProtocol(o.Protocol) && o.Protocol != "amneziawg") {
+		if user.SQLiteMeter != nil || !protocols.Allowed(o.Protocol, user.MeteredOnly(), user.ExpiresAt != "") || st.Paused || st.Disabled || (st.Revocation != "" && !liveUserProtocol(o.Protocol) && o.Protocol != "amneziawg") {
 			continue
 		}
 		// Generate for this user alone: credentials depend only on the user,

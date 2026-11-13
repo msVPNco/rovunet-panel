@@ -88,7 +88,7 @@ func TestCaddyfileServesSubscriptionsBeforeProxy(t *testing.T) {
 	if !strings.Contains(c, `header @rovunet_sub Cache-Control "no-store"`) {
 		t.Fatalf("subscription and status files must not be cached:\n%s", c)
 	}
-	if !strings.Contains(c, "path /sub/*") || strings.Contains(c, "browse") {
+	if !strings.Contains(c, "path_regexp ^/sub/[0-9a-f]{32}") || strings.Contains(c, "browse") {
 		t.Fatalf("only /sub/* is served and never listed:\n%s", c)
 	}
 }

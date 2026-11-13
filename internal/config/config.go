@@ -14,13 +14,14 @@ import (
 )
 
 const (
-	DefaultConfigDir  = "/etc/rovunet"
-	DefaultConfigFile = "/etc/rovunet/config.json"
-	DefaultTunnelDir  = "/etc/rovunet/tunnels"
-	DefaultBinDir     = "/usr/local/bin"
-	SystemUser        = "rovunet"
-	SystemGroup       = "rovunet"
-	SSHGroup          = "rovunet-ssh"
+	SubscriptionV2Socket = "/run/rovunet-subscription-v2/http.sock"
+	DefaultConfigDir     = "/etc/rovunet"
+	DefaultConfigFile    = "/etc/rovunet/config.json"
+	DefaultTunnelDir     = "/etc/rovunet/tunnels"
+	DefaultBinDir        = "/usr/local/bin"
+	SystemUser           = "rovunet"
+	SystemGroup          = "rovunet"
+	SSHGroup             = "rovunet-ssh"
 )
 
 // WarpConfig tracks Cloudflare WARP outbound state.
@@ -48,17 +49,29 @@ type Config struct {
 	// ExtraAddresses are more IPs or hostnames that reach this same server.
 	// Subscription feeds repeat every address-based config once per extra
 	// address, so when one address is blocked the app tries the next.
-	ExtraAddresses []string `json:"extra_addresses,omitempty"`
+	ExtraAddressIDs map[string]string `json:"extra_address_ids,omitempty"`
+	ExtraAddresses  []string          `json:"extra_addresses,omitempty"`
 	// ServerID names this panel in each user's status file. It is random,
 	// made once, and does not change with the server's address or name.
-	ServerID     string       `json:"server_id,omitempty"`
-	RouterLimits RouterLimits `json:"router_limits,omitzero"`
+	ServerID              string             `json:"server_id,omitempty"`
+	V2Authority           *RevisionAuthority `json:"subscription_v2_authority,omitempty"`
+	SubscriptionV2        bool               `json:"subscription_v2,omitempty"`
+	InstanceID            string             `json:"instance_id,omitempty"`
+	RecoverySealOperation string             `json:"recovery_seal_operation,omitempty"`
+	RecoverySealed        bool               `json:"recovery_sealed,omitempty"`
+	RouterLimits          RouterLimits       `json:"router_limits,omitzero"`
 }
 
 // UserConfig tracks a managed user (same credentials for SSH + SOCKS).
+type SQLiteBinding struct {
+	Directory string `json:"directory"`
+	Store     string `json:"store"`
+}
+
 type UserConfig struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	SQLiteMeter *SQLiteBinding `json:"sqlite_meter,omitempty"`
+	Username    string         `json:"username"`
+	Password    string         `json:"password"`
 	// ExpiresAt is when the user is removed (RFC 3339, UTC); "" means never.
 	ExpiresAt string `json:"expires_at,omitempty"`
 	// QuotaGB is the traffic limit in GB; 0 means unlimited.
@@ -156,6 +169,11 @@ func Load() (*Config, error) {
 
 // LoadFrom reads config from a specific path.
 func LoadFrom(path string) (*Config, error) {
+	var err error
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -400,4 +418,11 @@ func (c *Config) RemoveUser(username string) bool {
 // TunnelDir returns the directory for a tunnel's files.
 func TunnelDir(tag string) string {
 	return filepath.Join(DefaultTunnelDir, tag)
+}
+
+// RevisionAuthority survives disable and loss of the private registry.
+type RevisionAuthority struct {
+	ID     string `json:"id"`
+	Server string `json:"server"`
+	State  string `json:"state"`
 }

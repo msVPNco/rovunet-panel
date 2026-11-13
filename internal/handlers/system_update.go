@@ -25,6 +25,9 @@ import (
 
 func handleSystemUpdate(ctx *actions.Context) error {
 	out := ctx.Output
+	if cfg, ok := ctx.Config.(*config.Config); ok && (cfg.SubscriptionV2 || requiresCoherent(cfg)) {
+		return errors.New("coordinated accounting installation: stop-and-reviewed upgrade or recovery is required before replacing writers")
+	}
 	out.Info("Current version: " + version.String())
 	if strings.Contains(version.Version, "managed-preview") {
 		return actions.NewError(actions.SystemUpdate, "this private preview requires a reviewed preview package or its rollback script; the public updater does not yet support its managed cores", nil)
@@ -96,6 +99,32 @@ func handleSystemUpdate(ctx *actions.Context) error {
 // HandlePostUpdate runs the post-update steps (transport binary updates,
 // service regeneration). Exported for use by the hidden post-update command.
 func HandlePostUpdate(ctx *actions.Context) error {
+	cfg := ctx.Config.(*config.Config)
+	if cfg.SubscriptionV2 || cfg.V2Authority != nil {
+		if e := ValidateV2Authority(cfg); e != nil {
+			return e
+		}
+	}
+	if cfg.SubscriptionV2 || requiresCoherent(cfg) {
+		if e := RecoverBeforeServing(cfg); e != nil {
+			return e
+		}
+		for i := range cfg.Tunnels {
+			t := &cfg.Tunnels[i]
+			if t.Transport == config.TransportVLESS {
+				if e := transport.RegenerateService(t, cfg); e != nil {
+					return e
+				}
+			}
+		}
+		if e := ApplyV2Deployment(cfg); e != nil {
+			return e
+		}
+		if e := EnsureExpiryTimer(cfg); e != nil {
+			return e
+		}
+		return WriteSubscriptions(cfg, ctx.Output)
+	}
 	return runPostUpdate(ctx)
 }
 

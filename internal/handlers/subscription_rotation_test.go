@@ -12,6 +12,7 @@ import (
 )
 
 func TestIndependentRotationRetiresAliasesWithoutChangingAccess(t *testing.T) {
+	useLocalPublicationTLS(t)
 	d := t.TempDir()
 	oldRoot, oldCores := transport.SubscriptionDir, coreinstall.Root
 	transport.SubscriptionDir = filepath.Join(d, "subscriptions")

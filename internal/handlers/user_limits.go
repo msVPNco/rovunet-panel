@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
+	"github.com/msVPNco/rovunet-panel/internal/quota"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -184,6 +186,16 @@ func EnforceLimits(cfg *config.Config, out actions.OutputWriter, now time.Time) 
 		switch {
 		case u.Expired(now):
 			reason = "expired"
+		case u.SQLiteMeter != nil:
+			a, lim, e := boundAmount(cfg.ServerID, u)
+			if e != nil {
+				out.Warning("SQLite usage unavailable for " + u.Username)
+				continue
+			}
+			if a.Confirmed < lim {
+				continue
+			}
+			reason = "traffic limit"
 		case overQuota(u, totals):
 			reason = "traffic limit"
 		default:
@@ -354,6 +366,25 @@ func renewUser(cfg *config.Config, out actions.OutputWriter, username, daysArg, 
 		return err
 	}
 	u := renewedUser(*arch, days, gb, time.Now())
+	if b := arch.SQLiteMeter; b != nil {
+		if gb <= 0 {
+			return fmt.Errorf("finite SQLite renewal requires a positive limit")
+		}
+		u.SQLiteMeter = b
+		u.UsageBase = 0
+		u.PeriodID = rotationRequest(cfg.ServerID, username, arch.AccountID, arch.PeriodID, "renew-period-v1")[:32]
+		ctx := context.Background()
+		s, e := quota.Open(ctx, b.Directory, cfg.ServerID, b.Store)
+		if e != nil {
+			return e
+		}
+		defer s.Close()
+		// While the account remains archived there is no active configuration to
+		// admit. Lost config saves replay the same DB transition on the next call.
+		if e = s.Renew(ctx, quota.Key{Account: arch.AccountID, Period: arch.PeriodID}, "renew:"+arch.PeriodID, u.PeriodID, u.QuotaBytes()); e != nil {
+			return e
+		}
+	}
 	if err := grantSSH(u); err != nil {
 		return fmt.Errorf("failed to create SSH user: %w", err)
 	}

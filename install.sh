@@ -16,6 +16,19 @@ error() {
 [[ "$REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || error 'Invalid release repository.'
 [[ $# -eq 0 || ($# -eq 1 && "$1" == --no-run) ]] || error 'Usage: bash install.sh [--no-run]'
 for tool in python3 openssl; do command -v "$tool" > /dev/null || error "Required verification tool is missing: $tool"; done
+# Coordinated state must never be downgraded to a writer that ignores its fence.
+python3 - << 'PY'
+import json,pathlib,sys
+p=pathlib.Path('/etc/rovunet/config.json')
+if p.exists():
+ c=json.loads(p.read_bytes())
+ users=c.get('users',[])+c.get('archived',[])
+ if c.get('subscription_v2_authority') or c.get('subscription_v2') or c.get('recovery_sealed') or any(u.get('sqlite_meter') for u in users):
+  sys.exit('Coordinated installation: use its reviewed stop-and-upgrade/recovery procedure; no files were replaced.')
+r=pathlib.Path('/var/lib/rovunet/subscriptions/.rotation-receipts')
+if r.exists() and any(r.iterdir()):
+ sys.exit('Operation receipts require coordinated forward recovery; the public bootstrap is disabled.')
+PY
 if command -v curl > /dev/null; then
     download() { (
         ulimit -f "$(((${3:-1048576} + 1023) / 1024))"
