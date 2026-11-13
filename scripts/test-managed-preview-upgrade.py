@@ -377,6 +377,50 @@ class UpgradeTests(unittest.TestCase):
         self.assertTrue(self.f.operation.apply()['display_names_only_verified'])
         self.assertEqual(len(json.loads(self.f.feeds()[TOKEN+'.windows.json'])['items']),4)
 
+    def test_standard_core_encoding_preserves_keys_endpoint_options_and_protections(self):
+        fields=['']*88
+        fields[0],fields[1]='33','xray'
+        for i in (31,33,34,36):fields[i]='0'
+        document='[Interface]\nPrivateKey = fixture-secret\nAddress = 10.0.0.2/32\nJc = 4\n[Peer]\nPublicKey = fixture-public\nEndpoint = 192.0.2.1:51840\nAllowedIPs = 0.0.0.0/0\n'
+        fields[84]=base64.b64encode(document.encode()).decode()
+        link='wireguard://fixture-secret@192.0.2.1:51840?address=10.0.0.2%2F32&jc=4&publickey=fixture-public&allowedips=0.0.0.0%2F0#AmneziaWG'
+        self.assertTrue(upgrade.same_standard_core(fields,link,'managed-awg','AmneziaWG'))
+        for before,after in [('fixture-secret','other-secret'),('192.0.2.1','192.0.2.2'),('jc=4','jc=5'),('fixture-public','other-public'),('#AmneziaWG','#Wrong'),('jc=4','jc=4&jc=4')]:
+            self.assertFalse(upgrade.same_standard_core(fields,link.replace(before,after),'managed-awg','AmneziaWG'))
+        fields[31]='1'
+        self.assertFalse(upgrade.same_standard_core(fields,link,'managed-awg','AmneziaWG'))
+        fields[31]='0';fields[84]=base64.b64encode(b'ss://fixture-auth@192.0.2.1:28444#Old').decode()
+        ss='ss://fixture-auth@192.0.2.1:28444#Shadowsocks%202022'
+        self.assertTrue(upgrade.same_standard_core(fields,ss,'managed-ss2022','Shadowsocks 2022'))
+        self.assertFalse(upgrade.same_standard_core(fields,ss.replace('fixture-auth','other'),'managed-ss2022','Shadowsocks 2022'))
+
+    def test_public_promotion_converts_android_core_encoding_without_changing_credentials(self):
+        self.names_fixture(self.f)
+        labels=json.loads((self.f.package/'profile-display-names.json').read_text())
+        labels['managed-ss2022']='Shadowsocks 2022'
+        upgrade.write_json(self.f.package/'profile-display-names.json',labels)
+        manifest=self.f.operation.manifest
+        manifest['approved_standard_core_encodings']=['managed-ss2022']
+        upgrade.write_json(self.f.package/'UPGRADE-MANIFEST.json',manifest)
+        self.f.checksums()
+        android=self.f.paths.subscriptions/'sub'/(TOKEN+'.json')
+        doc=json.loads(android.read_text())
+        fields=['']*88;fields[0],fields[1],fields[2]='33','xray','Old SS'
+        for i in (31,33,34,36):fields[i]='0'
+        fields[84]=base64.b64encode(b'ss://fixture-auth@192.0.2.1:28444#Old').decode()
+        doc['items'].append({'id':'managed-ss2022','link':'rovunet://'+base64.b64encode('|'.join(fields).encode()).decode()})
+        upgrade.write_json(android,doc)
+        refresh=self.f.host.refresh
+        def compatible(binary,directory):
+            refresh(binary,directory)
+            current=json.loads(android.read_text())
+            current['items'][-1]['link']='ss://fixture-auth@192.0.2.1:28444#Shadowsocks%202022'
+            upgrade.write_json(android,current)
+        self.f.host.refresh=compatible
+        result=self.f.operation.apply()
+        self.assertTrue(result['display_names_only_verified'])
+        self.assertEqual(result['profiles_checked'],5)
+
     def test_display_name_guard_rolls_back_any_connection_identity_or_unapproved_name_change(self):
         for tamper in ('field-0', 'field-3', 'field-12', 'field-84', 'field-85', 'unapproved-name', 'item-id', 'order', 'count', 'collection-name'):
             with self.subTest(tamper=tamper), tempfile.TemporaryDirectory() as root:

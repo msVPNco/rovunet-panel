@@ -22,10 +22,11 @@ type Profile struct {
 }
 
 type Options struct {
-	Format       string
-	Client       string
-	All          bool
-	StatsWorking func(string) bool
+	Format                 string
+	Client                 string
+	All                    bool
+	CompatibleSubscription bool
+	StatsWorking           func(string) bool
 }
 
 // Build returns only enabled, account-eligible profiles. IDs retain the tags
@@ -59,11 +60,11 @@ func Build(cfg *config.Config, user config.UserConfig, tunnels []config.TunnelCo
 				continue
 			}
 			link := p.Link
-			// These two entries are additions to the old Windows feed. Older
-			// Windows readers skip unsupported standard profiles, but reject
+			// Older Windows/macOS readers skip unsupported standard profiles, but reject
 			// the entire subscription for unsupported native xray envelopes.
-			// Retain native metadata for every previously published item.
-			if opts.Client == "windows" && (p.Protocol == "amneziawg" || p.Protocol == "ss2022") {
+			// Android accepts both lossless forms. Keep IDs, credentials and
+			// native envelopes for CLI exports and every other subscription item.
+			if (opts.Client == "windows" || opts.CompatibleSubscription) && (p.Protocol == "amneziawg" || p.Protocol == "ss2022") {
 				if p.Protocol == "amneziawg" {
 					name := clientcfg.ProfileDisplayName(p.Core)
 					if name == "" {

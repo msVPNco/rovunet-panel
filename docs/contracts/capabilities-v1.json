@@ -553,5 +553,13 @@
     "native_address_independent_grouping": "open migration/reader contract"
   },
   "not_a_support_guarantee": true,
-  "released_reader_execution": "Exact released source archives; details in ../engineering-acceptance-2026-11-13.md"
+  "released_reader_execution": "Exact released source archives; details in ../engineering-acceptance-2026-11-13.md",
+  "historical_snapshot": true,
+  "normative_successor": "panel-integration-v1.md",
+  "client_version_policy": "Dated evidence only; final clients are accepted by capabilities and exact artifact tests, not these version labels",
+  "release_fixture_counts": {
+    "scope": "single-address active unlimited fully provisioned candidate; supported subset depends on actual client capabilities",
+    "android": 24,
+    "windows": 24
+  }
 }

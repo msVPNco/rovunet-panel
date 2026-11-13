@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.parse
 
 TIMERS = ('rovunet-user-expiry.timer', 'rovunet-core-certs.timer')
 PREVIOUS_VERSION = 'rovunet v1.20.1-managed-preview.2 (037e829)'
@@ -26,6 +27,45 @@ FEED_NAME = re.compile(r'[0-9a-fA-F]{32}(?:\.windows)?(?:\.status)?\.json\Z')
 
 class UpgradeError(Exception):
     pass
+
+
+def same_standard_core(fields, link, profile_id, name):
+    """Only lossless encoding of the two unprotected generated core items."""
+    try:
+        if len(fields) != 88 or fields[:2] != ['33', 'xray']:
+            return False
+        if any(fields[i] != '0' for i in (31, 33, 34, 36)) or any(fields[i] for i in (32, 35, 37)):
+            return False
+        inner = base64.b64decode(fields[84], validate=True).decode('utf-8').strip()
+        uri = urllib.parse.urlsplit(link)
+        if urllib.parse.unquote(uri.fragment) != name:
+            return False
+        if profile_id == 'managed-ss2022':
+            return inner.startswith('ss://') and uri.scheme == 'ss' and inner.split('#', 1)[0] == link.split('#', 1)[0]
+        if profile_id != 'managed-awg' or uri.scheme != 'wireguard' or uri.path or not inner.startswith('[Interface]'):
+            return False
+        values = {}; section = ''
+        for line in inner.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if line in ('[Interface]', '[Peer]'):
+                if line == section or line == '[Interface]' and section:
+                    return False
+                section = line; continue
+            key, value = line.split('=', 1)
+            key = key.strip().lower()
+            if not section or key in values:
+                return False
+            values[key] = value.strip()
+        endpoint = urllib.parse.urlsplit('wireguard://' + values.pop('endpoint'))
+        secret = values.pop('privatekey')
+        if (endpoint.hostname, endpoint.port) != (uri.hostname, uri.port) or urllib.parse.unquote(uri.username or '') != secret or uri.password is not None:
+            return False
+        pairs = urllib.parse.parse_qsl(uri.query, keep_blank_values=True, strict_parsing=True)
+        return len(pairs) == len(dict(pairs)) and dict(pairs) == values
+    except (ValueError, KeyError, IndexError, UnicodeError):
+        return False
 
 
 def digest(path):
@@ -348,9 +388,17 @@ class Upgrade:
                             if prefix != 'rovunet':
                                 raise ValueError()
                             return base64.b64decode(payload, validate=True).decode('utf-8').split('|')
-                        a, b = fields(old), fields(new)
+                        a = fields(old)
                         profile_id = re.sub(r'-ip[0-9]+x*$', '', old['id'])
                         expected = labels.get(old['id'], labels.get(profile_id, a[2]))
+                        encodings = self.manifest.get('approved_standard_core_encodings', [])
+                        if profile_id in encodings and not new['link'].startswith('rovunet://'):
+                            if not same_standard_core(a, new['link'], profile_id, expected):
+                                raise ValueError()
+                            checked += 1
+                            changed += a[2] != expected
+                            continue
+                        b = fields(new)
                         valid = (len(a) == len(b) == 88 and b[2] == expected and
                                  a[:2] == b[:2] and a[3:] == b[3:])
                     except (ValueError, KeyError, IndexError, UnicodeError):

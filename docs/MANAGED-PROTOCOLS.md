@@ -49,12 +49,12 @@ static `--version` is older than its pinned source; use its verified build
 commit and checksum to identify this build. A newly installed Xray protocol
 requires clean pinned Go build metadata. Existing unrelated engines are kept.
 
-The native feed retains exactly `version/name/items` and `id/link`. Android
+The strict v1 feed retains exactly `version/name/items` and `id/link`. Android
 uses the existing URL; Windows gets `<token>.windows.json` with a matching
 status alias. Private deployment exports separate `android-subscription-private.txt`
 and `windows-subscription-private.txt` files that identify the intended client.
 The combined file is retained for compatibility.
-Android must use its own `.json` URL: its released status resolver does not recognize `.windows.json`. In v1.21.2 the Windows feed includes standard AWG/SS2022 additions so older Windows readers can skip unsupported entries safely; existing native profiles retain their metadata. Full output is 24 items for an eligible unlimited account; Windows 0.1.1 Beta imports 23 and 0.1.0 Beta imports 22. The installed 0.1.2-preview.5 supports all 24. This is reader compatibility, not a physical-device connection guarantee.
+Android must use its own `.json` URL: its released status resolver does not recognize `.windows.json`. In v1.21.2 both feeds use standard AWG/SS2022 URIs with identical keys/endpoints/options, letting older Windows/macOS readers skip unsupported entries safely. The other 22 native profiles retain their metadata; native CLI exports are unchanged. Android alpha18.1 and alpha20 accept the lossless URIs. macOS0.1.6 Beta keeps22 supported items from its existing .json URL; this is shared-reader execution on Windows, not physical Mac acceptance. Full output is 24 items for an eligible unlimited account; Windows 0.1.1 Beta imports 23 and 0.1.0 Beta imports 22. The installed 0.1.2-preview.5 supports all 24. This is reader compatibility, not a physical-device connection guarantee.
 Status keeps the released schema and account/period IDs. The
 released Android parser requires numeric `used_bytes` for a metered account,
 even when counting is unavailable. That number is a persisted lower bound;

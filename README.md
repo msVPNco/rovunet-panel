@@ -17,6 +17,7 @@
 
 ---
 
+
 **v1.21.2 — install, update, refresh the same subscription.** A fully eligible unlimited account gets 24 subscription profiles on Android and current Windows. The update completes missing cores and migrates old Hy2 to Salamander while keeping account auth and subscription URLs. Then press **Update** on the saved subscription in the app; no replacement link is needed. Older Windows Beta keeps its supported entries; AWG needs the current client. [Release/compatibility notes](docs/releases/v1.21.2.md) · [Full qualification still open](docs/release-gates.json).
 
 
