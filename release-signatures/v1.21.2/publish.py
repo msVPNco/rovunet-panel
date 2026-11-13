@@ -5,12 +5,16 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 
 REPOSITORY = 'msVPNco/rovunet-panel'
 TAG = 'v1.21.2'
 COMMIT = 'ac23d1a3ed07009567e004415606da7fed8779d3'
+RELEASE_ID = 444066910
+DRAFT_PLACEHOLDER = 'untagged-c25a546969202ccba5e2'
 HANDOFF = Path(__file__).resolve().parent
 SOURCE = Path.cwd() / 'source'
 FINAL_FILES = (
@@ -37,13 +41,13 @@ def api(endpoint, payload=None):
 
 
 def get_release():
-    # A draft whose tag has not been created yet is not returned by the
-    # release-by-tag REST endpoint. The authenticated collection includes it.
-    releases = api(f'repos/{REPOSITORY}/releases?per_page=100')
-    matches = [release for release in releases if release['tag_name'] == TAG]
-    assert len(matches) == 1, 'Expected exactly one matching release'
-    release = matches[0]
-    assert release['tag_name'] == TAG, 'Unexpected release tag'
+    # Draft updates can expose GitHub's temporary untagged name until publish.
+    # Pin the exact reviewed draft ID; never select a different release by name.
+    release = api(f'repos/{REPOSITORY}/releases/{RELEASE_ID}')
+    assert release['id'] == RELEASE_ID
+    allowed = {TAG, DRAFT_PLACEHOLDER} if release['draft'] else {TAG}
+    assert release['tag_name'] in allowed, 'Unexpected release tag'
+    assert release['name'] == 'Rovunet Panel ' + TAG
     assert release['target_commitish'] == COMMIT, 'Unexpected source commit'
     assert release['prerelease'] is False, 'Unexpected prerelease'
     names = [asset['name'] for asset in release['assets']]
@@ -53,8 +57,17 @@ def get_release():
 
 def download_assets(destination):
     destination.mkdir()
-    execute('gh', 'release', 'download', TAG, '--repo', REPOSITORY,
-            '--dir', str(destination))
+    release = get_release()
+    def download(asset):
+        name = asset['name']
+        assert re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,159}', name)
+        with (destination / name).open('xb') as output:
+            subprocess.run([
+                'gh', 'api', '-H', 'Accept: application/octet-stream',
+                f'repos/{REPOSITORY}/releases/assets/{asset["id"]}',
+            ], stdout=output, check=True)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(download, release['assets']))
 
 
 def authenticate_assets(destination):
@@ -108,13 +121,15 @@ def main():
         if release['draft'] is True:
             # No clobber: an unexpected concurrent change fails safely.
             if missing:
-                execute('gh', 'release', 'upload', TAG, '--repo', REPOSITORY,
+                execute('gh', 'release', 'upload', release['tag_name'], '--repo', REPOSITORY,
                         *(str(path) for path in missing))
             release = get_release()
             assert release['draft'] is True, 'Draft changed during upload'
             check_remote_metadata(release, staged)
             notes = (HANDOFF / 'notes.md').read_text()
-            api(f'repos/{REPOSITORY}/releases/{release["id"]}', {'body': notes})
+            api(f'repos/{REPOSITORY}/releases/{release["id"]}', {
+                'tag_name': TAG, 'target_commitish': COMMIT, 'body': notes,
+            })
         # Download from GitHub again, then authenticate the actual final uploads.
         downloaded = scratch / 'downloaded'
         download_assets(downloaded)
@@ -123,6 +138,7 @@ def main():
         check_remote_metadata(release, downloaded)
         if release['draft'] is True:
             release = api(f'repos/{REPOSITORY}/releases/{release["id"]}', {
+                'tag_name': TAG, 'target_commitish': COMMIT,
                 'draft': False, 'prerelease': False, 'make_latest': 'true',
             })
         assert release['draft'] is False and release['prerelease'] is False
