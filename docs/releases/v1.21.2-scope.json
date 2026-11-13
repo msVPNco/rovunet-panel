@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "tag": "v1.21.2",
+  "profile": "owner-authorized-functional-update",
+  "authorization_date": "2026-11-13",
+  "authorization": "Owner requested GitHub publication for normal fresh installation/update and same-URL app refresh after receiving the private review and its open qualification limits.",
+  "full_qualification": "not-certified; all four full acceptance gates remain open",
+  "requirements": [
+    "same subscription URL/token/account identity",
+    "24 subscription profiles for a fully eligible unlimited account on Android/current Windows",
+    "older Windows keeps supported entries through compatible import",
+    "same account auth when migrating old Hy2 to Salamander",
+    "operator explicit off and stopped state retained",
+    "missing-only setup and retry",
+    "failed fetch/apply preserves prior feed and recovery",
+    "signed assets with Windows-local private key"
+  ],
+  "excluded": [
+    "promotion of rebuilt candidate runtime catalog",
+    "new hard-quota eligibility",
+    "physical-device or all-network health certification",
+    "public security-audit completion"
+  ],
+  "runtime_policy_baseline": "48de37fc400c68065c17afaadf36670e90ed7908",
+  "unchanged_files_sha256": {
+    "internal/binary/transport-catalog.json": "e41de86cd8d037a78cd43e2a8dafd2cc8879c0b8138580ade87904e0a70c24b1",
+    "internal/protocols/policy.go": "14a6d54abeeeca5e692359178eefef0385417916519401aa577f29e633c08ceb"
+  }
+}

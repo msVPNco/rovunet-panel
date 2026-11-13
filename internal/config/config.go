@@ -2,6 +2,7 @@ package config
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -29,6 +30,8 @@ type WarpConfig struct {
 
 // Config is the top-level rovunet configuration.
 type Config struct {
+	loaded   bool
+	diskSHA  [32]byte
 	mu       sync.RWMutex
 	path     string
 	Listen   ListenConfig    `json:"listen"`
@@ -48,7 +51,8 @@ type Config struct {
 	ExtraAddresses []string `json:"extra_addresses,omitempty"`
 	// ServerID names this panel in each user's status file. It is random,
 	// made once, and does not change with the server's address or name.
-	ServerID string `json:"server_id,omitempty"`
+	ServerID     string       `json:"server_id,omitempty"`
+	RouterLimits RouterLimits `json:"router_limits,omitzero"`
 }
 
 // UserConfig tracks a managed user (same credentials for SSH + SOCKS).
@@ -161,37 +165,28 @@ func LoadFrom(path string) (*Config, error) {
 		return nil, err
 	}
 	cfg.path = path
+	cfg.loaded = true
+	cfg.diskSHA = sha256.Sum256(data)
 	return &cfg, nil
 }
 
 // Save writes the config to disk.
 func (c *Config) Save() error {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	path := c.path
 	if path == "" {
 		path = DefaultConfigFile
 	}
-	return c.SaveTo(path)
+	return c.saveLocked(path, false)
 }
 
-// SaveTo writes the config to a specific path.
+// SaveTo explicitly chooses the destination (including authorized restore).
+// Later writes to the loaded destination reject stale concurrent snapshots.
 func (c *Config) SaveTo(path string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(c, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(path, append(data, '\n'), 0600); err != nil {
-		return err
-	}
-	// os.WriteFile's mode argument only applies when the file is created;
-	// an existing config.json saved by a pre-fix build (0644, world-readable
-	// despite holding credentials) needs an explicit chmod to be tightened
-	// on its next save too.
-	return os.Chmod(path, 0600)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.saveLocked(path, true)
 }
 
 // Path returns the file the config was loaded from (or will be saved to).
@@ -207,13 +202,10 @@ func (c *Config) Reload() error {
 	if err != nil {
 		return err
 	}
-	data, err := json.Marshal(fresh)
-	if err != nil {
-		return err
-	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return json.Unmarshal(data, c)
+	c.replaceLocked(fresh)
+	return nil
 }
 
 // Default returns a new config with sensible defaults.

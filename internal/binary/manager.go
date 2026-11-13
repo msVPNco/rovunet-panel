@@ -1,22 +1,20 @@
 package binary
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/releaseauth"
+	"github.com/msVPNco/rovunet-panel/internal/safefile"
 	"github.com/msVPNco/rovunet-panel/internal/version"
 )
 
@@ -30,8 +28,6 @@ var (
 	stableDownloadBase = releaseBaseURL + "/latest/download"
 	repoAPI            = "https://api.github.com/repos/" + version.Repo + "/releases"
 )
-
-const transportDownloadBase = "https://github.com/" + version.UpstreamRepo + "/releases/latest/download"
 
 // OfflineDir, when set, makes EnsureInstalled copy binaries from this
 // directory instead of downloading. Used for SCP/offline installs.
@@ -62,7 +58,7 @@ func latestDevTag() string {
 	if resp.StatusCode != 200 {
 		return ""
 	}
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, releaseauth.MaxManifestSize+1))
 	if err != nil {
 		return ""
 	}
@@ -84,95 +80,27 @@ func latestDevTag() string {
 // errNotFound marks a release asset that doesn't exist.
 var errNotFound = errors.New("HTTP 404")
 
-// binaryURLTemplates returns download URL templates for transport binaries
-// in upstream's latest stable release, which carries them all. Dev builds try
-// the latest dev release first (see EnsureInstalled).
-func binaryURLTemplates() map[string]string {
-	return map[string]string{
-		"dnstt-server":      transportDownloadBase + "/dnstt-server-%s-%s",
-		"slipstream-server": transportDownloadBase + "/slipstream-server-%s-%s",
-		"vaydns-server":     transportDownloadBase + "/vaydns-server-%s-%s",
-		"caddy-naive":       transportDownloadBase + "/caddy-naive-%s-%s",
-	}
-}
-
-// EnsureInstalled checks if a binary exists. If not, copies from OfflineDir
-// (if set) or downloads from GitHub releases.
-//
-// Unlike Download (used for this project's own rovunet binary), this does
-// not verify a checksum: these binaries come from upstream SlipGate's
-// releases, which are not confirmed to publish a SHA256SUMS file in a
-// known format, and failing to verify against a hash that may not exist is
-// a false sense of security. If upstream starts publishing one, this
-// should call the same fetchSHA256Sums/verifyDownload path Download uses.
+// EnsureInstalled keeps an existing runtime. A missing runtime is staged from
+// the reviewed, embedded release catalog, including offline installations.
 func EnsureInstalled(name string) error {
-	binPath := filepath.Join(config.DefaultBinDir, name)
-	if _, err := os.Stat(binPath); err == nil {
-		return nil // already exists
-	}
-
-	// Offline mode: copy from local directory
-	if OfflineDir != "" {
-		return installFromOffline(name, binPath)
-	}
-
-	// Online mode: download from releases
-	urlTemplate, ok := binaryURLTemplates()[name]
-	if !ok {
-		return fmt.Errorf("unknown binary: %s", name)
-	}
-
-	stableURL := fmt.Sprintf(urlTemplate, runtime.GOOS, runtime.GOARCH)
-	urls := []string{stableURL}
-	// Dev builds take a transport binary from the latest dev release when
-	// it carries one (e.g. a newer caddy-naive under test), else from stable.
-	if version.ReleaseTag != "" {
-		if tag := latestDevTag(); tag != "" {
-			urls = []string{releaseBaseURL + "/download/" + tag + "/" + path.Base(stableURL), stableURL}
+	dest := filepath.Join(config.DefaultBinDir, name)
+	if info, err := os.Lstat(dest); err == nil {
+		if !info.Mode().IsRegular() {
+			return errors.New("runtime destination is not a regular file")
 		}
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
 	}
-
-	var err error
-	for _, url := range urls {
-		// Fall back only when the asset is missing, so a failed download
-		// never silently installs an older binary
-		if err = downloadTo(url, binPath, 0755); !errors.Is(err, errNotFound) {
-			break
-		}
-	}
+	tmp, err := stageTransport(name, filepath.Dir(dest))
 	if err != nil {
-		return fmt.Errorf("download %s: %w", name, err)
+		return fmt.Errorf("stage pinned %s: %w", name, err)
 	}
-	return nil
-}
-
-// installFromOffline copies a binary from the offline directory.
-// Looks for: name-os-arch, name-arch, or just name.
-func installFromOffline(name, destPath string) error {
-	candidates := []string{
-		fmt.Sprintf("%s-%s-%s", name, runtime.GOOS, runtime.GOARCH),
-		fmt.Sprintf("%s-%s", name, runtime.GOARCH),
-		name,
+	defer os.Remove(tmp)
+	if err := os.Rename(tmp, dest); err != nil {
+		return err
 	}
-
-	for _, candidate := range candidates {
-		src := filepath.Join(OfflineDir, candidate)
-		if _, err := os.Stat(src); err == nil {
-			data, err := os.ReadFile(src)
-			if err != nil {
-				return fmt.Errorf("read %s: %w", src, err)
-			}
-			if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-				return err
-			}
-			if err := os.WriteFile(destPath, data, 0755); err != nil {
-				return fmt.Errorf("write %s: %w", destPath, err)
-			}
-			return nil
-		}
-	}
-
-	return fmt.Errorf("binary %s not found in %s (tried: %s)", name, OfflineDir, strings.Join(candidates, ", "))
+	return safefile.SyncDir(filepath.Dir(dest))
 }
 
 // CheckUpdate checks GitHub releases for a newer version.
@@ -192,15 +120,26 @@ func CheckUpdate() (newVersion string, downloadURL string, err error) {
 		return "", "", err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("release lookup HTTP %d", resp.StatusCode)
+	}
 
 	var release struct {
-		TagName string `json:"tag_name"`
-		Assets  []struct {
+		Draft      bool   `json:"draft"`
+		Prerelease bool   `json:"prerelease"`
+		TagName    string `json:"tag_name"`
+		Assets     []struct {
 			Name               string `json:"name"`
 			BrowserDownloadURL string `json:"browser_download_url"`
 		} `json:"assets"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, releaseauth.MaxManifestSize)).Decode(&release); err != nil {
+		return "", "", err
+	}
+	if release.Draft || (!version.IsDev() && (release.Prerelease || strings.Contains(release.TagName, "-"))) {
+		return "", "", errors.New("automatic stable update refused a draft or prerelease")
+	}
+	if err := rejectOlderRelease(version.Version, release.TagName); err != nil {
 		return "", "", err
 	}
 
@@ -211,158 +150,55 @@ func CheckUpdate() (newVersion string, downloadURL string, err error) {
 	// Find matching asset
 	target := fmt.Sprintf("rovunet-%s-%s", runtime.GOOS, runtime.GOARCH)
 	for _, asset := range release.Assets {
-		if strings.Contains(asset.Name, target) {
-			return release.TagName, asset.BrowserDownloadURL, nil
+		if asset.Name == target {
+			return release.TagName, releaseBaseURL + "/download/" + release.TagName + "/" + target, nil
 		}
 	}
 
 	return release.TagName, "", fmt.Errorf("no matching binary for %s/%s", runtime.GOOS, runtime.GOARCH)
 }
 
-// Download fetches url to a temp file inside destDir, verifies it against
-// the SHA256SUMS published alongside it in the same release, and returns
-// its path on success. destDir should be the directory the caller intends
-// to install into (e.g. the running binary's own directory): creating the
-// temp file there, rather than under the system temp directory, means a
-// later os.Rename onto the final path stays on one filesystem and is
-// atomic, instead of crossing filesystems and falling back to a
-// remove-then-copy that can leave no binary behind if the copy fails.
-//
-// Verification is fail-closed: if SHA256SUMS can't be fetched or parsed,
-// or has no entry matching url's checksum, Download returns an error and
-// removes the temp file rather than handing back an unverified binary.
-func Download(url, destDir string) (string, error) {
-	tmp, err := os.CreateTemp(destDir, "rovunet-update-*")
+// Download stages authenticated release bytes in the destination filesystem.
+// Neither the candidate nor an upstream checksum file is a trust anchor.
+// Production keys are compiled from the independently reviewed keyring.
+func Download(url, destDir string) (result string, err error) {
+	a, err := authenticatedAsset(url)
 	if err != nil {
 		return "", err
 	}
-	tmpPath := tmp.Name()
-
-	if err := downloadToWriter(url, tmp); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
-		return "", err
-	}
-	if err := tmp.Close(); err != nil {
-		os.Remove(tmpPath)
-		return "", err
-	}
-
-	if err := verifyDownload(url, tmpPath); err != nil {
-		os.Remove(tmpPath)
-		return "", fmt.Errorf("verify download: %w", err)
-	}
-
-	if err := os.Chmod(tmpPath, 0755); err != nil {
-		os.Remove(tmpPath)
-		return "", err
-	}
-
-	return tmpPath, nil
-}
-
-// verifyDownload checks the file at path against the SHA256SUMS published
-// at the same base URL as url, under url's own asset filename.
-func verifyDownload(url, path string) error {
-	slash := strings.LastIndex(url, "/")
-	if slash < 0 {
-		return fmt.Errorf("malformed download URL: %s", url)
-	}
-	base, assetName := url[:slash], url[slash+1:]
-
-	sums, err := fetchSHA256Sums(base)
-	if err != nil {
-		return fmt.Errorf("fetch %s/SHA256SUMS: %w", base, err)
-	}
-	want, ok := sums[assetName]
-	if !ok {
-		return fmt.Errorf("SHA256SUMS has no entry for %s", assetName)
-	}
-
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return err
-	}
-	if got := hex.EncodeToString(h.Sum(nil)); !strings.EqualFold(got, want) {
-		return fmt.Errorf("checksum mismatch for %s: downloaded file is %s, SHA256SUMS says %s", assetName, got, want)
-	}
-	return nil
-}
-
-// fetchSHA256Sums downloads and parses base+"/SHA256SUMS" — the standard
-// `sha256sum` output format, one "<hex digest>  <filename>" pair per line
-// (release.yml generates it with exactly that command) — into a map from
-// filename to lowercase hex digest.
-func fetchSHA256Sums(base string) (map[string]string, error) {
-	resp, err := httpClient.Get(base + "/SHA256SUMS")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	sums := make(map[string]string)
-	for _, line := range strings.Split(string(body), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
+	for _, prefix := range []string{"rovunet-linux-", "slipgate-linux-", "xray-linux-", "amneziawg-go-linux-", "awg-linux-"} {
+		if strings.HasPrefix(a.Name, prefix) && a.Kind != "executable" {
+			return "", errors.New("manifest executable kind mismatch")
 		}
-		fields := strings.Fields(line)
-		if len(fields) != 2 {
-			continue
-		}
-		// `sha256sum -b` prefixes the filename with "*"; plain `sha256sum`
-		// (what release.yml uses) does not, but strip it either way.
-		name := strings.TrimPrefix(fields[1], "*")
-		sums[name] = strings.ToLower(fields[0])
 	}
-	if len(sums) == 0 {
-		return nil, errors.New("empty or unparseable SHA256SUMS")
-	}
-	return sums, nil
-}
-
-func downloadTo(url, dest string, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
-		return err
-	}
-
-	tmp := dest + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	tmp, err := os.CreateTemp(destDir, ".rovunet-update-*")
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() {
-		f.Close()
-		os.Remove(tmp)
-	}()
-
-	if err := downloadToWriter(url, f); err != nil {
-		return err
-	}
-	f.Close()
-
-	// Try rename, fallback to copy
-	if err := os.Rename(tmp, dest); err != nil {
-		cpCmd := exec.Command("cp", tmp, dest)
-		if err := cpCmd.Run(); err != nil {
-			return fmt.Errorf("install binary: %w", err)
+		tmp.Close()
+		if err != nil {
+			os.Remove(tmp.Name())
 		}
-		os.Chmod(dest, mode)
+	}()
+	if err = downloadLimited(url, tmp, a.Size); err != nil {
+		return "", err
 	}
-
-	return nil
+	if err = tmp.Sync(); err != nil {
+		return "", err
+	}
+	if err = tmp.Close(); err != nil {
+		return "", err
+	}
+	if err = verifyFile(tmp.Name(), a.Size, a.SHA256, runtime.GOARCH, a.Kind == "executable"); err != nil {
+		return "", err
+	}
+	if a.Kind == "executable" {
+		if err = os.Chmod(tmp.Name(), 0755); err != nil {
+			return "", err
+		}
+	}
+	return tmp.Name(), nil
 }
 
 func downloadToWriter(url string, w io.Writer) error {

@@ -72,7 +72,7 @@ func TestAutomaticUpgradeAddsFourAndRetainsOldFilesURLsAndCredentials(t *testing
 			t.Fatal(err)
 		}
 		after := savedSubscription(t, u, "android")
-		if len(after.Items) != 24 || len(savedSubscription(t, u, "windows").Items) != 22 {
+		if len(after.Items) != 24 || len(savedSubscription(t, u, "windows").Items) != 24 {
 			t.Fatal("complete counts were not exported")
 		}
 		links := map[string]string{}
@@ -110,6 +110,20 @@ func TestAutomaticUpgradeAddsFourAndRetainsOldFilesURLsAndCredentials(t *testing
 	}
 }
 
+func TestTimedCompleteAccountUsesEligibleTwentyThreeWithoutFalsePending(t *testing.T) {
+	cfg, _ := twentyProfileSubscriptionFixture(t)
+	cfg.Users[0].ExpiresAt = "2099-01-01T00:00:00Z"
+	var installed []string
+	backups := 0
+	ops := fixtureSetupOps(t, cfg, &installed, &backups)
+	if err := ensureCompleteSetupWith(cfg, discardOutput{}, ops); err != nil {
+		t.Fatal(err)
+	}
+	if len(savedSubscription(t, cfg.Users[0], "android").Items) != 23 || len(savedSubscription(t, cfg.Users[0], "windows").Items) != 23 {
+		t.Fatal("timed eligibility was replaced with a fabricated full set")
+	}
+}
+
 func TestFreshCompleteSetupExports24And22(t *testing.T) {
 	cfg, _ := twentyProfileSubscriptionFixture(t)
 	selected := map[string]bool{}
@@ -137,7 +151,7 @@ func TestFreshCompleteSetupExports24And22(t *testing.T) {
 	if len(installed) != 9 || backups != 1 {
 		t.Fatalf("fresh setup installed %v, backups=%d", installed, backups)
 	}
-	if len(savedSubscription(t, cfg.Users[0], "android").Items) != 24 || len(savedSubscription(t, cfg.Users[0], "windows").Items) != 22 {
+	if len(savedSubscription(t, cfg.Users[0], "android").Items) != 24 || len(savedSubscription(t, cfg.Users[0], "windows").Items) != 24 {
 		t.Fatal("fresh complete setup counts differ")
 	}
 }

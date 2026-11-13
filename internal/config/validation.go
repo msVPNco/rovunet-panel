@@ -28,6 +28,9 @@ var (
 func (c *Config) Validate() error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	if err := c.RouterLimits.Validate(); err != nil {
+		return err
+	}
 
 	tags := make(map[string]bool)
 	domains := make(map[string]bool)

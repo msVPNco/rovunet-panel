@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "review_date": "2026-11-13",
+  "publication": "blocked",
+  "gates": [
+    {
+      "id": "P0-PRODUCTION-TRUST",
+      "status": "open",
+      "reason": "Owner-authorized production root, current-user DPAPI signing, three fresh local recovery drills and independent local public record passed. Actual offline/off-site custody and independent distribution/review are not yet established; no CI secret or publication.",
+      "evidence": "docs/engineering-acceptance-2026-11-13.md"
+    },
+    {
+      "id": "P0-UPSTREAM-PROVENANCE",
+      "status": "open",
+      "reason": "Fourteen new source-built candidates and source/patch/license archives exist; five attributable Go source scans, supplemental root-version review and RustSec lockfile scan passed. Legacy bytes remain unmapped, native C/OpenSSL review and older-distribution ABI/complete client transport acceptance remain open; candidates are not promoted.",
+      "evidence": "docs/engineering-acceptance-2026-11-13.md"
+    },
+    {
+      "id": "P0-RECOVERY-ACCEPTANCE",
+      "status": "open",
+      "reason": "Actual full-VM nine-core normal reboot/power-cut, encrypted core restore, selective SSH revocation and certificate-change checker passed after two fixes. WARP provider registration failed; complete base DNS/WARP/public ACME restore, timer quota/held-stream bounds and concurrent cross-service operations remain unverified.",
+      "evidence": "docs/engineering-acceptance-2026-11-13.md"
+    },
+    {
+      "id": "P0-CLIENT-CONTRACT",
+      "status": "open",
+      "reason": "Exact released Windows reader accepted22/22 conservative profiles and23/24 full profiles, and its pinned native engine passed five controlled Windows-to-VM payload cases including WG/Hy2. Released Android reader accepted24 on JVM. Physical APK/phone/carrier/Doze, full app network control and physical ARM remain unverified. Owner VPS WAN checks reproduce standard WG/Hy2 failures. Installed Windows preview AWG passes after cold retry; bounded masked Hy2 passes2/2. Physical Android/Mac acceptance and immediate AWG cold-start remain open; no permanent VPS mode change.",
+      "evidence": "docs/engineering-acceptance-2026-11-13.md"
+    }
+  ]
+}

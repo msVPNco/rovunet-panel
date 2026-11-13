@@ -1,10 +1,17 @@
 package binary
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/msVPNco/rovunet-panel/internal/releaseauth"
+	"github.com/msVPNco/rovunet-panel/internal/version"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -51,6 +58,21 @@ func sumsServer(t *testing.T, assetName, content string, wrongDigest bool) *http
 		digest = strings.Repeat("0", 64)
 	}
 	sums := fmt.Sprintf("%s  %s\n", digest, assetName)
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+	der, _ := x509.MarshalPKIXPublicKey(pub)
+	id := sha256.Sum256(der)
+	keyID := hex.EncodeToString(id[:])
+	ring, _ := json.Marshal(releaseauth.Keyring{Schema: 1, Keys: []releaseauth.Key{{ID: keyID, SPKI: base64.StdEncoding.EncodeToString(der), Purpose: "test"}}})
+	v, err := releaseauth.NewVerifier(ring, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := releaseVerifier
+	releaseVerifier = func() (*releaseauth.Verifier, error) { return v, nil }
+	t.Cleanup(func() { releaseVerifier = old })
+	m := releaseauth.Manifest{Schema: 1, Environment: "test", KeyID: keyID, Repository: version.Repo, Tag: "v1.21.2", SourceCommit: strings.Repeat("a", 40), Assets: []releaseauth.Asset{{Name: assetName, OS: "linux", Arch: "amd64", Kind: "executable", Size: int64(len(content)), SHA256: digest, Source: "https://github.com/" + version.Repo, SourceCommit: strings.Repeat("a", 40), License: "MIT"}}}
+	body, _ := json.Marshal(m)
+	signature := ed25519.Sign(priv, body)
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -58,6 +80,10 @@ func sumsServer(t *testing.T, assetName, content string, wrongDigest bool) *http
 			io.WriteString(w, content)
 		case "/SHA256SUMS":
 			io.WriteString(w, sums)
+		case "/RELEASE-MANIFEST.json":
+			w.Write(body)
+		case "/RELEASE-MANIFEST.sig":
+			w.Write(signature)
 		default:
 			http.NotFound(w, r)
 		}
@@ -70,7 +96,15 @@ func sumsServer(t *testing.T, assetName, content string, wrongDigest bool) *http
 // alongside every release.
 func TestDownloadVerifiesChecksum(t *testing.T) {
 	const asset = "rovunet-linux-amd64"
-	const content = "fake binary content"
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(exe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
 	srv := sumsServer(t, asset, content, false)
 	defer srv.Close()
 
@@ -114,7 +148,9 @@ func TestDownloadRejectsChecksumMismatch(t *testing.T) {
 
 // TestDownloadRejectsMissingSHA256Sums confirms Download fails closed when
 // SHA256SUMS itself can't be fetched, rather than skipping verification.
-func TestDownloadRejectsMissingSHA256Sums(t *testing.T) {
+func TestDownloadRejectsMissingManifest(t *testing.T) {
+	trust := sumsServer(t, "rovunet-linux-amd64", "fixture", false)
+	defer trust.Close()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/rovunet-linux-amd64" {
 			io.WriteString(w, "fake binary content")

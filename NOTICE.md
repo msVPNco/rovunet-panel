@@ -31,3 +31,13 @@ Third-party components keep their own licenses.
 | [Xray-core](https://github.com/XTLS/Xray-core) by Project X | Xray cores (`core-install`); the VLESS protocol, implemented independently for the built-in VLESS server | MPL-2.0 |
 | [Caddy](https://caddyserver.com/) with [forwardproxy](https://github.com/klzgrad/forwardproxy) | NaïveProxy server | Apache-2.0 |
 | [dnstun-ezpz](https://github.com/aleskxyz/dnstun-ezpz) by aleskxyz | Inspiration for the WARP integration | — |
+
+## Panel binary dependency notices
+
+The exact module-root license and NOTICE texts for the dependencies linked into
+the reviewed Linux binaries, including age, HPKE, Cobra, pflag, Soar and Go libraries, are
+included in [third_party_licenses](third_party_licenses/manifest.json). Retain
+them with redistributed panel binaries. age/HPKE backup encryption does not
+change those projects' own licenses. These notices do not resolve the separate
+legacy executable source/license reconstruction gate in
+[the runtime inventory](docs/security/runtime-inventory.md).

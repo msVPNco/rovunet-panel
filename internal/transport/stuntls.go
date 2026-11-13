@@ -8,7 +8,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
-func createStunTLSService(tunnel *config.TunnelConfig, cfg *config.Config) error {
+func createStunTLSService(tunnel *config.TunnelConfig, cfg *config.Config, preserve bool) error {
 	if tunnel.StunTLS == nil {
 		return fmt.Errorf("stuntls config is nil")
 	}
@@ -42,14 +42,7 @@ func createStunTLSService(tunnel *config.TunnelConfig, cfg *config.Config) error
 		Restart: "always",
 	}
 
-	if err := service.Create(unit); err != nil {
-		return err
-	}
-
-	if _, err := service.Status(unit.Name); err == nil {
-		return service.Restart(unit.Name)
-	}
-	return service.Start(unit.Name)
+	return service.Apply(unit, preserve)
 }
 
 // TunnelDir returns the data directory for a StunTLS tunnel (for cert/key storage).

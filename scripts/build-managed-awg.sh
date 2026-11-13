@@ -14,9 +14,9 @@ git clone --quiet https://github.com/amnezia-vpn/amneziawg-go.git "$build_dir/go
 git -C "$build_dir/go" checkout --quiet --detach "$go_commit"
 test "$(git -C "$build_dir/go" rev-parse HEAD)" = "$go_commit"
 (
-  cd "$build_dir/go"
-  go mod verify
-  CGO_ENABLED=0 GOOS=linux GOARCH="$arch" GOAMD64=v1 go build -trimpath -buildvcs=true -ldflags='-s -w' -o "$output/amneziawg-go-linux-$arch" .
+    cd "$build_dir/go"
+    go mod verify
+    CGO_ENABLED=0 GOOS=linux GOARCH="$arch" GOAMD64=v1 go build -trimpath -buildvcs=true -ldflags='-s -w' -o "$output/amneziawg-go-linux-$arch" .
 )
 git clone --quiet https://github.com/amnezia-vpn/amneziawg-tools.git "$build_dir/tools"
 git -C "$build_dir/tools" checkout --quiet --detach "$tools_commit"
@@ -27,7 +27,7 @@ cp "$build_dir/go/LICENSE" "$output/LICENSE-amneziawg-go.txt"
 cp "$build_dir/tools/COPYING" "$output/LICENSE-amneziawg-tools.txt"
 git -C "$build_dir/go" archive --format=tar.gz --prefix=amneziawg-go/ --output="$output/amneziawg-go-source.tar.gz" "$go_commit"
 git -C "$build_dir/tools" archive --format=tar.gz --prefix=amneziawg-tools/ --output="$output/amneziawg-tools-source.tar.gz" "$tools_commit"
-python3 - "$output" "$arch" "$go_commit" "$tools_commit" <<'PY'
+python3 - "$output" "$arch" "$go_commit" "$tools_commit" << 'PY'
 import hashlib,json,os,pathlib,subprocess,sys
 out=pathlib.Path(sys.argv[1]);arch=sys.argv[2]
 sources={'amneziawg-go':('https://github.com/amnezia-vpn/amneziawg-go',sys.argv[3],'MIT'), 'awg':('https://github.com/amnezia-vpn/amneziawg-tools',sys.argv[4],'GPL-2.0')}
@@ -38,6 +38,6 @@ for name,(url,commit,license) in sources.items():
 (out/f'awg-provenance-linux-{arch}.json').write_text(json.dumps(dict(toolchain=subprocess.check_output(['go','version'],text=True).strip(),c_compiler=subprocess.check_output([os.environ.get('CC','gcc'),'--version'],text=True).splitlines()[0],go_flags='CGO_ENABLED=0 GOAMD64=v1 -trimpath -buildvcs=true -ldflags=-s -w',c_flags='-O3 (plus pinned Makefile flags); -static',architecture=arch,engines=records),indent=2)+'\n')
 PY
 (
-  cd "$output"
-  sha256sum "amneziawg-go-linux-$arch" "awg-linux-$arch" "awg-provenance-linux-$arch.json" > "AWG-SHA256SUMS-$arch"
+    cd "$output"
+    sha256sum "amneziawg-go-linux-$arch" "awg-linux-$arch" "awg-provenance-linux-$arch.json" > "AWG-SHA256SUMS-$arch"
 )

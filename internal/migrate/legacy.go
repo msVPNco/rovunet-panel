@@ -10,6 +10,7 @@
 package migrate
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/safefile"
 	"github.com/msVPNco/rovunet-panel/internal/system"
 )
 
@@ -218,13 +220,12 @@ func rewriteTextFiles(root string) error {
 		if err != nil {
 			return err
 		}
-		rename := RenamePaths
-		if info.Name() == "wg0.conf" {
-			rename = Rename // per-user routing rules name the WARP accounts
+		renamed, err := rewriteOwnedText(path, data)
+		if err != nil {
+			return err
 		}
-		if renamed := rename(string(data)); renamed != string(data) {
-			// Keep the file's mode: config.json and WARP files are private.
-			return os.WriteFile(path, []byte(renamed), info.Mode().Perm())
+		if !bytes.Equal(renamed, data) {
+			return safefile.Write(path, renamed, info.Mode().Perm())
 		}
 		return nil
 	})

@@ -17,6 +17,9 @@
 
 ---
 
+**v1.21.2 — 安装或更新服务器后，在应用中更新原订阅。** 满足全部条件的不限量账户可向 Android 和当前 Windows 客户端提供24个原生配置。更新补齐缺少的核心，并在保留账户认证与订阅 URL 的情况下将旧 Hy2 迁移到 Salamander。无需删除订阅或重新发送链接。旧 Windows Beta 保留其支持的条目；AWG 需要当前客户端。[兼容性说明](docs/releases/v1.21.2.md) · [尚未完成的全面验收](docs/release-gates.json)。
+
+
 Rovunet Panel 是一个开源工具，可将 Linux 服务器变成多协议接入服务器。它把每个协议作为 systemd 服务安装和管理，创建用户并导出客户端配置，使每个用户拥有多条相互独立的连接路径，而不必依赖单一协议或某种网络状况。
 
 ## 特性
@@ -57,16 +60,18 @@ Rovunet Panel 是一个开源工具，可将 Linux 服务器变成多协议接�
 
 协议是否合适取决于服务器、运营商和网络；以上为建议而非保证。详见 [协议](docs/zh-CN/protocols.md)。
 
-**v1.21.1：**已测试的完整配置提供 **24 个 Android 配置和 22 个 Windows 配置**，并非 24 种独立协议。数量取决于已安装服务及账户资格。已发布的 Windows 客户端不接收 AmneziaWG 和 SS2022。四种新增协议均不提供给流量受限账户；三种新增 Xray 协议在到期或删除后拒绝新会话，但现有流可能继续。尚未实现精确的同时在线设备限制。参见[托管协议与兼容性](docs/MANAGED-PROTOCOLS.md)。
+**v1.21.2：**已测试的完整配置提供 **24 个 Android 配置和 24 个 Windows 配置**，并非 24 种独立协议。数量取决于已安装服务及账户资格。当前 Windows 可接收两者；旧 Beta 跳过不支持的 AWG 并保留其他条目。四种新增协议均不提供给流量受限账户；三种新增 Xray 协议在到期或删除后拒绝新会话，但现有流可能继续。尚未实现精确的同时在线设备限制。参见[托管协议与兼容性](docs/MANAGED-PROTOCOLS.md)。
 
-**自动完整配置（v1.21.1）：**常规安装和 Quick Wizard 默认选择完整隧道及两种 backend。更新自动补齐缺失的协议内核，保留用户、密钥、内核名称与原订阅地址；已有 20 个配置的完整旧服务器可升级为 Android 24 个 / Windows 22 个，无需手动安装四次。若基础隧道不完整，交互式更新会询问缺失的 DNS/域名设置。需要有效的 NaiveProxy 证书、可用 TUN 和空闲端口；失败时显示实际数量与待完成状态。使用 `sudo rovunet complete-setup` 继续配置，或通过 `sudo rovunet install --custom` 选择部分协议。流量受限账户继续保留协议限制。
+**自动完整配置（v1.21.2）：**常规安装和 Quick Wizard 默认选择完整隧道及两种 backend。更新自动补齐缺失的协议内核，保留用户、密钥、内核名称与原订阅地址；已有 20 个配置的完整旧服务器可升级为 Android 24 个 / Windows 24 个，无需手动安装四次。若基础隧道不完整，交互式更新会询问缺失的 DNS/域名设置。需要有效的 NaiveProxy 证书、可用 TUN 和空闲端口；失败时显示实际数量与待完成状态。使用 `sudo rovunet complete-setup` 继续配置，或通过 `sudo rovunet install --custom` 选择部分协议。流量受限账户继续保留协议限制。
 
 ## 快速开始
 
-在全新的 Ubuntu 20.04+ 或 Debian 10+ 服务器上以 root 运行：
+在全新的 Ubuntu 24.04 LTS 或 Debian (systemd; runtime compatibility required) 服务器上以 root 运行：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v1.21.2/install.sh -o rovunet-install.sh
+python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="a8aaa38d979049fa5e42c9f8f444e519d28625d1d67872ddaeff2d0dfc6b3498", "Installer checksum mismatch"'
+sudo bash rovunet-install.sh
 ```
 
 安装程序会询问要启用哪些协议，完成配置，创建第一个用户并输出其配置。之后：

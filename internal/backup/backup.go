@@ -245,6 +245,9 @@ func (b *Bundle) Encode() (string, error) {
 // ignored, as are spaces and line breaks between them, which copy-paste
 // tends to change.
 func Decode(text string) (*Bundle, error) {
+	if len(text) > MaxEncodedSize {
+		return nil, errors.New("backup is too large")
+	}
 	text = strings.NewReplacer(LegacyBeginMarker, BeginMarker, LegacyEndMarker, EndMarker).Replace(text)
 	start := strings.Index(text, BeginMarker)
 	end := strings.Index(text, EndMarker)
@@ -291,6 +294,9 @@ func Decode(text string) (*Bundle, error) {
 // validate checks the config and that every file belongs to a tunnel, has a
 // plain file name, and that every configured key or certificate is present.
 func (b *Bundle) validate() error {
+	if err := b.Config.ValidateSubscriptionTokens(); err != nil {
+		return err
+	}
 	if err := b.Config.ValidateImported(); err != nil {
 		return err
 	}

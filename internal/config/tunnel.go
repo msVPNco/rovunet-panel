@@ -60,14 +60,14 @@ type NaiveConfig struct {
 // VayDNSConfig holds config for VayDNS transport (KCP + Curve25519).
 type VayDNSConfig struct {
 	MTU           int    `json:"mtu"`
-	PrivateKey    string `json:"private_key"`              // path to key file
-	PublicKey     string `json:"public_key"`               // hex-encoded public key
-	IdleTimeout   string `json:"idle_timeout,omitempty"`   // e.g. "10s", "2m"
-	KeepAlive     string `json:"keep_alive,omitempty"`     // e.g. "2s"
-	Fallback      string `json:"fallback,omitempty"`       // fallback DNS address
-	DnsttCompat   bool   `json:"dnstt_compat,omitempty"`   // dnstt wire-format compatibility
-	ClientIDSize  int    `json:"clientid_size,omitempty"`  // client ID bytes (default 2)
-	QueueSize     int    `json:"queue_size,omitempty"`     // KCP queue size (default 512)
+	PrivateKey    string `json:"private_key"`             // path to key file
+	PublicKey     string `json:"public_key"`              // hex-encoded public key
+	IdleTimeout   string `json:"idle_timeout,omitempty"`  // e.g. "10s", "2m"
+	KeepAlive     string `json:"keep_alive,omitempty"`    // e.g. "2s"
+	Fallback      string `json:"fallback,omitempty"`      // fallback DNS address
+	DnsttCompat   bool   `json:"dnstt_compat,omitempty"`  // dnstt wire-format compatibility
+	ClientIDSize  int    `json:"clientid_size,omitempty"` // client ID bytes (default 2)
+	QueueSize     int    `json:"queue_size,omitempty"`    // KCP queue size (default 512)
 	KCPWindowSize int    `json:"kcp_window_size,omitempty"`
 	QueueOverflow string `json:"queue_overflow,omitempty"` // "drop" or "block"
 	RecordType    string `json:"record_type,omitempty"`    // txt, cname, a, aaaa, mx, ns, srv, null, caa
@@ -126,8 +126,8 @@ func (v *VayDNSConfig) ResolvedClientIDSize() int {
 // it reaches the SSH backend address and nothing else, so access goes
 // through SSH logins.
 type SoarConfig struct {
-	PrivateKey string `json:"private_key"` // path to key file (base64 Ed25519 seed)
-	PublicKey  string `json:"public_key"`  // base64-encoded Ed25519 public key
+	PrivateKey string `json:"private_key"`           // path to key file (base64 Ed25519 seed)
+	PublicKey  string `json:"public_key"`            // base64-encoded Ed25519 public key
 	AllowPorts string `json:"allow_ports,omitempty"` // direct backend: destination ports, "any" (default "80,443")
 }
 

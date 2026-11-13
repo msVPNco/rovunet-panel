@@ -35,12 +35,13 @@ sudo rovunet post-update
 
 ```bash
 sudo rovunet backup                      # asks: save to a file, or print text to copy
-sudo rovunet backup /root/rovunet-backup.txt
-sudo rovunet restore /root/rovunet-backup.txt
-ssh root@old rovunet backup - | ssh root@new rovunet restore - --yes   # server to server
+sudo rovunet backup /root/rovunet-backup.age
+sudo rovunet backup-check /root/rovunet-backup.age
+sudo rovunet restore /root/rovunet-backup.age
+# Automated transfer: see ../security/encrypted-backups.md
 ```
 
-Резервная копия — один блок текста между `-----BEGIN ROVUNET BACKUP-----` и `-----END ROVUNET BACKUP-----`. В ней все закрытые ключи и пароли: храните её в тайне. Копии, сделанные под прежним именем, тоже восстанавливаются. В копии также хранится уже израсходованный трафик каждого пользователя, поэтому восстановление не возвращает ограниченным пользователям их квоту.
+По умолчанию резервная копия — аутентифицированный зашифрованный текст age. Храните пароль/закрытый ключ восстановления отдельно. Старый формат ROVUNET BACKUP читается; незашифрованный экспорт требует --plaintext. Автоматический перенос требует открытого --recipient на источнике и приватного --identity-file на получателе. [Руководство](../security/encrypted-backups.md).
 
 Восстановление на новом сервере:
 

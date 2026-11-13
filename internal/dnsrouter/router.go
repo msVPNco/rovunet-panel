@@ -20,6 +20,7 @@ import (
 
 // Router is a pure Go DNS forwarder that routes queries by domain.
 type Router struct {
+	resourceBudget
 	listenAddr   string
 	routes       map[string]string // domain → backend address (host:port)
 	verifyRoutes []verifyRoute     // HMAC verification routes
@@ -28,11 +29,18 @@ type Router struct {
 	conn         *net.UDPConn
 
 	// Persistent backend connections and pending query tracking (backend.go)
-	backends   map[string]*backendConn
-	backendsMu sync.Mutex
+	backends    map[string]*backendConn
+	backendsMu  sync.Mutex
+	allBackends map[*backendConn]struct{}
+	done        chan struct{}
+	closeOnce   sync.Once
+	tcpMu       sync.Mutex
+	tcpListener net.Listener
+	tcpConns    map[net.Conn]struct{}
 
 	cleanInterval time.Duration // see defaultCleanInterval
-	tcpWriteQueue int           // see defaultTCPWriteQueue
+	pendingTTL    time.Duration
+	tcpWriteQueue int // see defaultTCPWriteQueue
 }
 
 // replyFunc delivers a response to the client that sent the query, over
@@ -41,14 +49,20 @@ type replyFunc func(msg []byte)
 
 // New creates a new DNS router.
 func New(listenAddr string) *Router {
-	return &Router{
-		listenAddr: listenAddr,
-		routes:     make(map[string]string),
-		backends:   make(map[string]*backendConn),
+	r := &Router{
+		listenAddr:  listenAddr,
+		routes:      make(map[string]string),
+		backends:    make(map[string]*backendConn),
+		allBackends: make(map[*backendConn]struct{}),
+		tcpConns:    make(map[net.Conn]struct{}),
+		done:        make(chan struct{}),
 
 		cleanInterval: defaultCleanInterval,
+		pendingTTL:    pendingTimeout,
 		tcpWriteQueue: defaultTCPWriteQueue,
 	}
+	_ = r.ConfigureLimits(config.RouterLimits{})
+	return r
 }
 
 // AddRoute maps a domain to a backend address.
@@ -92,7 +106,7 @@ func (r *Router) ListenAndServe() error {
 	if err != nil {
 		return fmt.Errorf("listen udp: %w", err)
 	}
-	defer r.conn.Close()
+	defer r.Close()
 	network.GrowUDPBuffers(r.conn, udpBufferSize)
 
 	// TCP/53 (RFC 7766) for clients and resolvers that can't or won't use
@@ -100,31 +114,70 @@ func (r *Router) ListenAndServe() error {
 	if ln, err := net.Listen("tcp", r.listenAddr); err != nil {
 		log.Printf("tcp listen %s: %v (continuing with UDP only)", r.listenAddr, err)
 	} else {
+		r.tcpMu.Lock()
+		r.tcpListener = ln
+		r.tcpMu.Unlock()
 		go r.serveTCP(ln)
 		log.Printf("DNS router listening on %s (tcp)", r.listenAddr)
 	}
 
 	log.Printf("DNS router listening on %s", r.listenAddr)
+	go r.reportBudgets()
 
+	jobs := make(chan udpJob, r.queue)
+	var workers sync.WaitGroup
+	for i := 0; i < r.workers; i++ {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for job := range jobs {
+				busy := r.workersBusy.Add(1)
+				peak(&r.workerPeak, busy)
+				from := job.from
+				r.handleQuery(job.packet, from, func(msg []byte) {
+					if !r.responseRate.allow(len(msg)) {
+						r.responseRateDrops.Add(1)
+						return
+					}
+					_, _ = r.conn.WriteToUDP(msg, from)
+				})
+				r.workersBusy.Add(-1)
+			}
+		}()
+	}
+	defer func() { close(jobs); workers.Wait() }()
 	buf := make([]byte, 4096)
 	for {
 		n, clientAddr, err := r.conn.ReadFromUDP(buf)
 		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return nil
+			}
 			log.Printf("read error: %v", err)
 			continue
 		}
 
-		// Copy packet for goroutine
-		packet := make([]byte, n)
-		copy(packet, buf[:n])
-
-		go r.handleQuery(packet, clientAddr, func(msg []byte) {
-			r.conn.WriteToUDP(msg, clientAddr)
-		})
+		if !r.queryRate.allow(1) {
+			r.queryRateDrops.Add(1)
+			continue
+		}
+		if len(jobs) == cap(jobs) {
+			r.queueDrops.Add(1)
+			continue
+		}
+		packet := append([]byte(nil), buf[:n]...)
+		select {
+		case jobs <- udpJob{packet, clientAddr}:
+		default:
+			r.queueDrops.Add(1)
+		}
 	}
 }
 
 func (r *Router) handleQuery(packet []byte, from net.Addr, reply replyFunc) {
+	if len(packet) < 12 || packet[2]&0x80 != 0 || questionSection(packet) == nil {
+		return
+	}
 	// Check for HMAC verification query first
 	if r.handleVerify(packet, from, reply) {
 		return
@@ -150,7 +203,7 @@ func (r *Router) handleQuery(packet []byte, from net.Addr, reply replyFunc) {
 	}
 	// A backend that is down refuses with ICMP; its service status already
 	// shows that, so don't log it for every query.
-	if err := r.forward(backend, packet, reply); err != nil && !errors.Is(err, syscall.ECONNREFUSED) {
+	if err := r.forward(backend, packet, reply); err != nil && !errors.Is(err, syscall.ECONNREFUSED) && !errors.Is(err, errBudget) && !errors.Is(err, net.ErrClosed) {
 		log.Printf("forward to %s: %v", backend, err)
 	}
 }
@@ -196,6 +249,9 @@ func Serve(cfgInterface interface{}) error {
 	}
 
 	r := New(cfg.Listen.Address)
+	if err := r.ConfigureLimits(cfg.RouterLimits); err != nil {
+		return err
+	}
 
 	for _, tunnel := range cfg.Tunnels {
 		if !tunnel.Enabled || !tunnel.IsDNSTunnel() {

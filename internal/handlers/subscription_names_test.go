@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/base64"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -32,7 +33,7 @@ func TestApprovedTwentyFourNamesKeepSubscriptionIdentity(t *testing.T) {
 		if err := WriteSubscriptions(cfg, discardOutput{}); err != nil {
 			t.Fatal(err)
 		}
-		for client, count := range map[string]int{"android": 24, "windows": 22} {
+		for client, count := range map[string]int{"android": 24, "windows": 24} {
 			feed := savedSubscription(t, user, client)
 			if len(feed.Items) != count || feed.Name != user.Username {
 				t.Fatalf("%s subscription membership/name changed", client)
@@ -44,6 +45,20 @@ func TestApprovedTwentyFourNamesKeepSubscriptionIdentity(t *testing.T) {
 					t.Fatalf("unexpected or duplicate profile ID %s", item.ID)
 				}
 				seen[item.ID] = true
+				if client == "windows" && item.ID == "managed-awg" {
+					link, err := url.Parse(item.Link)
+					if err != nil || link.Scheme != "wireguard" || link.Fragment != name || link.Query().Get("headerprotectionkey") == "" {
+						t.Fatal("invalid backward-compatible AmneziaWG profile")
+					}
+					continue
+				}
+				if client == "windows" && item.ID == "managed-ss2022" {
+					link, err := url.Parse(item.Link)
+					if err != nil || link.Scheme != "ss" || link.Fragment != name {
+						t.Fatal("invalid backward-compatible Shadowsocks display name")
+					}
+					continue
+				}
 				raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(item.Link, "rovunet://"))
 				if err != nil {
 					t.Fatal("invalid native profile")
@@ -53,7 +68,7 @@ func TestApprovedTwentyFourNamesKeepSubscriptionIdentity(t *testing.T) {
 					t.Fatalf("wrong display name for %s", item.ID)
 				}
 			}
-			if client == "windows" && (seen["managed-awg"] || seen["managed-ss2022"]) {
+			if !seen["managed-awg"] || !seen["managed-ss2022"] {
 				t.Fatal("Windows membership changed")
 			}
 		}

@@ -18,9 +18,11 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/msVPNco/rovunet-panel/internal/dnsrouter"
+	"github.com/msVPNco/rovunet-panel/internal/migrate"
 	"github.com/msVPNco/rovunet-panel/internal/network"
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
+	"github.com/msVPNco/rovunet-panel/internal/safefile"
 	"github.com/msVPNco/rovunet-panel/internal/service"
 	"github.com/msVPNco/rovunet-panel/internal/system"
 	"github.com/msVPNco/rovunet-panel/internal/transport"
@@ -43,6 +45,10 @@ func handleSystemBackup(ctx *actions.Context) error {
 	}
 	for _, path := range skipped {
 		out.Warning(fmt.Sprintf("Skipped %s (too large to be a key or certificate)", path))
+	}
+	text, err = protectBackup(text, ctx)
+	if err != nil {
+		return actions.NewError(actions.SystemBackup, "failed to protect backup", err)
 	}
 
 	// "-" writes nothing but the backup to stdout, for piping:
@@ -73,7 +79,7 @@ func handleSystemBackup(ctx *actions.Context) error {
 		out.Print(strings.TrimSuffix(text, "\n"))
 		out.Print("")
 		out.Success("Backup of " + summary + " printed above")
-		out.Info("Copy everything from the BEGIN line to the END line, then run 'rovunet restore' on the new server and paste it")
+		out.Info("Copy the entire block and keep its decryption key separately. Restore supports both encrypted and legacy backups.")
 	} else {
 		if err := writePrivateFile(dest, text); err != nil {
 			return actions.NewError(actions.SystemBackup, "failed to write backup", err)
@@ -81,7 +87,11 @@ func handleSystemBackup(ctx *actions.Context) error {
 		out.Success(fmt.Sprintf("Backup of %s saved to %s", summary, dest))
 		out.Info(fmt.Sprintf("Copy it to the new server and run: rovunet restore %s", dest))
 	}
-	out.Warning("The backup contains every private key and user password. Anyone who has it can run your tunnels and log in as your users, so keep it private.")
+	if backup.IsEncrypted(text) {
+		out.Info("Encrypted backup saved. Keep its private identity or passphrase separately; a lost decryption key cannot be recovered by Rovunet.")
+	} else {
+		out.Warning("This explicitly unencrypted backup contains every private key and user password. Keep it private.")
+	}
 	return nil
 }
 
@@ -95,7 +105,7 @@ func handleSystemRestore(ctx *actions.Context) error {
 	if err != nil {
 		return actions.NewError(actions.SystemRestore, "failed to read backup", err)
 	}
-	b, err := backup.Decode(text)
+	b, err := DecodePrivateBackup(text, ctx.GetArg("identity-file"), ctx.GetArg("passphrase-file"))
 	if err != nil {
 		return actions.NewError(actions.SystemRestore, err.Error(), nil)
 	}
@@ -117,8 +127,16 @@ func handleSystemRestore(ctx *actions.Context) error {
 	out.Print("")
 
 	current := ctx.Config.(*config.Config)
+	legacyPending := migrate.Needed() && os.Geteuid() == 0
+	if legacyPending {
+		current, err = config.LoadFrom(filepath.Join(migrate.OldConfigDir, "config.json"))
+		if err != nil {
+			return actions.NewError(actions.SystemRestore, "backup authenticated but the existing legacy configuration cannot be read; no migration started", err)
+		}
+		out.Warning("The legacy layout will migrate only after this authenticated restore is confirmed")
+	}
 	_, statErr := os.Stat(config.DefaultConfigFile)
-	replacing := statErr == nil && (len(current.Tunnels) > 0 || len(current.Users) > 0)
+	replacing := (statErr == nil || legacyPending) && (len(current.Tunnels) > 0 || len(current.Users) > 0)
 	if replacing {
 		out.Warning(fmt.Sprintf("This server already has %d tunnel(s) and %d user(s). The backup replaces them (they are saved to a file first).",
 			len(current.Tunnels), len(current.Users)))
@@ -132,6 +150,18 @@ func handleSystemRestore(ctx *actions.Context) error {
 			out.Info("Cancelled")
 			return nil
 		}
+	}
+	progress := &restoreProgress{OutputWriter: out, warnings: len(b.DroppedUsers)}
+	out = progress
+	if legacyPending {
+		if err := migrate.Run(func(message string) { out.Info(message) }); err != nil {
+			return actions.NewError(actions.SystemRestore, "backup authenticated; confirmed legacy migration did not finish; retain recovery state", err)
+		}
+		current, err = config.LoadFrom(config.DefaultConfigFile)
+		if err != nil {
+			return actions.NewError(actions.SystemRestore, "legacy migration ran but the resulting configuration cannot be read; restore is pending", err)
+		}
+		_, statErr = os.Stat(config.DefaultConfigFile)
 	}
 
 	// Download first: if that fails, nothing on the server has changed.
@@ -155,14 +185,16 @@ func handleSystemRestore(ctx *actions.Context) error {
 		clearSetup(current, incoming, out)
 	} else if statErr == nil {
 		// Nothing to replace, but the file may be one that failed to load.
-		_ = copyFile(config.DefaultConfigFile, config.DefaultConfigFile+".pre-restore")
+		if err := copyFile(config.DefaultConfigFile, config.DefaultConfigFile+".pre-restore"); err != nil {
+			return actions.NewError(actions.SystemRestore, "failed to retain the existing configuration; restore not started", err)
+		}
 	}
 
 	if err := system.EnsureUser(); err != nil {
 		return actions.NewError(actions.SystemRestore, "failed to create system user", err)
 	}
 	for _, dir := range []string{config.DefaultConfigDir, config.DefaultTunnelDir} {
-		if err := system.EnsureDir(dir, config.SystemUser); err != nil {
+		if err := system.EnsureDir(dir, "root"); err != nil {
 			return actions.NewError(actions.SystemRestore, fmt.Sprintf("failed to create %s", dir), err)
 		}
 	}
@@ -175,7 +207,7 @@ func handleSystemRestore(ctx *actions.Context) error {
 	if err := cfg.SaveTo(config.DefaultConfigFile); err != nil {
 		return actions.NewError(actions.SystemRestore, "failed to save config", err)
 	}
-	out.Success("Config, keys and users restored")
+	out.Info("Backup files written; checking account, counter and service restoration")
 	if err := usage.RestoreHistory(b.UsageHistory); err != nil {
 		out.Warning("Failed to restore counter history: " + err.Error())
 	}
@@ -264,6 +296,9 @@ func handleSystemRestore(ctx *actions.Context) error {
 	if err := WriteSubscriptions(cfg, out); err != nil {
 		return actions.NewError(actions.SystemRestore, "setup restored but refreshing subscriptions failed", err)
 	}
+	if progress.warnings > 0 {
+		return actions.NewError(actions.SystemRestore, "backup files were restored but account, usage or service recovery is incomplete; inspect the warnings and retained pre-restore backup", nil)
+	}
 	out.Success(fmt.Sprintf("Restore complete: %d tunnel(s), %d user(s)", len(cfg.Tunnels), len(cfg.Users)))
 	records := cfg.ServerHostnames()
 	var vlessDomains []string
@@ -285,6 +320,18 @@ func handleSystemRestore(ctx *actions.Context) error {
 		out.Info(fmt.Sprintf("Client configs use the backup's public address %s. If this server's differs, change it with: sudo rovunet config address", cfg.PublicAddress))
 	}
 	return nil
+}
+
+// Any failed restore step makes the command incomplete even when continuing
+// other independent steps was useful. Warning text stays local to the operator.
+type restoreProgress struct {
+	actions.OutputWriter
+	warnings int
+}
+
+func (p *restoreProgress) Warning(message string) {
+	p.warnings++
+	p.OutputWriter.Warning(message)
 }
 
 // encodeBackup returns cfg and its tunnels' files as backup text, and the
@@ -310,7 +357,10 @@ func encodeBackup(cfg *config.Config) (string, []string, error) {
 // argument, asks for a file or a paste.
 func readBackupText(arg string, out actions.OutputWriter) (string, error) {
 	if arg == "-" {
-		data, err := io.ReadAll(io.LimitReader(os.Stdin, 64<<20))
+		data, err := io.ReadAll(io.LimitReader(os.Stdin, backup.MaxEncodedSize+1))
+		if len(data) > backup.MaxEncodedSize {
+			return "", fmt.Errorf("backup is too large")
+		}
 		return string(data), err
 	}
 	if arg == "" {
@@ -323,7 +373,11 @@ func readBackupText(arg string, out actions.OutputWriter) (string, error) {
 		}
 		if how == "text" {
 			out.Info("Paste the backup, from the BEGIN line to the END line:")
-			return prompt.Lines(backup.EndMarker, backup.LegacyEndMarker)
+			text, err := prompt.Lines(backup.EndMarker, backup.LegacyEndMarker, "-----END AGE ENCRYPTED FILE-----")
+			if len(text) > backup.MaxEncodedSize {
+				return "", fmt.Errorf("backup is too large")
+			}
+			return text, err
 		}
 		if arg, err = prompt.String("Backup file", ""); err != nil {
 			return "", err
@@ -332,7 +386,15 @@ func readBackupText(arg string, out actions.OutputWriter) (string, error) {
 			return "", fmt.Errorf("no file given")
 		}
 	}
-	data, err := os.ReadFile(arg)
+	f, err := os.Open(arg)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, backup.MaxEncodedSize+1))
+	if len(data) > backup.MaxEncodedSize {
+		return "", fmt.Errorf("backup is too large")
+	}
 	return string(data), err
 }
 
@@ -488,10 +550,7 @@ func defaultBackupPath(prefix string) string {
 
 // writePrivateFile writes text to path readable only by its owner.
 func writePrivateFile(path, text string) error {
-	if err := os.WriteFile(path, []byte(text), 0600); err != nil {
-		return err
-	}
-	return os.Chmod(path, 0600) // WriteFile keeps the mode of an existing file
+	return safefile.Write(path, []byte(text), 0600)
 }
 
 // discardOutput drops all messages.

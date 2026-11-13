@@ -1,6 +1,6 @@
-# Managed protocols — v1.21.1
+# Managed protocols — v1.21.2
 
-v1.21.1 adds optional, account-managed AmneziaWG, Shadowsocks 2022,
+Normal installation and update complete account-managed AmneziaWG, Shadowsocks 2022,
 Trojan TLS and VLESS Encryption. Existing test services are never adopted.
 The accepted private preview established the staged server/name-update path;
 protocol limits and the remaining validation boundaries are documented below.
@@ -9,8 +9,8 @@ protocol limits and the remaining validation boundaries are documented below.
 
 | Protocol | Unlimited | Time only | Traffic limited | Released Android | Released Windows |
 | --- | --- | --- | --- | --- | --- |
-| AmneziaWG | Yes | Peer removal | Excluded | Compatible native file wrapper | Excluded |
-| SS2022 | Yes | Denies new sessions after removal; existing streams survive | Excluded | Compatible SS2022 PSK chain | Excluded |
+| AmneziaWG | Yes | Peer removal | Excluded | Compatible native file wrapper | 0.1.2-preview.5 supports; older Betas skip |
+| SS2022 | Yes | Denies new sessions after removal; existing streams survive | Excluded | Compatible SS2022 PSK chain | 0.1.1 Beta/current support; 0.1.0 Beta skips |
 | Trojan TLS | Yes | Denies new sessions after removal; existing streams survive | Excluded | Compatible | Compatible |
 | VLESS Encryption | Yes | Denies new sessions after removal; existing streams survive | Excluded | Compatible pinned ML-KEM format | Compatible pinned ML-KEM format |
 
@@ -54,8 +54,7 @@ uses the existing URL; Windows gets `<token>.windows.json` with a matching
 status alias. Private deployment exports separate `android-subscription-private.txt`
 and `windows-subscription-private.txt` files that identify the intended client.
 The combined file is retained for compatibility.
-Android must use its own URL: importing the Windows feed omits AWG and SS2022,
-and Android's released status resolver does not recognize `.windows.json`.
+Android must use its own `.json` URL: its released status resolver does not recognize `.windows.json`. In v1.21.2 the Windows feed includes standard AWG/SS2022 additions so older Windows readers can skip unsupported entries safely; existing native profiles retain their metadata. Full output is 24 items for an eligible unlimited account; Windows 0.1.1 Beta imports 23 and 0.1.0 Beta imports 22. The installed 0.1.2-preview.5 supports all 24. This is reader compatibility, not a physical-device connection guarantee.
 Status keeps the released schema and account/period IDs. The
 released Android parser requires numeric `used_bytes` for a metered account,
 even when counting is unavailable. That number is a persisted lower bound;
@@ -84,13 +83,12 @@ other peers. AWG peer traffic accounting is not implemented in this preview.
 
 Released versions use `sudo rovunet update`. Normal updates retain subscription
 tokens, account/period IDs and the native profile IDs. Protocol counts depend
-on installed services and account eligibility; an update does not install every
-optional core automatically.
+on installed services and account eligibility. Normal update adds missing managed cores and migrates old Hy2 to Salamander once; refresh the same saved subscription afterward. An explicit `core-hy2-obfs NAME off` choice survives future updates.
 
 The accepted `1.20.1-managed-preview.3 (2ecfe96)` amd64 build intentionally blocks
 the public updater. Its release asset
-`rovunet-preview-to-v1.21.1-linux-amd64.tar.gz` contains a reviewed panel-only
-bridge to v1.21.1. Extract it into a private directory and run
+`rovunet-preview-to-v1.21.2-linux-amd64.tar.gz` contains a reviewed panel-only
+bridge to v1.21.2. Run `sudo rovunet update` after promotion to reconcile pending setup/Hy2. Extract it into a private directory and run
 `python3 upgrade-managed-preview.py apply`, followed by `status`. It verifies
 the exact preview binary, creates a validated backup, retains existing core
 keys/URLs, and checks all native fields before accepting the replacement.
@@ -106,7 +104,7 @@ they are historical staging tools, not general public updaters.
 
 Since v1.21.1, the standard installer and Quick Wizard use the same complete
 preset. They configure both DNS/Soar backends and nine cores, yielding 24
-Android and 22 Windows profiles for the supported single-address, unmetered
+Android and, since v1.21.2, 24 Windows subscription profiles for the supported single-address, unmetered
 account setup. Use `rovunet install --custom` or `rovunet wizard --custom`
 for a deliberately smaller set. The direct public SOCKS5 listener is not
 needed by the full preset.

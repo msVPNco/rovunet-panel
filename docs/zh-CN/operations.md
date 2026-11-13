@@ -35,12 +35,13 @@ sudo rovunet post-update
 
 ```bash
 sudo rovunet backup                      # asks: save to a file, or print text to copy
-sudo rovunet backup /root/rovunet-backup.txt
-sudo rovunet restore /root/rovunet-backup.txt
-ssh root@old rovunet backup - | ssh root@new rovunet restore - --yes   # server to server
+sudo rovunet backup /root/rovunet-backup.age
+sudo rovunet backup-check /root/rovunet-backup.age
+sudo rovunet restore /root/rovunet-backup.age
+# Automated transfer: see ../security/encrypted-backups.md
 ```
 
-备份是位于 `-----BEGIN ROVUNET BACKUP-----` 与 `-----END ROVUNET BACKUP-----` 之间的一段文本，包含所有私钥和密码，请妥善保管。旧名称下创建的备份同样可以恢复。备份还包含每个用户已用的流量，因此恢复不会让限量用户重新获得额度。
+备份默认采用具有完整性验证的 age 加密文本。请分开保存恢复口令或私钥。仍可读取旧 ROVUNET BACKUP 格式；明文导出需要明确选择 --plaintext。自动迁移时，源端需要公开的 --recipient，目标端需要私有的 --identity-file。[加密备份说明](../security/encrypted-backups.md)。
 
 在新服务器上恢复：
 

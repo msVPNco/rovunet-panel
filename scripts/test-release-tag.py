@@ -47,6 +47,7 @@ print(json.dumps(value) if isinstance(value,(bool,type(None))) else value)
             output = root / 'output'
             environment = dict(os.environ, PATH=str(root) + os.pathsep + os.environ['PATH'],
                                MOCK_RESPONSE=response, GITHUB_REF_TYPE='tag' if tag else 'branch',
+                               REQUESTED_TAG=tag or 'v1.21.0',
                                GITHUB_REF_NAME=tag or 'main', GITHUB_SHA='ab' * 20,
                                GITHUB_REPOSITORY='example/panel', GITHUB_OUTPUT=str(output))
             result = subprocess.run(['bash', '-e'], input='\n'.join(script), cwd=root,

@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/msVPNco/rovunet-panel/internal/safefile"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,18 +18,19 @@ func TunnelServiceName(tag string) string {
 
 // Unit represents a systemd unit file.
 type Unit struct {
-	Name          string
-	Description   string
-	ExecStart     string
-	ExecReload    string
-	ExecCondition string
-	ExecStartPost string
-	User          string
-	Group         string
-	After         string
-	Restart       string
-	WorkingDir    string
-	Environment   []string
+	Name            string
+	Description     string
+	ExecStart       string
+	ExecReload      string
+	ExecCondition   string
+	ExecStartPost   string
+	User            string
+	Group           string
+	After           string
+	Restart         string
+	WorkingDir      string
+	Environment     []string
+	NoNewPrivileges bool
 }
 
 // Create writes a systemd unit file and reloads the daemon.
@@ -49,6 +51,9 @@ RestartSec=5
 LogRateLimitIntervalSec=30
 LogRateLimitBurst=100
 `, u.Description, u.After, u.User, u.Group, u.ExecStart, u.Restart)
+	if u.NoNewPrivileges {
+		content += "NoNewPrivileges=yes\n"
+	}
 
 	if u.ExecReload != "" {
 		content += fmt.Sprintf("ExecReload=%s\n", u.ExecReload)
@@ -69,11 +74,27 @@ LogRateLimitBurst=100
 	content += "\n[Install]\nWantedBy=multi-user.target\n"
 
 	path := filepath.Join(systemdDir, u.Name+".service")
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := safefile.Write(path, []byte(content), 0644); err != nil {
 		return fmt.Errorf("write unit file: %w", err)
 	}
 
 	return daemonReload()
+}
+
+// Apply preserves both active and enable states when regenerating an existing
+// service. A new installation uses preserve=false and enables its new unit.
+func Apply(u *Unit, preserve bool) error {
+	active, _ := Status(u.Name)
+	if err := Create(u); err != nil {
+		return err
+	}
+	if active == "active" {
+		return Restart(u.Name)
+	}
+	if preserve {
+		return nil
+	}
+	return Start(u.Name)
 }
 
 // Start enables and starts a service.

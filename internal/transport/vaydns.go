@@ -10,7 +10,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/service"
 )
 
-func createVayDNSService(tunnel *config.TunnelConfig, cfg *config.Config) error {
+func createVayDNSService(tunnel *config.TunnelConfig, cfg *config.Config, preserve bool) error {
 	execStart, err := buildVayDNSExecStart(tunnel, cfg)
 	if err != nil {
 		return err
@@ -26,16 +26,7 @@ func createVayDNSService(tunnel *config.TunnelConfig, cfg *config.Config) error 
 		Restart:     "always",
 	}
 
-	if err := service.Create(unit); err != nil {
-		return err
-	}
-	// Restart if already running: systemctl start on an already-active unit
-	// is a no-op, so an edit to this tunnel's settings would otherwise sit
-	// in the rewritten unit file without ever reaching the running process.
-	if _, err := service.Status(unit.Name); err == nil {
-		return service.Restart(unit.Name)
-	}
-	return service.Start(unit.Name)
+	return service.Apply(unit, preserve)
 }
 
 // buildVayDNSExecStart builds the ExecStart command for vaydns-server.

@@ -192,12 +192,12 @@ func TestManagedProtocolsRuntime(t *testing.T) {
 		if mode.dedicated {
 			label += "-dedicated"
 		}
-		if mode.dedicated && protocol == "ss2022" {
-			// Repeat the three-source accounting suite in a separate ledger;
-			// these are a new set of test cores, not the old cores restarting.
-			usage.Dir = filepath.Join(testRoot, "dedicated-usage")
-		}
 		t.Run(label, func(t *testing.T) {
+			if mode.dedicated && protocol == "ss2022" {
+				// Do not reset the active ledger for a filtered-out subtest.
+				// These are new test cores, not the old cores restarting.
+				usage.Dir = filepath.Join(testRoot, "dedicated-usage")
+			}
 			epoch := "first-" + protocol
 			runEpoch = func(string) (string, error) { return epoch, nil }
 			Root = t.TempDir()
@@ -292,6 +292,7 @@ func TestManagedProtocolsRuntime(t *testing.T) {
 				t.Fatal("active stream did not pass data before revocation")
 			}
 			alice.ExpiresAt = "2000-01-01T00:00:00Z"
+			revokeStarted := time.Now()
 			if err := syncCore(protocol, []config.UserConfig{alice, bob}); err != nil {
 				t.Fatal(err)
 			}
@@ -301,7 +302,10 @@ func TestManagedProtocolsRuntime(t *testing.T) {
 			if err := request(clients["bob"]); err != nil {
 				t.Fatalf("healthy account interrupted: %v", err)
 			}
-			if probe() {
+			streamAlive := probe()
+			measurement, _ := json.Marshal(map[string]any{"scenario": "explicit per-account expiry sync; no scheduler delay included", "protocol": protocol, "runtime_case": t.Name(), "new_session_blocked": true, "healthy_account_payload": true, "established_stream_survived": streamAlive, "sync_and_probe_ms": time.Since(revokeStarted).Milliseconds(), "timer_slo_ms": nil, "quota_overshoot_bytes": nil})
+			t.Log("REVOCATION_MEASUREMENT " + string(measurement))
+			if streamAlive {
 				t.Log("LIMITATION OBSERVED: HandlerService removal leaves this established stream alive")
 			}
 			alice.ExpiresAt = ""

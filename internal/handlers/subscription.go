@@ -16,6 +16,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/clientcfg"
 	"github.com/msVPNco/rovunet-panel/internal/clientexport"
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/safefile"
 	"github.com/msVPNco/rovunet-panel/internal/transport"
 )
 
@@ -98,7 +99,13 @@ func buildFeedForClient(cfg *config.Config, u config.UserConfig, client string) 
 	if len(items) == 0 {
 		return nil, nil
 	}
-	items = extraAddressItemsForClient(cfg, u, items, client)
+	items, err = extraAddressItemsForClient(cfg, u, items, client)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) > 1000 {
+		return nil, errors.New("subscription exceeds the strict v1 reader's 1000-item limit; reduce extra addresses; previous feed retained")
+	}
 	return json.MarshalIndent(subFeed{Version: 1, Name: u.Username, Items: items}, "", "  ")
 }
 
@@ -109,6 +116,9 @@ func buildFeedForClient(cfg *config.Config, u config.UserConfig, client string) 
 // config is saved). Call it after any change to users or tunnels, and after
 // each limits check, which refreshes the traffic in the status files.
 func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
+	if err := cfg.ValidateSubscriptionTokens(); err != nil {
+		return err
+	}
 	if subscriptionHost(cfg) == "" {
 		return nil
 	}
@@ -136,6 +146,12 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 		return err
 	}
 	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+	if err := cfg.RefreshIfChanged(); err != nil {
+		return fmt.Errorf("could not refresh current account state; previous subscription files retained: %w", err)
+	}
+	if err := cfg.ValidateSubscriptionTokens(); err != nil {
+		return err
+	}
 	if mintIDs(cfg) {
 		if err := cfg.Save(); err != nil {
 			return fmt.Errorf("save subscription tokens: %w", err)
@@ -149,15 +165,11 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 		if old, err := os.ReadFile(path); err == nil && string(old) == string(body) {
 			return
 		}
-		tmp := path + ".tmp"
-		if err := os.WriteFile(tmp, body, 0644); err != nil {
+		if err := safefile.Write(path, body, 0644); err != nil {
 			if firstErr == nil {
 				firstErr = err
 			}
 			return
-		}
-		if err := os.Rename(tmp, path); err != nil && firstErr == nil {
-			firstErr = err
 		}
 	}
 	status := func(u config.UserConfig, reason string, in statusInput, suffix string) {
@@ -252,15 +264,11 @@ func mintIDs(cfg *config.Config) bool {
 	return minted
 }
 
-// addExtraAddressItems repeats the configs that connect by the server's
+// extraAddressItemsForClient repeats configs that connect by the server's
 // address once per extra address. Configs that don't (domain-based ones such
 // as NaïveProxy) come out identical and are skipped, so only the address-based
 // ones are added, with the address number in their id.
-func addExtraAddressItems(cfg *config.Config, u config.UserConfig, items []subItem) []subItem {
-	return extraAddressItemsForClient(cfg, u, items, "")
-}
-
-func extraAddressItemsForClient(cfg *config.Config, u config.UserConfig, items []subItem, client string) []subItem {
+func extraAddressItemsForClient(cfg *config.Config, u config.UserConfig, items []subItem, client string) ([]subItem, error) {
 	have := map[string]bool{}
 	ids := map[string]bool{}
 	for _, it := range items {
@@ -273,7 +281,10 @@ func extraAddressItemsForClient(cfg *config.Config, u config.UserConfig, items [
 		// A Config holds a lock and can't be copied, so the address is
 		// swapped for the print and put back.
 		cfg.PublicAddress = addr
-		extra, _ := subscriptionItemsForClient(cfg, u, client)
+		extra, err := subscriptionItemsForClient(cfg, u, client)
+		if err != nil {
+			return nil, err
+		}
 		for _, it := range extra {
 			if have[linkIdentity(it.Link)] {
 				continue
@@ -287,7 +298,7 @@ func extraAddressItemsForClient(cfg *config.Config, u config.UserConfig, items [
 			items = append(items, subItem{ID: id, Link: it.Link})
 		}
 	}
-	return items
+	return items, nil
 }
 
 // linkIdentity is a link without the fields that only name its group (the

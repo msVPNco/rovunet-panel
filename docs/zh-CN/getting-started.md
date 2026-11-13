@@ -63,7 +63,9 @@ dig +short NS t.example.com
 ### 在线安装（推荐）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v1.21.2/install.sh -o rovunet-install.sh
+python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="a8aaa38d979049fa5e42c9f8f444e519d28625d1d67872ddaeff2d0dfc6b3498", "Installer checksum mismatch"'
+sudo bash rovunet-install.sh
 ```
 
 安装程序会询问要启用哪些协议，下载所需二进制文件，生成密钥，创建 systemd 服务和防火墙规则，创建第一个用户并输出该用户的全部配置。

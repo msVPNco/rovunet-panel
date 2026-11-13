@@ -70,7 +70,7 @@ func ensureOptionsEngine(o coreplan.Options) error {
 		}
 	} else {
 		var err error
-		temp, err = binary.Download(fmt.Sprintf("%s/xray-%s-%s", binary.DownloadBase(), runtime.GOOS, runtime.GOARCH), filepath.Dir(path))
+		temp, err = binary.Download(fmt.Sprintf("%s/xray-%s-%s", binary.RuntimeDownloadBase(), runtime.GOOS, runtime.GOARCH), filepath.Dir(path))
 		if err != nil {
 			return err
 		}

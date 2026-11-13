@@ -1,16 +1,20 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/binary"
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
+	"github.com/msVPNco/rovunet-panel/internal/dnsrouter"
 	"github.com/msVPNco/rovunet-panel/internal/proxy"
 	"github.com/msVPNco/rovunet-panel/internal/service"
 	"github.com/msVPNco/rovunet-panel/internal/system"
@@ -26,68 +30,66 @@ func handleSystemUpdate(ctx *actions.Context) error {
 		return actions.NewError(actions.SystemUpdate, "this private preview requires a reviewed preview package or its rollback script; the public updater does not yet support its managed cores", nil)
 	}
 
-	base := binary.DownloadBase()
-	downloadURL := fmt.Sprintf("%s/rovunet-%s-%s", base, runtime.GOOS, runtime.GOARCH)
-	out.Info("Downloading from: " + downloadURL)
-
+	if runtime.GOOS != "linux" {
+		return actions.NewError(actions.SystemUpdate, "only Linux servers are supported", nil)
+	}
 	execPath, err := os.Executable()
 	if err != nil {
-		return actions.NewError(actions.SystemUpdate, "failed to find current binary", err)
+		return err
 	}
-
-	// Download into execPath's own directory (not the system temp dir) so
-	// the install below is a same-filesystem, atomic rename rather than a
-	// cross-filesystem copy that can leave no binary behind if it fails
-	// partway. Download also verifies the result against SHA256SUMS.
+	lock, err := os.OpenFile(filepath.Join(filepath.Dir(execPath), ".rovunet-update.lock"), os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
+		return err
+	}
+	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+	if tx, resume, err := binary.ResumeUpdate(execPath); err != nil {
+		return err
+	} else if resume {
+		out.Info("Resuming the installed panel's pending setup; recovery files are retained.")
+		if err := runStrictPostUpdate(execPath, tx); err != nil {
+			return err
+		}
+		out.Success("Update complete!")
+		return nil
+	}
+	newVersion, downloadURL, err := binary.CheckUpdate()
+	if err != nil {
+		return actions.NewError(actions.SystemUpdate, "failed to resolve release", err)
+	}
+	if newVersion == "" {
+		out.Info("The installed panel already matches the selected release.")
+		cfg := ctx.Config.(*config.Config)
+		if err := completeAfterUpdate(ctx, cfg); err != nil {
+			return err
+		}
+		if err := coreinstall.ConfigureDefaultHysteriaObfuscation(cfg.Users); err != nil {
+			return err
+		}
+		return WriteSubscriptions(cfg, out)
+	}
+	out.Info("Staging authenticated release " + newVersion + "...")
 	tmpPath, err := binary.Download(downloadURL, filepath.Dir(execPath))
 	if err != nil {
-		return actions.NewError(actions.SystemUpdate, "failed to download or verify update", err)
+		return actions.NewError(actions.SystemUpdate, "failed to authenticate update; existing panel was retained", err)
 	}
-	defer os.Remove(tmpPath) // no-op once the rename below has moved it
-
-	if runtime.GOOS == "linux" {
-		backupPath := execPath + ".bak"
-		if err := copyFile(execPath, backupPath); err != nil {
-			return actions.NewError(actions.SystemUpdate, "failed to back up current binary before update", err)
-		}
-		if err := os.Chmod(backupPath, 0755); err != nil {
-			out.Warning("Failed to set backup binary permissions: " + err.Error())
-		}
-
-		if err := os.Rename(tmpPath, execPath); err != nil {
-			// tmpPath is in execPath's own directory (see binary.Download
-			// above), so this is expected to be a same-filesystem rename
-			// that always succeeds. If it still fails for some other
-			// reason (e.g. a permission or SELinux denial), fall back to
-			// remove-then-copy, but restore from the backup made above if
-			// that also fails — so a failed update can never leave the
-			// panel with no binary at all.
-			os.Remove(execPath)
-			if cpErr := exec.Command("cp", tmpPath, execPath).Run(); cpErr != nil {
-				if restoreErr := os.Rename(backupPath, execPath); restoreErr != nil {
-					return actions.NewError(actions.SystemUpdate, fmt.Sprintf(
-						"install failed (%v), fallback copy failed (%v), AND restoring the backup failed (%v) — %s may now be missing; the previous binary is still at %s",
-						err, cpErr, restoreErr, execPath, backupPath), err)
-				}
-				return actions.NewError(actions.SystemUpdate, fmt.Sprintf("failed to install update (%v); restored the previous binary", err), err)
-			}
-		}
-		os.Chmod(execPath, 0755)
-		os.Remove(backupPath)
+	defer os.Remove(tmpPath)
+	recovery, err := prepareUpdateRecovery(ctx.Config.(*config.Config))
+	if err != nil {
+		return actions.NewError(actions.SystemUpdate, "could not prepare validated recovery snapshot; existing panel was retained", err)
 	}
-
-	out.Success("rovunet updated")
-
-	// Hand off to the newly installed binary for transport updates and
-	// service regeneration so the new code's URLs and logic are used.
-	out.Print("")
-	postCmd := exec.Command(execPath, "post-update")
-	postCmd.Stdout = os.Stdout
-	postCmd.Stderr = os.Stderr
-	postCmd.Stdin = os.Stdin
-	if err := postCmd.Run(); err != nil {
-		return actions.NewError(actions.SystemUpdate, "New panel installed, but post-update failed; retry using the installed panel instead of replaying old migration code", err)
+	tx, err := binary.BeginUpdate(execPath, tmpPath, recovery)
+	if err != nil {
+		return actions.NewError(actions.SystemUpdate, "installation did not complete; retain the update recovery record", err)
 	}
+	if err := runStrictPostUpdate(execPath, tx); err != nil {
+		return err
+	}
+	out.Success("Update complete!")
+	out.Info("Private recovery snapshot: " + recovery)
 	return nil
 }
 
@@ -99,6 +101,8 @@ func HandlePostUpdate(ctx *actions.Context) error {
 
 func runPostUpdate(ctx *actions.Context) error {
 	out := ctx.Output
+	var problems []error
+	warn := func(message string) { out.Warning(message); problems = append(problems, errors.New(message)) }
 
 	// Update transport binaries
 	out.Info("Updating transport binaries...")
@@ -106,35 +110,19 @@ func runPostUpdate(ctx *actions.Context) error {
 	transportBins := []string{"dnstt-server", "slipstream-server", "vaydns-server", "caddy-naive"}
 	for _, name := range transportBins {
 		binPath := filepath.Join(config.DefaultBinDir, name)
-		// A previous update that was cut short leaves the old binary in
-		// ".bak" and no binary at all: put it back before anything else.
 		if restored, err := binary.RecoverInterrupted(binPath); err != nil {
-			out.Warning(fmt.Sprintf("  %s: %v", name, err))
+			warn(fmt.Sprintf("%s recovery: %v", name, err))
 		} else if restored {
-			out.Warning(fmt.Sprintf("  %s was missing after an interrupted update; the previous version was put back", name))
+			out.Warning(name + " was restored from its interrupted-update backup")
 		}
 		if _, err := os.Stat(binPath); os.IsNotExist(err) {
-			continue // not installed, skip
-		}
-
-		out.Info(fmt.Sprintf("  Updating %s...", name))
-
-		// Backup old binary before replacing so we can restore on failure
-		backupPath := binPath + ".bak"
-		if err := os.Rename(binPath, backupPath); err != nil {
-			out.Warning(fmt.Sprintf("  Failed to backup %s: %v", name, err))
 			continue
 		}
-		if err := binary.EnsureInstalled(name); err != nil {
-			// Restore from backup
-			if restoreErr := os.Rename(backupPath, binPath); restoreErr != nil {
-				out.Warning(fmt.Sprintf("  Failed to restore %s backup: %v", name, restoreErr))
-			}
-			out.Warning(fmt.Sprintf("  Failed to update %s: %v (kept old version)", name, err))
+		if err := binary.UpdateInstalled(name); err != nil {
+			warn(fmt.Sprintf("%s update failed; its existing executable or recovery binary was retained: %v", name, err))
 			continue
 		}
-		os.Remove(backupPath)
-		out.Success(fmt.Sprintf("  %s updated", name))
+		out.Info(name + " pinned runtime installed; recovery binary retained")
 	}
 
 	// Migrate from microsocks to built-in SOCKS5 proxy
@@ -164,7 +152,7 @@ func runPostUpdate(ctx *actions.Context) error {
 			setupErr = proxy.SetupSOCKS()
 		}
 		if setupErr != nil {
-			out.Warning("Failed to migrate SOCKS5 proxy: " + setupErr.Error())
+			warn("Failed to migrate SOCKS5 proxy: " + setupErr.Error())
 		} else {
 			os.Remove(microsocksPath)
 			out.Success("Migrated to built-in SOCKS5 proxy")
@@ -179,7 +167,7 @@ func runPostUpdate(ctx *actions.Context) error {
 			naivePath := filepath.Join(config.DefaultBinDir, "caddy-naive")
 			if _, err := os.Stat(naivePath); err == nil {
 				if err := exec.Command("setcap", "cap_net_bind_service=+ep", naivePath).Run(); err != nil {
-					out.Warning("Failed to re-set caddy-naive capability: " + err.Error())
+					warn("Failed to re-set caddy-naive capability: " + err.Error())
 				}
 			}
 		}
@@ -201,7 +189,7 @@ func runPostUpdate(ctx *actions.Context) error {
 	// logins on images that turn them off globally)
 	if len(cfg.Users) > 0 {
 		if err := system.EnsureSSHConfig(); err != nil {
-			out.Warning("Failed to update SSH settings: " + err.Error())
+			warn("Failed to update SSH settings: " + err.Error())
 		}
 	}
 
@@ -215,10 +203,9 @@ func runPostUpdate(ctx *actions.Context) error {
 		wasActive := false
 		if status, _ := service.Status(svcName); status == "active" {
 			wasActive = true
-			_ = service.Stop(svcName)
 		}
-		if err := transport.CreateService(t, cfg); err != nil {
-			out.Warning(fmt.Sprintf("Failed to regenerate %s: %v", svcName, err))
+		if err := transport.RegenerateService(t, cfg); err != nil {
+			warn(fmt.Sprintf("Failed to regenerate %s: %v", svcName, err))
 			continue
 		}
 		if wasActive {
@@ -229,12 +216,12 @@ func runPostUpdate(ctx *actions.Context) error {
 	}
 
 	// Recreate SOCKS5 proxy service to pick up new ExecStart format (e.g. --creds)
-	if service.Exists("rovunet-socks5") {
+	if service.Exists("rovunet-socks5") && activeService("rovunet-socks5") {
 		if cfg.Warp.Enabled {
 			proxy.RunAsUser = warp.SocksUser
 		}
 		if setupErr := setupSOCKS(cfg); setupErr != nil {
-			out.Warning("Failed to regenerate SOCKS5 proxy: " + setupErr.Error())
+			warn("Failed to regenerate SOCKS5 proxy: " + setupErr.Error())
 		} else {
 			out.Success("  rovunet-socks5 regenerated and restarted")
 		}
@@ -248,16 +235,16 @@ func runPostUpdate(ctx *actions.Context) error {
 
 	// Restart DNS router last so tunnels are ready
 	if service.Exists("rovunet-dnsrouter") {
-		if err := service.Restart("rovunet-dnsrouter"); err != nil {
-			out.Warning(fmt.Sprintf("Failed to restart rovunet-dnsrouter: %v", err))
+		if err := dnsrouter.RegenerateRouterService(); err != nil {
+			warn(fmt.Sprintf("Failed to restart rovunet-dnsrouter: %v", err))
 		} else {
-			out.Success("  rovunet-dnsrouter restarted")
+			out.Info("  rovunet-dnsrouter regenerated; active and enable choices preserved")
 		}
 	}
 
 	// Subscription files: one per user, served by the NaïveProxy Caddy.
 	if err := WriteSubscriptions(cfg, out); err != nil {
-		out.Warning("Failed to write subscription files: " + err.Error())
+		warn("Failed to write subscription files: " + err.Error())
 	}
 
 	out.Print("")
@@ -267,8 +254,15 @@ func runPostUpdate(ctx *actions.Context) error {
 		// the pending setup explicitly, and expose a retry-only command.
 		out.Error("Panel updated; complete setup is pending: " + err.Error())
 		out.Info("After fixing the reported prerequisite, run: rovunet complete-setup")
-		return nil
+		problems = append(problems, err)
 	}
-	out.Success("Update complete!")
-	return nil
+	// Existing clients receive the new transport options at the same saved
+	// URL. A failed migration keeps its private recovery and stays pending.
+	if err := coreinstall.ConfigureDefaultHysteriaObfuscation(cfg.Users); err != nil {
+		warn("Hy2 compatibility migration pending: " + err.Error())
+	}
+	if err := WriteSubscriptions(cfg, out); err != nil {
+		warn("Subscription refresh pending after compatibility migration: " + err.Error())
+	}
+	return errors.Join(problems...)
 }

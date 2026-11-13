@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "repository": "anonvector/slipgate",
+  "tag": "v1.6.8",
+  "release_commit": "200d8151d8933ac50c80f7dc9ff8516b799c91b3",
+  "assets": [
+    {"name":"caddy-naive-linux-amd64","size":59240610,"sha256":"88099ffd284666727b1d3e8224320e9190e1171932f9c3a5e871dc2f67380fef"},
+    {"name":"caddy-naive-linux-arm64","size":55312546,"sha256":"80ceab25305e7b31454bb0f9949054d55e48c25253891a83e289c0f61f65359c"},
+    {"name":"dnstt-server-linux-amd64","size":5111992,"sha256":"c5e627b03e1e79329450833adcd52cf907d8102fd9d2498a2ffbdee1d69ff02f"},
+    {"name":"dnstt-server-linux-arm64","size":3932344,"sha256":"29bbfca9f306754c98203307c69ef304f74035f68fa70fd12fc51d4ed7339474"},
+    {"name":"slipstream-server-linux-amd64","size":2318792,"sha256":"d0254a986e7841cc1555fec459db6df562dd24c1186af6656c20a4a90d9e11ef"},
+    {"name":"slipstream-server-linux-arm64","size":2040320,"sha256":"2f9effd90f8bd73e07ac100ad0362573d91476731fe8223909da454272e15bb3"},
+    {"name":"vaydns-server-linux-amd64","size":5292216,"sha256":"9a6efbd0764ea1f9da199b1b16eb6f536c2a53700d4d5255bd8ea20203737b7e"},
+    {"name":"vaydns-server-linux-arm64","size":4063416,"sha256":"ed96fc18d71bb14933d4847770d4e4bf1fe6c9d7eefcfff72aa8875040bbb7db"}
+  ]
+}

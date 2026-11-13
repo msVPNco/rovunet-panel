@@ -51,14 +51,15 @@ sudo rovunet post-update
 
 ```bash
 sudo rovunet backup                      # asks: save to a file, or print text to copy
-sudo rovunet backup /root/rovunet-backup.txt
-sudo rovunet restore /root/rovunet-backup.txt
-ssh root@old rovunet backup - | ssh root@new rovunet restore - --yes   # server to server
+sudo rovunet backup /root/rovunet-backup.age
+sudo rovunet backup-check /root/rovunet-backup.age
+sudo rovunet restore /root/rovunet-backup.age
+# Automated transfer: see ../security/encrypted-backups.md
 ```
 
 <div dir="rtl">
 
-بکاپ یک بلوک متن بین ⁦`-----BEGIN ROVUNET BACKUP-----⁦`⁩ و ⁦`⁩-----END ROVUNET BACKUP-----`⁩ است. همهٔ کلیدهای خصوصی و رمزها در آن است: خصوصی نگهش دارید. بکاپ‌های ساخته‌شده با نام قبلی هم بازیابی می‌شوند. مصرف تاکنونی هر کاربر هم در بکاپ است، پس بازیابی سهمیهٔ کاربران محدود را دوباره کامل نمی‌کند.
+پشتیبان به‌طور پیش‌فرض متن رمزگذاری‌شده و دارای بررسی اصالت age است. عبارت بازیابی یا کلید خصوصی را جدا نگه دارید. قالب قدیمی ROVUNET BACKUP همچنان خوانده می‌شود؛ خروجی بدون رمز فقط با --plaintext انتخاب می‌شود. انتقال خودکار به --recipient عمومی در مبدأ و --identity-file خصوصی در مقصد نیاز دارد؛ لولهٔ SSH قبلی بدون کلید کافی نیست. [راهنمای پشتیبان رمزگذاری‌شده](../security/encrypted-backups.md).
 
 بازیابی روی سرور جدید:
 

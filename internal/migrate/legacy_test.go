@@ -60,7 +60,7 @@ func TestRewriteTextFilesKeepsKeysAndModes(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("config.json", `{"k":"/etc/`+legacy+`/tunnels/a/k"}`, 0600)
+	write("config.json", `{"private_key":"/etc/`+legacy+`/tunnels/a/k"}`, 0600)
 	write("warp/wg0.conf", "PostUp = ip rule add uidrange $(id -u "+legacy+"-socks)\n", 0600)
 	write("tunnels/a/server.key", "/etc/"+legacy+"/", 0600) // a key is never rewritten
 
@@ -74,7 +74,7 @@ func TestRewriteTextFilesKeepsKeysAndModes(t *testing.T) {
 		}
 		return string(b)
 	}
-	if got := read("config.json"); got != `{"k":"/etc/rovunet/tunnels/a/k"}` {
+	if got := read("config.json"); got != `{"private_key":"/etc/rovunet/tunnels/a/k"}` {
 		t.Fatalf("config.json: %s", got)
 	}
 	if got := read("warp/wg0.conf"); !strings.Contains(got, "rovunet-socks") {

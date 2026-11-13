@@ -9,21 +9,32 @@ import (
 
 // CreateService creates and starts a systemd service for a tunnel.
 func CreateService(tunnel *config.TunnelConfig, cfg *config.Config) error {
+	return createService(tunnel, cfg, false)
+}
+
+// RegenerateService rewrites an owned unit and restarts it only if it was
+// active. Its enable/disable state is preserved; an admin-stopped tunnel is
+// never briefly started during an ordinary panel upgrade.
+func RegenerateService(tunnel *config.TunnelConfig, cfg *config.Config) error {
+	return createService(tunnel, cfg, true)
+}
+
+func createService(tunnel *config.TunnelConfig, cfg *config.Config, preserve bool) error {
 	switch tunnel.Transport {
 	case config.TransportDNSTT:
-		return createDNSTTService(tunnel, cfg)
+		return createDNSTTService(tunnel, cfg, preserve)
 	case config.TransportSlipstream:
-		return createSlipstreamService(tunnel, cfg)
+		return createSlipstreamService(tunnel, cfg, preserve)
 	case config.TransportVayDNS:
-		return createVayDNSService(tunnel, cfg)
+		return createVayDNSService(tunnel, cfg, preserve)
 	case config.TransportSoar:
-		return createSoarService(tunnel, cfg)
+		return createSoarService(tunnel, cfg, preserve)
 	case config.TransportNaive:
-		return createNaiveService(tunnel, cfg)
+		return createNaiveService(tunnel, cfg, preserve)
 	case config.TransportStunTLS:
-		return createStunTLSService(tunnel, cfg)
+		return createStunTLSService(tunnel, cfg, preserve)
 	case config.TransportVLESS:
-		return createVLESSService(tunnel, cfg)
+		return createVLESSService(tunnel, cfg, preserve)
 	case config.TransportSSH, config.TransportSOCKS:
 		// Direct transports use existing system services (sshd, microsocks)
 		return nil
@@ -35,7 +46,7 @@ func CreateService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 	}
 }
 
-func createDNSTTService(tunnel *config.TunnelConfig, cfg *config.Config) error {
+func createDNSTTService(tunnel *config.TunnelConfig, cfg *config.Config, preserve bool) error {
 	execStart, err := buildDNSTTExecStart(tunnel, cfg)
 	if err != nil {
 		return err
@@ -51,20 +62,10 @@ func createDNSTTService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 		Restart:     "always",
 	}
 
-	if err := service.Create(unit); err != nil {
-		return err
-	}
-	// Restart if already running: systemctl start on an already-active unit
-	// is a no-op, so an edit to this tunnel's settings (backend, port,
-	// discovery list, ...) would otherwise sit in the rewritten unit file
-	// without ever reaching the running process.
-	if _, err := service.Status(unit.Name); err == nil {
-		return service.Restart(unit.Name)
-	}
-	return service.Start(unit.Name)
+	return service.Apply(unit, preserve)
 }
 
-func createSlipstreamService(tunnel *config.TunnelConfig, cfg *config.Config) error {
+func createSlipstreamService(tunnel *config.TunnelConfig, cfg *config.Config, preserve bool) error {
 	execStart, err := buildSlipstreamExecStart(tunnel, cfg)
 	if err != nil {
 		return err
@@ -80,14 +81,7 @@ func createSlipstreamService(tunnel *config.TunnelConfig, cfg *config.Config) er
 		Restart:     "always",
 	}
 
-	if err := service.Create(unit); err != nil {
-		return err
-	}
-	// See createDNSTTService above: restart, not start, when already active.
-	if _, err := service.Status(unit.Name); err == nil {
-		return service.Restart(unit.Name)
-	}
-	return service.Start(unit.Name)
+	return service.Apply(unit, preserve)
 }
 
 // RemoveService stops and removes a tunnel's systemd service.

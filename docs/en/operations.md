@@ -34,12 +34,13 @@ A backup holds everything needed to run the setup elsewhere: the configuration, 
 
 ```bash
 sudo rovunet backup                      # asks: save to a file, or print text to copy
-sudo rovunet backup /root/rovunet-backup.txt
-sudo rovunet restore /root/rovunet-backup.txt
-ssh root@old rovunet backup - | ssh root@new rovunet restore - --yes   # server to server
+sudo rovunet backup /root/rovunet-backup.age
+sudo rovunet backup-check /root/rovunet-backup.age
+sudo rovunet restore /root/rovunet-backup.age
+# Automated transfer: see ../security/encrypted-backups.md
 ```
 
-The backup is one block of text between `-----BEGIN ROVUNET BACKUP-----` and `-----END ROVUNET BACKUP-----`. It contains every private key and password: keep it private. Backups made under the earlier name still restore.
+Backups are authenticated age-encrypted text by default. Keep the recovery passphrase/identity separately. The old ROVUNET BACKUP format remains readable; creating plaintext now requires an explicit --plaintext choice. Automated migration needs a public --recipient at the source and an owner-only --identity-file at the destination; the old unkeyed SSH pipe is no longer sufficient. See [encrypted backup guidance](../security/encrypted-backups.md).
 
 Restoring on a new server:
 

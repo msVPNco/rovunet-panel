@@ -46,6 +46,7 @@ func init() {
 	f.IntVar(&o.Devices, "devices", 1, "Distinct client credentials (1..1000)")
 	f.StringVar(&o.Cert, "cert", "", "Server TLS certificate path")
 	f.StringVar(&o.Key, "key", "", "Server TLS private key path")
+	f.BoolVar(&o.HysteriaSalamander, "hy2-salamander", false, "Hysteria2: generate matching Salamander server/client settings")
 	f.StringVar(&o.RealityTarget, "target", "", "REALITY TLS target host:port")
 	f.StringVar(&directory, "output", "", "New private output directory")
 	_ = c.MarkFlagRequired("protocol")

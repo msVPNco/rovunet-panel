@@ -1,0 +1,349 @@
+{
+  "schema": 1,
+  "observed_at": "2026-11-13",
+  "publication": "private-review-only",
+  "automatic_installation": false,
+  "production_pins_changed": false,
+  "scope": "New source builds, not byte-for-byte reproduction of anonymous legacy transport assets",
+  "sources": [
+    {
+      "component": "xray",
+      "repository": "https://github.com/XTLS/Xray-core.git",
+      "upstream_commit": "676eaf66f8f05d4d558ee7a74b4736623d3feeb9",
+      "base_archive": "sources/xray-676eaf66f8f0.tar.gz",
+      "base_sha256": "334ebae98c308ba16ae071fbceacdcba64aa2ccf378141b3b41491896c476f59",
+      "patch": "patches/xray.patch",
+      "patch_sha256": "51af3563f586702d502e5649f2451917f16bd7bd9097c7cf2533fe0e12feb2c5",
+      "note": "Pinned Git tree plus complete tracked-file diff. Generated build directories excluded."
+    },
+    {
+      "component": "vaydns",
+      "repository": "https://github.com/net2share/vaydns.git",
+      "upstream_commit": "a0ff70110d5e96686ab8f4c8e1c44cd09be07a75",
+      "base_archive": "sources/vaydns-a0ff70110d5e.tar.gz",
+      "base_sha256": "241841086f54684b6318f12486adf7d8fbcb5352961a419623705e68d1bd2328",
+      "patch": "patches/vaydns.patch",
+      "patch_sha256": "150ec73c3dbf1fb8cd5441d4b32f3fdff5811a97e14369d4414bea1bb3a1485b",
+      "note": "Pinned Git tree plus complete tracked-file diff. Generated build directories excluded."
+    },
+    {
+      "component": "awg",
+      "repository": "https://github.com/amnezia-vpn/amneziawg-go.git",
+      "upstream_commit": "b5928efb6ca19f0153958460c3d141f04abc5c2e",
+      "base_archive": "sources/awg-b5928efb6ca1.tar.gz",
+      "base_sha256": "f21750bceefa4c69be7b444a51715377bbc609500727bf7c8e73fad36aae6f15",
+      "patch": "patches/awg.patch",
+      "patch_sha256": "d6bf7a70026dfd267f493f0870ead9b32391114be8d4b6ef8efb591fde1bfadd",
+      "note": "Pinned Git tree plus complete tracked-file diff. Generated build directories excluded."
+    },
+    {
+      "component": "caddy",
+      "repository": "https://github.com/caddyserver/caddy.git",
+      "upstream_commit": "72dd0fb067f6d7826c7f79907670ba4a713bfe37",
+      "base_archive": "sources/caddy-72dd0fb067f6.tar.gz",
+      "base_sha256": "6eaa44ec99561bc46c7d9083d68c4eee2e8bbb725f544896517a2bdc1e3d7942",
+      "patch": "patches/caddy.patch",
+      "patch_sha256": "6b161fa1e9c0908a824dc0946197065970263da2d445a381c86e20edbc6adc59",
+      "note": "Pinned Git tree plus complete tracked-file diff. Generated build directories excluded."
+    },
+    {
+      "component": "forwardproxy",
+      "repository": "https://github.com/klzgrad/forwardproxy.git",
+      "upstream_commit": "e747854e78743dba85c039b38ed185fb11d93667",
+      "base_archive": "sources/forwardproxy-e747854e7874.tar.gz",
+      "base_sha256": "6a14b570d8ce3c84c3cb85cb7b66ebf75c949b86bbea0462ac4d792b27304b5b",
+      "patch": "patches/forwardproxy.patch",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "note": "Pinned Git tree plus complete tracked-file diff. Generated build directories excluded."
+    },
+    {
+      "component": "slipstream",
+      "repository": "https://github.com/Mygod/slipstream-rust.git",
+      "upstream_commit": "7de506b222c83ae97a19a618e33fe26899af1bd5",
+      "base_archive": "sources/slipstream-7de506b222c8.tar.gz",
+      "base_sha256": "9db8c56151f0967717f68758f8e784f965493dce82a8e618ece231276bc6a90e",
+      "patch": "patches/slipstream.patch",
+      "patch_sha256": "4fff650f2c6821e661044ee6f052ecfe4a7d0cd5c16cafb576f047af7ffa7bbe",
+      "note": "Pinned Git tree plus complete tracked-file diff. Generated build directories excluded."
+    },
+    {
+      "component": "picoquic",
+      "repository": "https://github.com/Mygod/slipstream-picoquic",
+      "upstream_commit": "d4a865c54929cfeb2a61902a0340b8758ad5492e",
+      "base_archive": "sources/picoquic-d4a865c54929.tar.gz",
+      "base_sha256": "87764ad3120e814dc7042dc37de6fbc9ac4174b41b03f9811de7451e205abb24",
+      "patch": "patches/picoquic.patch",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "note": "Pinned Git tree plus complete tracked-file diff. Generated build directories excluded."
+    },
+    {
+      "component": "picotls",
+      "repository": "https://github.com/h2o/picotls.git",
+      "upstream_commit": "5a4461d8a3948d9d26bf861e7d90cb80d8093515",
+      "base_archive": "sources/picotls-5a4461d8a394.tar.gz",
+      "base_sha256": "6922f4d083dd67063762c7f460df29290c05b49d6dd3f50af1253cb3fe36fd73",
+      "patch": "patches/picotls.patch",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "note": "Pinned Git tree plus complete tracked-file diff. Generated build directories excluded."
+    },
+    {
+      "component": "dnstt",
+      "module": "www.bamsoftware.com/git/dnstt.git",
+      "version": "v1.20260501.0",
+      "source_commit": "0c5c52a57d899c05428c116898941761a2ed83c2",
+      "repository": "https://www.bamsoftware.com/git/dnstt",
+      "module_sum": "h1:8i4tQWwBCrhsn6+c8fpjSIyaa+u0MOvdOa1FIxNOz6M=",
+      "go_mod_sum": "h1:J4kVFxhn2bZqSqfE9l7keNTtsc+dRR6+uNH4kPu5VIs=",
+      "source_method": "Official module zip authenticated by Go module checksums; git remote tag independently matched",
+      "rejected_candidate": {
+        "repository": "https://github.com/tladesignz/dnstt",
+        "commit": "f1b9b97a269f83bad41d2ceef291b4d2c161cd11",
+        "reason": "Tor-managed CLI lacks the panel positional listener invocation"
+      },
+      "patch_scope": "Dependency updates and CLI argument compatibility only; no protocol or cryptography change",
+      "production_pins_changed": false,
+      "base_archive": "sources/dnstt-v1.20260501.0-module.zip",
+      "base_sha256": "e19ef0719ec5de95b5fc38f6ea36646a46e815e22c78b56f25a8dbb399866ee5",
+      "patch": "patches/dnstt.patch",
+      "patch_sha256": "5c605c6b8369c1c58186c5a52e12fc1cbcd75351150e8c13a906a8cca856a018"
+    }
+  ],
+  "assets": [
+    {
+      "name": "amneziawg-go-linux-amd64",
+      "sha256": "61b9a9d0507dbb66e70726aa34650f4b57b17f5da15d13befb89a93517573cf0",
+      "size": 3408032,
+      "architecture": "amd64",
+      "abi": {
+        "name": "amneziawg-go-linux-amd64",
+        "elf": "ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=QR5HkxdHs9aCYup4NVR8/iG81vtFNsA2TQSom4c-B/MurvD8_50kNVTgzFOAoE/KBpiQ0fgFumbMxX8mS5_, BuildID[sha1]=4ebc323c5299d7b88ed0eb6461442061c4c6e845, stripped",
+        "needed": [],
+        "maximum_required_glibc": null
+      },
+      "go_build_information": "build-records/amneziawg-go-linux-amd64.go-buildinfo.txt",
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "amneziawg-go-linux-arm64",
+      "sha256": "fb566f6009072a626890a4279144988d312709d1b6094471829c1a496490115f",
+      "size": 3211424,
+      "architecture": "arm64",
+      "abi": {
+        "name": "amneziawg-go-linux-arm64",
+        "elf": "ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, Go BuildID=TXvjKf_Mk7tFx4d_gqTv/1zRbvPo2VBxuaJ66Ki_E/-USRXXIYXZEVYgfX6v6G/N32EEhZpxYHnpj9lqE8D, BuildID[sha1]=7781e4591d3b12dd58c09e4ac39dedfb35a0785c, stripped",
+        "needed": [],
+        "maximum_required_glibc": null
+      },
+      "go_build_information": "build-records/amneziawg-go-linux-arm64.go-buildinfo.txt",
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "caddy-naive-linux-amd64",
+      "sha256": "9fd0175c902c1f5c659a8744c76e2f95966f41b2bfd4eb6af8cb01b68670f1b2",
+      "size": 57942176,
+      "architecture": "amd64",
+      "abi": {
+        "name": "caddy-naive-linux-amd64",
+        "elf": "ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=XmWOa3yReK8ODUyeicQ5/bJQ7i9bab40XG8lUzend/QIWZSHuDsyEBXZPR1C8c/ypVgljB4c7GcxuPpNwEw, BuildID[sha1]=1a9037fa6c4e6ab92560185b511b8776d5099b7f, stripped",
+        "needed": [],
+        "maximum_required_glibc": null
+      },
+      "go_build_information": "build-records/caddy-naive-linux-amd64.go-buildinfo.txt",
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "caddy-naive-linux-arm64",
+      "sha256": "ec22070a99f0447ed99b2c0cd0d9cba80e4cb4c8db0723e7690401cd4fc740f6",
+      "size": 53870752,
+      "architecture": "arm64",
+      "abi": {
+        "name": "caddy-naive-linux-arm64",
+        "elf": "ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, Go BuildID=8TTNDRr-AwFhESz_oCd4/rhgMwxR5ooHhpg5LiKwa/REq6ECSCPWjiqwlDfbe7/XUZIYVHB4Ezp3mODPbqr, BuildID[sha1]=a503e5745380ffcab78b27920eb14f4672b19458, stripped",
+        "needed": [],
+        "maximum_required_glibc": null
+      },
+      "go_build_information": "build-records/caddy-naive-linux-arm64.go-buildinfo.txt",
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "dnstt-server-linux-amd64",
+      "sha256": "038780278175639097dcbd14366b0764315e7dde5932824ce2df231da56d4e60",
+      "size": 4792480,
+      "architecture": "amd64",
+      "abi": {
+        "name": "dnstt-server-linux-amd64",
+        "elf": "ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=thOHojCB6UhV4BXM1X8j/Mco-dZZQ0WxlhxUJY2t8/rDSSbEk3-UYLS5OwzcD_/461Ju708Hd9LvyQKWjwc, BuildID[sha1]=ad615699d3983803dabd2c40c630fc9142350831, stripped",
+        "needed": [],
+        "maximum_required_glibc": null
+      },
+      "go_build_information": "build-records/dnstt-server-linux-amd64.go-buildinfo.txt",
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "dnstt-server-linux-arm64",
+      "sha256": "e4d9ff4ef63e5e1a3e8d96dac128859396b1e709bab83a15975aa9e79cfe359b",
+      "size": 3604640,
+      "architecture": "arm64",
+      "abi": {
+        "name": "dnstt-server-linux-arm64",
+        "elf": "ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, Go BuildID=2b897IHEKbG2URdYryYo/BPA59gDaZktjuhTbRfIF/bwF4ZjCNg0PtjRQe7f07/5hBjWsnjjTcAh8FU1-HL, BuildID[sha1]=45c67f9c78a68c5572711592b9664f77f33377c3, stripped",
+        "needed": [],
+        "maximum_required_glibc": null
+      },
+      "go_build_information": "build-records/dnstt-server-linux-arm64.go-buildinfo.txt",
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "slipstream-client-linux-amd64",
+      "sha256": "c3b026e73d2ac8c9e56824ce2b8d795427b15364bee902e4e749b68d8998f278",
+      "size": 2242248,
+      "architecture": "amd64",
+      "abi": {
+        "name": "slipstream-client-linux-amd64",
+        "elf": "ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=be13db300498c3d5f323fc24a55155c365078a93, stripped",
+        "needed": [
+          "libssl.so.3",
+          "libcrypto.so.3",
+          "libgcc_s.so.1",
+          "libc.so.6",
+          "ld-linux-x86-64.so.2"
+        ],
+        "maximum_required_glibc": "2.34"
+      },
+      "go_build_information": null,
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "slipstream-client-linux-arm64",
+      "sha256": "faf7570486b0f9d2f7f41da8f3ff5721003c03c3c03e81f9ec092e9efca959eb",
+      "size": 6454152,
+      "architecture": "arm64",
+      "abi": {
+        "name": "slipstream-client-linux-arm64",
+        "elf": "ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, BuildID[sha1]=d4a059b8e70137baf010e257224bb307b18684f6, for GNU/Linux 3.7.0, stripped",
+        "needed": [
+          "libgcc_s.so.1",
+          "libc.so.6",
+          "ld-linux-aarch64.so.1"
+        ],
+        "maximum_required_glibc": "2.38"
+      },
+      "go_build_information": null,
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "slipstream-server-linux-amd64",
+      "sha256": "8afffbc7741d00fd0191eea604603af64838b0ba31ee28b9d31998fdab724e27",
+      "size": 2304680,
+      "architecture": "amd64",
+      "abi": {
+        "name": "slipstream-server-linux-amd64",
+        "elf": "ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=59dfcca16a1814afe56474f3a850f7bca4113708, stripped",
+        "needed": [
+          "libssl.so.3",
+          "libcrypto.so.3",
+          "libgcc_s.so.1",
+          "libc.so.6",
+          "ld-linux-x86-64.so.2"
+        ],
+        "maximum_required_glibc": "2.34"
+      },
+      "go_build_information": null,
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "slipstream-server-linux-arm64",
+      "sha256": "904db45ce90f7b03b438f28c0159e854b5cec397e391770b10799b96d0e001d6",
+      "size": 6519768,
+      "architecture": "arm64",
+      "abi": {
+        "name": "slipstream-server-linux-arm64",
+        "elf": "ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, BuildID[sha1]=2cd3d675e50cd889bca53abe69a322fa6590ffa3, for GNU/Linux 3.7.0, stripped",
+        "needed": [
+          "libgcc_s.so.1",
+          "libc.so.6",
+          "ld-linux-aarch64.so.1"
+        ],
+        "maximum_required_glibc": "2.38"
+      },
+      "go_build_information": null,
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "vaydns-server-linux-amd64",
+      "sha256": "640cfba6a8dca5feb0baa2597c87c46751af86636e32cd1c69820e88ae26038f",
+      "size": 5492896,
+      "architecture": "amd64",
+      "abi": {
+        "name": "vaydns-server-linux-amd64",
+        "elf": "ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=3NXN2FDzMHf6CprdnpyW/J7m_gbk0FkcLIBj-hIe3/LTrBDJ0xiWJXLozsb_BS/KLxdo94ETAjnQf-X0C1y, BuildID[sha1]=4312905bdc73499aa362add9fdf4edcc0880d3f0, stripped",
+        "needed": [],
+        "maximum_required_glibc": null
+      },
+      "go_build_information": "build-records/vaydns-server-linux-amd64.go-buildinfo.txt",
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "vaydns-server-linux-arm64",
+      "sha256": "275f32a6510c79169c514d9b401b35a3371fc00deccb834bc5e1b6fd3510343c",
+      "size": 4194464,
+      "architecture": "arm64",
+      "abi": {
+        "name": "vaydns-server-linux-arm64",
+        "elf": "ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, Go BuildID=CZPVPkyKcc-HyzHi0yys/Vv46pkHAcysft5zskcuo/3t3gyRkVWTNWi7JECJ2w/dZH1DyXX46XRO2dpFk4V, BuildID[sha1]=87c103e9555c272969e4d304e6d1c52946a9cbf0, stripped",
+        "needed": [],
+        "maximum_required_glibc": null
+      },
+      "go_build_information": "build-records/vaydns-server-linux-arm64.go-buildinfo.txt",
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "xray-linux-amd64",
+      "sha256": "a4b245ad9b0b44a4ce2d6db3356705361a6512c82be16edf62be053a182eefec",
+      "size": 32260256,
+      "architecture": "amd64",
+      "abi": {
+        "name": "xray-linux-amd64",
+        "elf": "ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=-M3AAtAZ6xylM_IQeBL7/ur3J26BPHtH_iqgecOjX/C9vgZUZeKB5_zQmOuyXW/teTmq1crqZ3x7UwelzHl, BuildID[sha1]=03337d4316231d4fe056eebfb71362efef5509ed, stripped",
+        "needed": [],
+        "maximum_required_glibc": null
+      },
+      "go_build_information": "build-records/xray-linux-amd64.go-buildinfo.txt",
+      "state": "candidate-only; production catalog/pins unchanged"
+    },
+    {
+      "name": "xray-linux-arm64",
+      "sha256": "537c2dc9e185c5fc4189fcb1c82f5d3f7f491d1414fd02c12c6d2aafab8ed33c",
+      "size": 30015648,
+      "architecture": "arm64",
+      "abi": {
+        "name": "xray-linux-arm64",
+        "elf": "ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, Go BuildID=LEfg-U91NkKbQe5VMVN0/gJ3rzh-WavP5JkqhyUwZ/HWw2EdLMoS4dUEkN5jQ0/PG-viG3Nb187kIrGkRjg, BuildID[sha1]=d6e2b1eab0891ea67ec03e8f35f374e0e5377d48, stripped",
+        "needed": [],
+        "maximum_required_glibc": null
+      },
+      "go_build_information": "build-records/xray-linux-arm64.go-buildinfo.txt",
+      "state": "candidate-only; production catalog/pins unchanged"
+    }
+  ],
+  "toolchains": {
+    "go": "go1.27.4",
+    "rust": "rustc 1.100.0 (0ef1bc386 2026-11-09)\n",
+    "native_gcc": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "arm_gcc": "aarch64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "openssl_native_package": "3.0.13-0ubuntu3.16",
+    "arm_openssl_packages": "evidence/arm-openssl-packages.sha256"
+  },
+  "source_not_compiled": {
+    "picotls_test_only_gitlink": "deps/picotest a99858e0c33b97b24cd09ceae729f2be33ec01e1"
+  },
+  "license_texts": 348,
+  "notice_scope": "Linked Go module-root notices; resolved Rust crates; named native component notices. Not a conclusion that all licenses are mutually compatible.",
+  "open_acceptance": [
+    "Legacy installed bytes do not become authenticated exact-source builds by this reconstruction.",
+    "Slipstream amd64 needs GLIBC2.34/OpenSSL3; arm64 needs GLIBC2.38. Older supported Linux distributions need compatible rebuild and execution before promotion.",
+    "Go/Rust databases do not audit picoquic/picotls/OpenSSL/C AWG, build scripts or the applied local patches.",
+    "Caddy native Chromium Naive HTTP2/HTTP3, public recursive DNS, real released phone/ARM device and long-session/network-change acceptance remain incomplete.",
+    "No GitHub release or live host engine replacement is authorized by these files."
+  ]
+}

@@ -46,8 +46,22 @@ func (r *Router) serveTCP(ln net.Listener) {
 			conn.Close()
 			continue
 		}
+		r.tcpMu.Lock()
+		if r.closed() {
+			r.tcpMu.Unlock()
+			conn.Close()
+			<-slots
+			return
+		}
+		r.tcpConns[conn] = struct{}{}
+		r.tcpMu.Unlock()
 		go func() {
-			defer func() { <-slots }()
+			defer func() {
+				r.tcpMu.Lock()
+				delete(r.tcpConns, conn)
+				r.tcpMu.Unlock()
+				<-slots
+			}()
 			r.handleTCPConn(conn)
 		}()
 	}
@@ -63,15 +77,38 @@ func (r *Router) handleTCPConn(conn net.Conn) {
 	// per-connection writer keeps one slow client from stalling them.
 	out := make(chan []byte, r.tcpWriteQueue)
 	done := make(chan struct{})
-	defer close(done)
+	var queueMu sync.Mutex
+	closed := false
+	stop := func() {
+		queueMu.Lock()
+		if !closed {
+			closed = true
+			close(done)
+		}
+		queueMu.Unlock()
+	}
+	defer stop()
 	go func() {
+		defer func() {
+			stop()
+			for {
+				select {
+				case msg := <-out:
+					r.responseBytes.Add(-int64(len(msg)))
+				default:
+					return
+				}
+			}
+		}()
 		for {
 			select {
 			case <-done:
 				return
 			case msg := <-out:
 				conn.SetWriteDeadline(time.Now().Add(tcpWriteTimeout))
-				if _, err := conn.Write(msg); err != nil {
+				_, err := conn.Write(msg)
+				r.responseBytes.Add(-int64(len(msg)))
+				if err != nil {
 					abort(conn) // unblocks the reader below
 					return
 				}
@@ -81,26 +118,34 @@ func (r *Router) handleTCPConn(conn net.Conn) {
 	from := conn.RemoteAddr()
 	var overflow sync.Once
 	reply := func(msg []byte) {
-		select {
-		case <-done:
-			return // connection finished; a late answer has nowhere to go
-		default:
+		queueMu.Lock()
+		defer queueMu.Unlock()
+		if closed {
+			return
 		}
 		if len(msg) > 0xFFFF {
 			return
 		}
+		size := int64(len(msg) + 2)
+		if !reserve(&r.responseBytes, size, r.maxResponseBytes) {
+			r.budgetDrops.Add(1)
+			abort(conn)
+			return
+		}
+		peak(&r.responsePeak, r.responseBytes.Load())
 		framed := make([]byte, 2, 2+len(msg))
 		binary.BigEndian.PutUint16(framed, uint16(len(msg)))
 		framed = append(framed, msg...)
 		select {
 		case out <- framed:
 		default:
+			r.responseBytes.Add(-size)
 			// The client has stopped reading. Over TCP it expects every
 			// answer, so dropping some would leave each of those queries to
 			// time out; closing fails them all at once and the client retries
 			// on a new connection (RFC 7766), or on other paths (soar).
 			overflow.Do(func() {
-				log.Printf("tcp %s: client not reading, %d answers queued; resetting", from, r.tcpWriteQueue)
+				log.Printf("DNS TCP client not reading, %d answers queued; resetting", r.tcpWriteQueue)
 				abort(conn)
 			})
 		}

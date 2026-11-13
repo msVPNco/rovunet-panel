@@ -17,6 +17,9 @@
 
 ---
 
+**v1.21.2 — install, update, refresh the same subscription.** A fully eligible unlimited account gets24 subscription profiles on Android and current Windows. The update completes missing cores and migrates old Hy2 to Salamander while keeping account auth and subscription URLs. Then press **Update** on the saved subscription in the app; no replacement link is needed. Older Windows Beta keeps its supported entries; AWG needs the current client. [Release/compatibility notes](docs/releases/v1.21.2.md) · [Full qualification still open](docs/release-gates.json).
+
+
 Rovunet Panel is an open-source tool that turns a Linux server into a multi-protocol access server. It installs and manages each protocol as a systemd service, creates users and exports their client configurations, so every user has several independent connection paths instead of depending on one protocol or one network condition.
 
 ## Highlights
@@ -57,16 +60,18 @@ Rovunet Panel is an open-source tool that turns a Linux server into a multi-prot
 
 Suitability depends on the server, operator and network; these are guidelines, not guarantees. See [Protocols](docs/en/protocols.md) for details.
 
-**v1.21.1:** the tested full setup exports **24 Android configurations and 22 Windows configurations**, not 24 independent protocols. Counts depend on installed services and account eligibility. The released Windows client excludes AmneziaWG and SS2022. All four added protocols are excluded from traffic-limited accounts; the three new Xray protocols deny new sessions after expiry/removal, but established streams may continue. An exact simultaneous-device cap is not implemented. See [managed protocols and compatibility](docs/MANAGED-PROTOCOLS.md).
+**v1.21.2:** the tested full setup exports **24 Android configurations and 24 Windows configurations**, not 24 independent protocols. Counts depend on installed services and account eligibility. Current Windows receives both; public Beta0.1.1 skips unsupported AWG while retaining supported entries. All four added protocols are excluded from traffic-limited accounts; the three new Xray protocols deny new sessions after expiry/removal, but established streams may continue. An exact simultaneous-device cap is not implemented. See [managed protocols and compatibility](docs/MANAGED-PROTOCOLS.md).
 
-**Automatic complete setup (v1.21.1):** normal installation and Quick Wizard select the full tunnel set and both backends. Update adds missing protocol cores automatically, preserving existing users, keys, core names and subscription URLs. A configured 20-profile server grows to 24 Android / 22 Windows profiles without four manual installations. Incomplete base setups ask for missing DNS/domain settings during an interactive update. A valid NaiveProxy certificate, usable TUN device and free candidate ports are required; failures report the actual counts and a pending setup instead of claiming completion. `sudo rovunet complete-setup` resumes setup; `sudo rovunet install --custom` keeps selective installation available. Traffic-limited accounts retain their restricted protocol set.
+**Automatic complete setup (v1.21.2):** normal installation and Quick Wizard select the full tunnel set and both backends. Update adds missing protocol cores automatically, preserving existing users, keys, core names and subscription URLs. A configured 20-profile server grows to 24 Android / 24 current Windows profiles without four manual installations. Incomplete base setups ask for missing DNS/domain settings during an interactive update. A valid NaiveProxy certificate, usable TUN device and free candidate ports are required; failures report the actual counts and a pending setup instead of claiming completion. `sudo rovunet complete-setup` resumes setup; `sudo rovunet install --custom` keeps selective installation available. Traffic-limited accounts retain their restricted protocol set.
 
 ## Quick start
 
-On a fresh Ubuntu 20.04+ or Debian 10+ server, as root:
+On a fresh Ubuntu 24.04 LTS (tested) or systemd-based Debian (runtime compatibility required) server, as root:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v1.21.2/install.sh -o rovunet-install.sh
+python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="a8aaa38d979049fa5e42c9f8f444e519d28625d1d67872ddaeff2d0dfc6b3498", "Installer checksum mismatch"'
+sudo bash rovunet-install.sh
 ```
 
 The installer asks which protocols to enable, sets them up, creates the first user and prints that user's configurations. Then:

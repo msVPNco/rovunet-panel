@@ -67,6 +67,7 @@ with tempfile.TemporaryDirectory(prefix='rovunet-promotion.') as temporary:
     manifest = {'version': args.version, 'commit': args.commit, 'previous_version': '1.20.1-managed-preview.3',
                 'previous_sha256': '68f0c4d18a61db2f73d5120000be5557b42394e5ed4a60221c303460ae56746b',
                 'panel_sha256': digest(args.panel), 'display_names_only': True,
+                'approved_windows_core_additions': ['managed-awg', 'managed-ss2022'],
                 'source_url': 'https://github.com/msVPNco/rovunet-panel/tree/' + args.commit}
     (package / 'UPGRADE-MANIFEST.json').write_text(json.dumps(manifest, indent=2) + '\n')
     (package / 'START.txt').write_text('''Accepted preview.3 -> public release, Linux amd64 only.

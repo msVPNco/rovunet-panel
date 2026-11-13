@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -33,6 +34,15 @@ var rootCmd = &cobra.Command{
 	// A server still on the pre-rename layout is migrated by the first
 	// command run as root, before any command reads its config.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Validation/key generation/version queries are read-only with respect
+		// to the server. Restore authenticates and confirms before migration.
+		switch cmd.Name() {
+		case "backup-check", "backup-keygen", "restore":
+			return nil
+		}
+		if requested, _ := cmd.Flags().GetBool("version"); requested {
+			return nil
+		}
 		// post-update runs the migration itself, with its own error policy.
 		if cmd.Name() != "post-update" && migrate.Needed() && os.Geteuid() == 0 {
 			return migrate.Run(func(s string) { fmt.Println(s) })
@@ -54,10 +64,12 @@ func init() {
 
 	// Hidden internal command: called by 'update' after replacing the binary
 	// so that transport downloads and service regeneration use the new code.
-	rootCmd.AddCommand(&cobra.Command{
+	postUpdate := &cobra.Command{
 		Use:    "post-update",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			strict, _ := cmd.Flags().GetBool("strict")
+			var problems []error
 			// A failing post-update makes a pre-rename updater fall back to
 			// its own post-update code, which rebuilds the old-named
 			// services from /etc/slipgate paths. That is only safe while
@@ -66,23 +78,33 @@ func init() {
 			// Before loading config: it may still be under the old name.
 			if err := migrate.Run(func(s string) { fmt.Println(s) }); err != nil {
 				fmt.Fprintln(os.Stderr, "Migration failed:", err)
-				if migrate.Needed() {
+				if strict || migrate.Needed() {
 					return err // old layout untouched: the old fallback is safe
 				}
+				problems = append(problems, err)
 			}
-			cfg, _ := loadOrDefaultConfig()
+			cfg, loadErr := loadOrDefaultConfig()
+			if loadErr != nil {
+				fmt.Fprintln(os.Stderr, "Post-update pending: configuration could not be loaded; existing files retained")
+				if strict {
+					return loadErr
+				}
+				return nil
+			}
 			ctx := &actions.Context{
 				Args:   make(map[string]string),
 				Output: &actions.StdOutput{},
 				Config: cfg,
 			}
 			if err := handlers.HandlePostUpdate(ctx); err != nil {
-				fmt.Fprintln(os.Stderr, "Warning: post-update:", err)
+				fmt.Fprintln(os.Stderr, "Post-update pending:", err)
+				problems = append(problems, err)
 			}
 			// Units written by v1.8.0/v1.8.1 from the removed old command's
 			// path fail with 203/EXEC; point them at the installed binary.
 			if fixed, err := migrate.RepairUnits(); err != nil {
 				fmt.Fprintln(os.Stderr, "Warning: repairing units:", err)
+				problems = append(problems, err)
 			} else if len(fixed) > 0 {
 				migrate.Restart(fixed)
 				fmt.Printf("Repaired %d service(s) that still ran the old command\n", len(fixed))
@@ -90,18 +112,32 @@ func init() {
 			// Cores that serve a TLS certificate must restart after it renews.
 			if err := coreinstall.EnsureCertTimer(); err != nil {
 				fmt.Fprintln(os.Stderr, "Warning: certificate renewal timer:", err)
+				problems = append(problems, err)
 			}
 			// Users with an expiry need the hourly timer that removes them.
 			if cfg != nil {
 				if err := handlers.EnsureExpiryTimer(cfg); err != nil {
 					fmt.Fprintln(os.Stderr, "Warning: user expiry timer:", err)
+					problems = append(problems, err)
 				}
 			}
+			if len(problems) > 0 {
+				fmt.Fprintln(os.Stderr, "Update incomplete. Retry with the installed panel; recovery files are retained.")
+				if strict {
+					return errors.Join(problems...)
+				}
+				// Historical updaters replay old migration code on nonzero;
+				// keep their compatibility handoff safe, with an explicit error.
+				return nil
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), "Post-update complete")
 			return nil
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,
-	})
+	}
+	postUpdate.Flags().Bool("strict", false, "Return a failing status when any required post-update step is pending")
+	rootCmd.AddCommand(postUpdate)
 }
 
 func registerActionCommands() {

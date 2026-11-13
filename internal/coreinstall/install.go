@@ -171,7 +171,7 @@ func EnsureXray() error {
 	if _, err := os.Stat(XrayPath); err == nil {
 		return nil
 	}
-	url := fmt.Sprintf("%s/xray-%s-%s", binary.DownloadBase(), runtime.GOOS, runtime.GOARCH)
+	url := fmt.Sprintf("%s/xray-%s-%s", binary.RuntimeDownloadBase(), runtime.GOOS, runtime.GOARCH)
 	if err := os.MkdirAll(filepath.Dir(XrayPath), 0755); err != nil {
 		return err
 	}

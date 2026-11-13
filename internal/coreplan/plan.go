@@ -39,6 +39,12 @@ type Options struct {
 	Egress   string `json:"egress,omitempty"`
 	// DedicatedXray keeps automatic setup's new protocols off the legacy engine.
 	DedicatedXray bool `json:"dedicatedXray,omitempty"`
+	// HysteriaSalamander masks Hy2 datagrams. It is opt-in for existing
+	// installations; both the server and refreshed clients must use it.
+	HysteriaSalamander bool `json:"hysteriaSalamander,omitempty"`
+	// Distinguish an operator's explicit plain-mode choice from old options
+	// that predate the automatic Salamander migration.
+	HysteriaObfsConfigured bool `json:"hysteriaObfsConfigured,omitempty"`
 }
 
 // linkLabel is the protocol part of a client link's name: the protocol, or the
@@ -235,6 +241,9 @@ func validHost(s string) bool {
 // hostnames pasted as markdown links.
 func Validate(o *Options) error {
 	Normalize(o)
+	if o.HysteriaSalamander && o.Protocol != "hysteria2" {
+		return fmt.Errorf("Salamander is supported only for hysteria2")
+	}
 	if o.Port < 1 || o.Port > 65535 || o.Host == "" {
 		return fmt.Errorf("host, port 1..65535 and devices 1..1000 required")
 	}
@@ -322,6 +331,14 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 	profiles := []string{}
 	extension := "txt"
 	peers := []object{}
+	obfsPassword := ""
+	if o.HysteriaSalamander {
+		key, err := st.derive("hysteria2-salamander", Client{}, 32)
+		if err != nil {
+			return Bundle{}, err
+		}
+		obfsPassword = base64.RawURLEncoding.EncodeToString(key)
+	}
 	for _, c := range clients {
 		name := fmt.Sprintf("Rovunet-%s-%s", o.linkLabel(), c.Name)
 		q := url.Values{}
@@ -390,6 +407,10 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 			users = append(users, object{"auth": credential})
 			scheme = "hysteria2"
 			q.Set("sni", o.SNI)
+			if obfsPassword != "" {
+				q.Set("obfs", "salamander")
+				q.Set("obfs-password", obfsPassword)
+			}
 		case "wireguard":
 			b, err := st.derive(o.Protocol, c, 32)
 			if err != nil {
@@ -437,6 +458,9 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 		inbound["protocol"] = "hysteria"
 		inbound["settings"] = object{"version": 2, "users": users}
 		stream = object{"network": "hysteria", "security": "tls", "hysteriaSettings": object{"version": 2}}
+		if obfsPassword != "" {
+			stream["finalmask"] = object{"udp": []object{{"type": "salamander", "settings": object{"password": obfsPassword}}}}
+		}
 	case "wireguard":
 		inbound["protocol"] = "wireguard"
 		inbound["settings"] = object{"secretKey": serverPrivate, "address": []string{"10.77.0.1/32"}, "peers": peers, "noKernelTun": true, "mtu": 1280}
