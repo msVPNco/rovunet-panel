@@ -37,7 +37,12 @@ def api(endpoint, payload=None):
 
 
 def get_release():
-    release = api(f'repos/{REPOSITORY}/releases/tags/{TAG}')
+    # A draft whose tag has not been created yet is not returned by the
+    # release-by-tag REST endpoint. The authenticated collection includes it.
+    releases = api(f'repos/{REPOSITORY}/releases?per_page=100')
+    matches = [release for release in releases if release['tag_name'] == TAG]
+    assert len(matches) == 1, 'Expected exactly one matching release'
+    release = matches[0]
     assert release['tag_name'] == TAG, 'Unexpected release tag'
     assert release['target_commitish'] == COMMIT, 'Unexpected source commit'
     assert release['prerelease'] is False, 'Unexpected prerelease'
@@ -140,3 +145,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
