@@ -9,12 +9,13 @@
 #   sudo ./dns-resolvers.sh report [path]        # rank a previously-captured log file
 #
 # Notes:
-#   - Shows public resolver IPs (1.1.1.1, 8.8.8.8, ...), not end-user IPs.
-#     This is a property of DNS tunneling, not a limitation of this script.
+#   - Shows immediate query sources: often public/shared resolvers, sometimes
+#     direct clients. A source address does not identify a device or account.
 #   - Excludes 127.0.0.0/8 (rovunet-dnsrouter -> local tunnel backends).
 #   - Requires tcpdump. Reverse-DNS lookups use `dig` or `host` if available.
 
 set -eu
+umask 077
 
 IFACE="${IFACE:-any}"
 FILTER='udp dst port 53 and not src net 127.0.0.0/8'
@@ -28,7 +29,7 @@ need_root() {
 }
 
 need_cmd() {
-    command -v "$1" >/dev/null 2>&1 || {
+    command -v "$1" > /dev/null 2>&1 || {
         echo "error: '$1' not found in PATH" >&2
         exit 1
     }
@@ -43,10 +44,10 @@ extract_src_ip() {
 rank_with_ptr() {
     sort | uniq -c | sort -rn | while read -r count ip; do
         ptr=""
-        if command -v dig >/dev/null 2>&1; then
-            ptr=$(dig +short +time=1 +tries=1 -x "$ip" 2>/dev/null | head -1)
-        elif command -v host >/dev/null 2>&1; then
-            ptr=$(host -W 1 "$ip" 2>/dev/null | awk '/pointer/ {print $NF; exit}')
+        if command -v dig > /dev/null 2>&1; then
+            ptr=$(dig +short +time=1 +tries=1 -x "$ip" 2> /dev/null | head -1)
+        elif command -v host > /dev/null 2>&1; then
+            ptr=$(host -W 1 "$ip" 2> /dev/null | awk '/pointer/ {print $NF; exit}')
         fi
         printf "%6d  %-15s  %s\n" "$count" "$ip" "${ptr:-?}"
     done
@@ -59,8 +60,8 @@ cmd_snapshot() {
     echo "capturing inbound DNS on iface=$IFACE for ${secs}s..." >&2
     tmp=$(mktemp)
     trap 'rm -f "$tmp"' EXIT
-    timeout "$secs" tcpdump -nn -i "$IFACE" "$FILTER" -l 2>/dev/null \
-        | extract_src_ip > "$tmp" || true
+    timeout "$secs" tcpdump -nn -i "$IFACE" "$FILTER" -l 2> /dev/null |
+        extract_src_ip > "$tmp" || true
     total=$(wc -l < "$tmp" | tr -d ' ')
     uniq_count=$(sort -u "$tmp" | wc -l | tr -d ' ')
     echo "captured $total queries from $uniq_count distinct resolvers" >&2
@@ -73,10 +74,24 @@ cmd_snapshot() {
 cmd_watch() {
     need_root
     need_cmd tcpdump
-    tmp=$(mktemp)
-    trap 'rm -f "$tmp"; kill 0 2>/dev/null; exit 0' INT TERM EXIT
-    tcpdump -nn -i "$IFACE" "$FILTER" -l 2>/dev/null \
-        | extract_src_ip >> "$tmp" &
+    capture_dir=$(mktemp -d)
+    tmp="$capture_dir/queries"
+    fifo="$capture_dir/capture"
+    : > "$tmp"
+    mkfifo "$fifo"
+    tcpdump -nn -i "$IFACE" "$FILTER" -l > "$fifo" 2> /dev/null &
+    capture_pid=$!
+    extract_src_ip < "$fifo" >> "$tmp" &
+    extract_pid=$!
+    cleanup_watch() {
+        trap - INT TERM EXIT
+        kill "$capture_pid" "$extract_pid" 2> /dev/null || true
+        wait "$capture_pid" "$extract_pid" 2> /dev/null || true
+        rm -f "$tmp" "$fifo"
+        rmdir "$capture_dir"
+    }
+    trap 'exit 0' INT TERM
+    trap cleanup_watch EXIT
     while :; do
         clear
         echo "live DNS resolver tally (Ctrl-C to stop) — iface=$IFACE"
@@ -94,14 +109,24 @@ cmd_log() {
     path="${1:-$DEFAULT_LOG}"
     need_root
     need_cmd tcpdump
+    if [ -L "$path" ] || { [ -e "$path" ] && [ ! -f "$path" ]; }; then
+        echo "error: log destination must be a regular file" >&2
+        exit 1
+    fi
+    : >> "$path"
+    chmod 600 "$path"
     echo "logging inbound DNS source IPs to $path (Ctrl-C to stop)" >&2
-    tcpdump -nn -i "$IFACE" "$FILTER" -l 2>/dev/null \
-        | extract_src_ip >> "$path"
+    echo "Opt-in resolver capture; configure retention as described in docs/security/privacy.md." >&2
+    tcpdump -nn -i "$IFACE" "$FILTER" -l 2> /dev/null |
+        extract_src_ip >> "$path"
 }
 
 cmd_report() {
     path="${1:-$DEFAULT_LOG}"
-    [ -r "$path" ] || { echo "error: cannot read $path" >&2; exit 1; }
+    [ -r "$path" ] || {
+        echo "error: cannot read $path" >&2
+        exit 1
+    }
     total=$(wc -l < "$path" | tr -d ' ')
     uniq_count=$(sort -u "$path" | wc -l | tr -d ' ')
     echo "report from $path: $total queries, $uniq_count distinct resolvers"
@@ -117,10 +142,25 @@ usage() {
 }
 
 case "${1:-}" in
-    snapshot) shift; cmd_snapshot "$@" ;;
-    watch)    shift; cmd_watch ;;
-    log)      shift; cmd_log "$@" ;;
-    report)   shift; cmd_report "$@" ;;
-    ""|-h|--help|help) usage ;;
-    *) echo "unknown command: $1" >&2; usage ;;
+    snapshot)
+        shift
+        cmd_snapshot "$@"
+        ;;
+    watch)
+        shift
+        cmd_watch
+        ;;
+    log)
+        shift
+        cmd_log "$@"
+        ;;
+    report)
+        shift
+        cmd_report "$@"
+        ;;
+    "" | -h | --help | help) usage ;;
+    *)
+        echo "unknown command: $1" >&2
+        usage
+        ;;
 esac

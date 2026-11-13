@@ -169,8 +169,8 @@ func TestSubscriptionUpgradeKeepsExistingURLAndTwentyProfiles(t *testing.T) {
 				t.Fatalf("missing new profile %s", id)
 			}
 		}
-		if got := len(savedSubscription(t, user, "windows").Items); got != 22 {
-			t.Fatalf("Windows profiles=%d, want 22", got)
+		if got := len(savedSubscription(t, user, "windows").Items); got != 24 {
+			t.Fatalf("Windows profiles=%d, want 24", got)
 		}
 		cfg, err = config.LoadFrom(path)
 		if err != nil {

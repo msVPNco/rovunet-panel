@@ -31,5 +31,8 @@ func Prepare(name string, users []config.UserConfig) error {
 	if st.Paused {
 		return fmt.Errorf("core has no active eligible account")
 	}
+	if err := prepareAPISocket(name, st.APISocket); err != nil {
+		return err
+	}
 	return TestConfig(filepath.Join(dir, "server.json"))
 }

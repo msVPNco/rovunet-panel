@@ -1,12 +1,13 @@
 name: Release
 
-# main's version bump is the release request. Draft assets are complete and
-# tested before publication; later pushes for an existing version skip it.
+# Publication is an explicit operation after the production gates are reviewed.
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Exact reviewed stable tag matching Makefile
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -17,15 +18,21 @@ concurrency:
 
 jobs:
   release:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+    environment: production-release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Pick the release tag
         id: tag
         env:
           GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.tag }}
         run: |
-          if [[ "$GITHUB_REF_TYPE" == tag ]]; then tag="$GITHUB_REF_NAME"; else tag="v$(make -s print-version)"; fi
+          tag="$REQUESTED_TAG"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           test "$tag" = "v$(make -s print-version)"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           if existing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" 2>/dev/null); then
@@ -36,11 +43,36 @@ jobs:
             fi
           fi
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         if: steps.tag.outputs.skip != 'true'
         with:
           go-version: '1.27.4'
 
+      - name: Report full qualification and validate the owner-authorized functional draft
+        if: steps.tag.outputs.skip != 'true'
+        run: |
+          python3 scripts/check-release-gates.py --report-only
+          python3 scripts/check-functional-release.py --tag "${{ steps.tag.outputs.tag }}"
+
+      - name: Install pinned review tools
+        if: steps.tag.outputs.skip != 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/review-tools"
+          GOBIN="$RUNNER_TEMP/review-tools" go install mvdan.cc/sh/v3/cmd/shfmt@v3.14.1
+          GOBIN="$RUNNER_TEMP/review-tools" go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          archive="$RUNNER_TEMP/shellcheck.tar.xz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 2 --max-time 120 --output "$archive"             https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
+          printf '%s  %s\n' 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198 "$archive" | sha256sum --check -
+          tar -xJf "$archive" -C "$RUNNER_TEMP"
+          cp "$RUNNER_TEMP/shellcheck-v0.11.0/shellcheck" "$RUNNER_TEMP/review-tools/"
+          echo "$RUNNER_TEMP/review-tools" >> "$GITHUB_PATH"
+      - name: Shell lint, release authority and source advisories
+        if: steps.tag.outputs.skip != 'true'
+        run: |
+          bash scripts/check-shell.sh
+          python3 scripts/test-release-auth.py
+          python3 scripts/check-release-gates.py --report-only
+          govulncheck ./...
       - name: Build pinned validation core and source archive
         if: steps.tag.outputs.skip != 'true'
         run: |
@@ -127,6 +159,14 @@ jobs:
             --engine "$RELEASE_ASSETS/amneziawg-go-linux-amd64" \
             --tool "$RELEASE_ASSETS/awg-linux-amd64" --work "$RUNNER_TEMP/complete-setup-test"
 
+      - name: Isolated bootstrap, subscription containment and service restart
+        if: steps.tag.outputs.skip != 'true'
+        run: |
+          sudo python3 scripts/test-bootstrap.py --work "$RUNNER_TEMP/bootstrap-test"
+          sudo python3 scripts/test-subscription-boundary.py --panel "$RELEASE_ASSETS/rovunet-linux-amd64" --work "$RUNNER_TEMP/subscription-boundary"
+          sudo python3 scripts/test-encrypted-backup-cli.py --panel "$RELEASE_ASSETS/rovunet-linux-amd64" --work "$RUNNER_TEMP/encrypted-backup"
+          sudo python3 scripts/test-router-systemd.py --panel "$RELEASE_ASSETS/rovunet-linux-amd64" --work "$RUNNER_TEMP/router-systemd"
+
       - name: Package accepted preview upgrade and checksums
         if: steps.tag.outputs.skip != 'true'
         run: |
@@ -134,11 +174,23 @@ jobs:
           python3 scripts/package-preview-promotion.py --panel "$RELEASE_ASSETS/rovunet-linux-amd64" \
             --commit "$GITHUB_SHA" --version "${tag#v}" --output "$RELEASE_ASSETS"
           cp LICENSE "$RELEASE_ASSETS/LICENSE-panel.txt"
+          tar -czf "$RELEASE_ASSETS/PANEL-THIRD-PARTY-LICENSES.tar.gz" NOTICE.md third_party_licenses
+          cp install.sh "$RELEASE_ASSETS/install.sh"
+          git archive --format=tar.gz --prefix=rovunet-panel/ --output="$RELEASE_ASSETS/panel-source.tar.gz" HEAD
           cd "$RELEASE_ASSETS"
-          sha256sum * > SHA256SUMS
-          sha256sum --check SHA256SUMS
+          sha256sum * > BUILD-SHA256SUMS.txt
+          sha256sum --check BUILD-SHA256SUMS.txt
 
-      - name: Publish verified assets
+      - name: Keep the tested assets for Windows-local signing
+        if: steps.tag.outputs.skip != 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rovunet-${{ steps.tag.outputs.tag }}-unsigned
+          path: ${{ env.RELEASE_ASSETS }}/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Prepare tested draft without publishing
         if: steps.tag.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -149,5 +201,6 @@ jobs:
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Rovunet Panel $tag" --notes-file "$RUNNER_TEMP/notes.md"
           fi
+          test "$(gh release view "$tag" --json isDraft --jq .isDraft)" = true
           gh release upload "$tag" "$RELEASE_ASSETS"/* --clobber
-          gh release edit "$tag" --draft=false --latest --notes-file "$RUNNER_TEMP/notes.md"
+          echo 'Tested draft ready. Final acceptance, SHA256SUMS and the production signature are added from the reviewed Windows-local vault before publication.' >> "$GITHUB_STEP_SUMMARY"

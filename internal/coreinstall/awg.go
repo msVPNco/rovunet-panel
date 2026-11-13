@@ -49,7 +49,7 @@ func ensureEngine(protocol string) error {
 			return err
 		}
 		// binary.Download verifies the asset against this release's SHA256SUMS.
-		tmp, err := binary.Download(fmt.Sprintf("%s/%s-linux-%s", binary.DownloadBase(), item.name, runtime.GOARCH), filepath.Dir(item.path))
+		tmp, err := binary.Download(fmt.Sprintf("%s/%s-linux-%s", binary.RuntimeDownloadBase(), item.name, runtime.GOARCH), filepath.Dir(item.path))
 		if err != nil {
 			return fmt.Errorf("download verified %s: %w", item.name, err)
 		}
@@ -59,7 +59,7 @@ func ensureEngine(protocol string) error {
 		}
 	}
 	if _, err := os.Stat(awgManifestPath()); os.IsNotExist(err) {
-		tmp, err := binary.Download(fmt.Sprintf("%s/awg-provenance-linux-%s.json", binary.DownloadBase(), runtime.GOARCH), filepath.Dir(AWGGoPath))
+		tmp, err := binary.Download(fmt.Sprintf("%s/awg-provenance-linux-%s.json", binary.RuntimeDownloadBase(), runtime.GOARCH), filepath.Dir(AWGGoPath))
 		if err != nil {
 			return err
 		}

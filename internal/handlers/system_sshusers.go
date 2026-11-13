@@ -36,6 +36,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 			{Value: "add", Label: "Add user"},
 			{Value: "bulk_add", Label: "Add multiple users (random creds)"},
 			{Value: "edit_password", Label: "Edit user password"},
+			{Value: "rotate_link", Label: "Replace subscription link (keep connection credentials)"},
 			{Value: "renew", Label: "Renew a stopped user"},
 			{Value: "remove", Label: "Remove user"},
 			{Value: "list", Label: "List users & configs"},
@@ -219,6 +220,26 @@ func handleSystemUsers(ctx *actions.Context) error {
 			}
 		}
 
+	case "rotate_link":
+		if username == "" {
+			var err error
+			username, err = prompt.String("Username", "")
+			if err != nil {
+				return err
+			}
+		}
+		if err := RotateSubscriptionLink(cfg, strings.TrimSpace(username), out); err != nil {
+			return actions.NewError(actions.SystemUsers, "subscription link replacement did not complete", err)
+		}
+		u := cfg.GetUser(strings.TrimSpace(username))
+		if u == nil {
+			return config.ErrConcurrentChange
+		}
+		out.Success("Subscription link replaced; connection credentials and account identity were kept")
+		out.Info("Previously imported configs retain their server access. This action revokes only the old download link.")
+		out.Print("Android: " + SubscriptionURL(cfg, *u))
+		out.Print("Windows: " + WindowsSubscriptionURL(cfg, *u))
+
 	case "edit_password":
 		if username == "" {
 			if len(cfg.Users) == 0 {
@@ -262,13 +283,20 @@ func handleSystemUsers(ctx *actions.Context) error {
 		updated := *cfg.GetUser(username) // keeps the user's expiry and limit
 		updated.Password = password
 		updated.SubToken = config.NewSubToken() // the old link stops working
-		if err := grantSSH(updated); err != nil {
-			return actions.NewError(actions.SystemUsers, "failed to update SSH password: "+err.Error(), err)
-		}
 		cfg.AddUser(updated)
 
 		if err := cfg.Save(); err != nil {
 			return actions.NewError(actions.SystemUsers, "failed to save config", err)
+		}
+		// Commit the source of truth before changing OS credentials. A stale
+		// concurrent command must not change SSH while its config save fails.
+		if err := grantSSH(updated); err != nil {
+			return actions.NewError(actions.SystemUsers, "password saved; SSH synchronization is pending; retry the password action", err)
+		}
+		if !updated.MeteredOnly() {
+			if err := system.TerminateSSHUserSessions(username); err != nil {
+				out.Warning("SSH password changed, but ending existing sessions was not confirmed")
+			}
 		}
 
 		if cfg.Warp.Enabled {

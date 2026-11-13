@@ -277,7 +277,7 @@ func handleQuickWizard(ctx *actions.Context) error {
 		return actions.NewError(actions.QuickWizard, "failed to create system user", err)
 	}
 	for _, dir := range []string{config.DefaultConfigDir, config.DefaultTunnelDir} {
-		if err := system.EnsureDir(dir, config.SystemUser); err != nil {
+		if err := system.EnsureDir(dir, "root"); err != nil {
 			return actions.NewError(actions.QuickWizard, fmt.Sprintf("failed to create %s", dir), err)
 		}
 	}

@@ -15,7 +15,7 @@ sudo rovunet update
 
 <div dir="rtl">
 
-آپدیت آخرین release را دانلود می‌کند، آن را با SHA256SUMS همان release تأیید می‌کند، باینری را به‌صورت اتمیک جایگزین می‌کند (و اگر نصب خطا بدهد به نسخهٔ قبل برمی‌گردد)، باینری‌های ترنسپورت را تازه می‌کند و سرویس‌ها را دوباره می‌سازد. تونل‌ها، کاربران و کلیدها دست نمی‌خورند و لینک‌های فعلی کلاینت‌ها کار می‌کنند.
+در نسخهٔ ۱.۲۱.۲، پیش از جایگزینی فایل، امضای فهرست انتشار و هش فایل با کلید عمومی تولیدیِ داخل پنل تأیید می‌شود. نسخهٔ بازیابی خصوصی نگه داشته می‌شود و کار ناتمام گزارش می‌شود. آپدیت معمولی هسته‌های جاافتاده را اضافه و Hy2 قدیمی را یک‌بار با حفظ رمز کاربر به Salamander منتقل می‌کند. سپس در اپ **Update همان اشتراک ذخیره‌شده** را بزنید؛ اشتراک را حذف نکنید و لینک تازه نفرستید. انتخاب دستیِ حالت سادهٔ Hy2 و توقف سرویس‌ها حفظ می‌شود. پنل قدیمی نخستین ارتقا را با روش تأیید خودش انجام می‌دهد؛ آپدیت امضاشده پس از آن برقرار است. [محدوده و سازگاری نسخه](../releases/v1.21.2.md).
 
 ### مهاجرت از نام قبلی
 
@@ -36,8 +36,7 @@ sudo rovunet tunnel status
 </div>
 
 ```bash
-curl -fsSL -o /tmp/rovunet https://github.com/msVPNco/rovunet-panel/releases/latest/download/rovunet-linux-amd64
-sudo install -m 755 /tmp/rovunet /usr/local/bin/rovunet
+# First use the authenticated installer from Getting started.
 sudo rovunet post-update
 ```
 
@@ -51,14 +50,15 @@ sudo rovunet post-update
 
 ```bash
 sudo rovunet backup                      # asks: save to a file, or print text to copy
-sudo rovunet backup /root/rovunet-backup.txt
-sudo rovunet restore /root/rovunet-backup.txt
-ssh root@old rovunet backup - | ssh root@new rovunet restore - --yes   # server to server
+sudo rovunet backup /root/rovunet-backup.age
+sudo rovunet backup-check /root/rovunet-backup.age
+sudo rovunet restore /root/rovunet-backup.age
+# Automated transfer: see ../security/encrypted-backups.md
 ```
 
 <div dir="rtl">
 
-بکاپ یک بلوک متن بین ⁦`-----BEGIN ROVUNET BACKUP-----⁦`⁩ و ⁦`⁩-----END ROVUNET BACKUP-----`⁩ است. همهٔ کلیدهای خصوصی و رمزها در آن است: خصوصی نگهش دارید. بکاپ‌های ساخته‌شده با نام قبلی هم بازیابی می‌شوند. مصرف تاکنونی هر کاربر هم در بکاپ است، پس بازیابی سهمیهٔ کاربران محدود را دوباره کامل نمی‌کند.
+پشتیبان به‌طور پیش‌فرض متن رمزگذاری‌شده و دارای بررسی اصالت age است. عبارت بازیابی یا کلید خصوصی را جدا نگه دارید. قالب قدیمی ROVUNET BACKUP همچنان خوانده می‌شود؛ خروجی بدون رمز فقط با --plaintext انتخاب می‌شود. انتقال خودکار به --recipient عمومی در مبدأ و --identity-file خصوصی در مقصد نیاز دارد؛ لولهٔ SSH قبلی بدون کلید کافی نیست. [راهنمای پشتیبان رمزگذاری‌شده](../security/encrypted-backups.md).
 
 بازیابی روی سرور جدید:
 

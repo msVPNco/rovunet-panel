@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "source": "Exact go.mod/go.sum module cache verified by Go module checksum; module-root license/notice texts",
+  "files": [
+    {
+      "module": "filippo.io/age",
+      "version": "v1.3.2",
+      "file": "filippo.io_age-LICENSE",
+      "sha256": "c5d65279d02955c0fc2294ae417c3add650d228f4f5c82bd6d531fc26c89cd96"
+    },
+    {
+      "module": "filippo.io/hpke",
+      "version": "v0.4.0",
+      "file": "filippo.io_hpke-LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+    },
+    {
+      "module": "github.com/getlantern/soar",
+      "version": "v0.2.4",
+      "file": "github.com_getlantern_soar-LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "module": "github.com/spf13/cobra",
+      "version": "v1.9.1",
+      "file": "github.com_spf13_cobra-LICENSE.txt",
+      "sha256": "5e3400b93bbb099e83e52bab885e7441750673c21f97988ca3f1240639b63283"
+    },
+    {
+      "module": "github.com/spf13/pflag",
+      "version": "v1.0.6",
+      "file": "github.com_spf13_pflag-LICENSE",
+      "sha256": "b8514c577c1c4b46cee454d5a882b15fa411e72c5bd7f801f241591789fce61a"
+    },
+    {
+      "module": "golang.org/x/crypto",
+      "version": "v0.59.0",
+      "file": "golang.org_x_crypto-LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+    },
+    {
+      "module": "golang.org/x/sys",
+      "version": "v0.50.0",
+      "file": "golang.org_x_sys-LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+    },
+    {
+      "module": "golang.org/x/term",
+      "version": "v0.48.0",
+      "file": "golang.org_x_term-LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+    },
+    {
+      "module": "Go standard library",
+      "version": "go1.27.4",
+      "file": "Go-LICENSE",
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+    }
+  ]
+}

@@ -327,7 +327,19 @@ class Upgrade:
                 if (before.get('version'), before.get('name')) != (after.get('version'), after.get('name')):
                     raise UpgradeError('Subscription identity changed during the display-name update.')
                 old_items, new_items = before['items'], after['items']
-                if [x['id'] for x in old_items] != [x['id'] for x in new_items]:
+                old_ids = [x['id'] for x in old_items]
+                allowed = set(self.manifest.get('approved_windows_core_additions', [])) if suffix == '.windows.json' else set()
+                added = [x for x in new_items if x['id'] not in old_ids]
+                if any(x['id'] not in allowed for x in added) or len({x['id'] for x in new_items}) != len(new_items):
+                    raise UpgradeError('Unexpected subscription additions during preview promotion.')
+                for item in added:
+                    # Old Windows 0.1.0 skips unsupported standard entries but
+                    # rejects an unsupported native xray envelope atomically.
+                    expected = 'wireguard://' if item['id'] == 'managed-awg' else 'ss://'
+                    if not isinstance(item.get('link'), str) or not item['link'].startswith(expected):
+                        raise UpgradeError('An approved added Windows profile has an invalid compatible encoding.')
+                new_items = [x for x in new_items if x['id'] in old_ids]
+                if old_ids != [x['id'] for x in new_items]:
                     raise UpgradeError('Subscription membership or order changed during the display-name update.')
                 for old, new in zip(old_items, new_items):
                     try:

@@ -10,12 +10,31 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.27.4'
+      - name: Install pinned review tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/review-tools"
+          GOBIN="$RUNNER_TEMP/review-tools" go install mvdan.cc/sh/v3/cmd/shfmt@v3.14.1
+          GOBIN="$RUNNER_TEMP/review-tools" go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          archive="$RUNNER_TEMP/shellcheck.tar.xz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 2 --max-time 120 --output "$archive"             https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
+          printf '%s  %s\n' 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198 "$archive" | sha256sum --check -
+          tar -xJf "$archive" -C "$RUNNER_TEMP"
+          cp "$RUNNER_TEMP/shellcheck-v0.11.0/shellcheck" "$RUNNER_TEMP/review-tools/"
+          echo "$RUNNER_TEMP/review-tools" >> "$GITHUB_PATH"
+      - name: Shell lint, release authority and source advisories
+        run: |
+          bash scripts/check-shell.sh
+          python3 scripts/test-release-auth.py
+          python3 scripts/check-release-gates.py --report-only
+          govulncheck ./...
       - name: Build pinned validation core
         run: |
           git clone https://github.com/XTLS/Xray-core.git "$RUNNER_TEMP/xray-src"
@@ -47,6 +66,14 @@ jobs:
         run: go test -race ./...
       - name: Build
         run: make build-linux
+
+      - name: Isolated bootstrap, subscription containment and service restart
+        run: |
+          go build -o "$RUNNER_TEMP/review-panel" .
+          sudo python3 scripts/test-bootstrap.py --work "$RUNNER_TEMP/bootstrap-test"
+          sudo python3 scripts/test-subscription-boundary.py --panel "$RUNNER_TEMP/review-panel" --work "$RUNNER_TEMP/subscription-boundary"
+          sudo python3 scripts/test-encrypted-backup-cli.py --panel "$RUNNER_TEMP/review-panel" --work "$RUNNER_TEMP/encrypted-backup"
+          sudo python3 scripts/test-router-systemd.py --panel "$RUNNER_TEMP/review-panel" --work "$RUNNER_TEMP/router-systemd"
 
       - name: Exercise automatic 20-to-24 setup with actual engines
         run: |

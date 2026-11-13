@@ -20,6 +20,12 @@ func init() {
 		Use:   "core-install",
 		Short: "Install a managed protocol with per-account credentials",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if o.Protocol == "hysteria2" {
+				if !cmd.Flags().Changed("hy2-salamander") {
+					o.HysteriaSalamander = true
+				}
+				o.HysteriaObfsConfigured = true
+			}
 			for _, warning := range coreplan.Warnings(o.Protocol) {
 				fmt.Fprintln(cmd.ErrOrStderr(), warning)
 			}
@@ -78,6 +84,7 @@ func init() {
 	f.IntVar(&o.Devices, "devices", 1, "Per-device mode: this many standalone credentials instead of one per panel user (1..1000)")
 	f.StringVar(&o.Cert, "cert", "", "Server TLS certificate path (xhttp, hysteria2, trojan)")
 	f.StringVar(&o.Key, "key", "", "Server TLS private key path (xhttp, hysteria2, trojan)")
+	f.BoolVar(&o.HysteriaSalamander, "hy2-salamander", false, "Hysteria2: mask UDP packets with Salamander; clients must refresh their profiles")
 	f.StringVar(&o.RealityTarget, "target", "", "REALITY TLS target host:port (default: a random working site from the built-in list)")
 	for _, r := range []string{"name", "protocol", "host"} {
 		_ = install.MarkFlagRequired(r)

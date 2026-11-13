@@ -9,7 +9,7 @@
 sudo rovunet update
 ```
 
-Обновление загружает последний выпуск, сверяет его с SHA256SUMS выпуска, атомарно заменяет бинарный файл (с откатом, если установка не удалась), обновляет транспортные бинарные файлы и пересоздаёт службы. Туннели, пользователи и ключи не затрагиваются, существующие клиентские ссылки продолжают работать.
+В v1.21.2 обновление проверяет подпись манифеста и хеш файла по встроенному производственному открытому ключу до замены. Сохраняется закрытая копия восстановления; незавершённая настройка сообщается явно. Добавляются недостающие ядра, старый Hy2 один раз переводится на Salamander с сохранением учётных данных и адреса подписки. Затем нажмите **Update** для той же подписки в приложении; удалять её или отправлять новую ссылку не нужно. Явный выбор обычного Hy2 и остановленных служб сохраняется. Старая панель выполняет первый переход своим прежним методом проверки; после перехода работает новый подписанный механизм. [Область выпуска и совместимость](../releases/v1.21.2.md).
 
 ### Переход с прежнего имени
 
@@ -24,8 +24,7 @@ sudo rovunet tunnel status
 Миграция останавливает старые службы, переносит `/etc/slipgate` в `/etc/rovunet`, переписывает сохранённые пути, не трогая паролей, переименовывает системных пользователей и группы с теми же UID и GID, пересоздаёт службы как `rovunet-*`, меняет конфигурацию sshd только после проверки `sshd -t`, делает `config.json` доступным только владельцу и устанавливает команду как `/usr/local/bin/rovunet`. Сервер с исходным SlipGate переходит так же:
 
 ```bash
-curl -fsSL -o /tmp/rovunet https://github.com/msVPNco/rovunet-panel/releases/latest/download/rovunet-linux-amd64
-sudo install -m 755 /tmp/rovunet /usr/local/bin/rovunet
+# First use the authenticated installer from Getting started.
 sudo rovunet post-update
 ```
 
@@ -35,12 +34,13 @@ sudo rovunet post-update
 
 ```bash
 sudo rovunet backup                      # asks: save to a file, or print text to copy
-sudo rovunet backup /root/rovunet-backup.txt
-sudo rovunet restore /root/rovunet-backup.txt
-ssh root@old rovunet backup - | ssh root@new rovunet restore - --yes   # server to server
+sudo rovunet backup /root/rovunet-backup.age
+sudo rovunet backup-check /root/rovunet-backup.age
+sudo rovunet restore /root/rovunet-backup.age
+# Automated transfer: see ../security/encrypted-backups.md
 ```
 
-Резервная копия — один блок текста между `-----BEGIN ROVUNET BACKUP-----` и `-----END ROVUNET BACKUP-----`. В ней все закрытые ключи и пароли: храните её в тайне. Копии, сделанные под прежним именем, тоже восстанавливаются. В копии также хранится уже израсходованный трафик каждого пользователя, поэтому восстановление не возвращает ограниченным пользователям их квоту.
+По умолчанию резервная копия — аутентифицированный зашифрованный текст age. Храните пароль/закрытый ключ восстановления отдельно. Старый формат ROVUNET BACKUP читается; незашифрованный экспорт требует --plaintext. Автоматический перенос требует открытого --recipient на источнике и приватного --identity-file на получателе. [Руководство](../security/encrypted-backups.md).
 
 Восстановление на новом сервере:
 

@@ -11,12 +11,13 @@ import (
 	"syscall"
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/safefile"
 	"github.com/msVPNco/rovunet-panel/internal/service"
 	"github.com/msVPNco/rovunet-panel/internal/warp"
 )
 
 // createNaiveService creates the Caddyfile and systemd service for NaiveProxy.
-func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config) error {
+func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config, preserve bool) error {
 	if tunnel.Naive == nil {
 		return fmt.Errorf("naive config is nil")
 	}
@@ -37,19 +38,8 @@ func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 		}
 	}
 	caddyfile := buildCaddyfile(tunnel, cfg.Users, vlessRoutes(cfg, tunnel.Tag))
-	if err := os.WriteFile(caddyfilePath, []byte(caddyfile), 0600); err != nil {
-		return fmt.Errorf("write Caddyfile: %w", err)
-	}
-	// If this Caddy rejects the subscription route, NaïveProxy must still
-	// come up: fall back to the Caddyfile without it.
-	if bin := filepath.Join(config.DefaultBinDir, "caddy-naive"); fileExists(bin) {
-		if outB, err := exec.Command(bin, "validate", "--config", caddyfilePath, "--adapter", "caddyfile").CombinedOutput(); err != nil {
-			fallback := buildCaddyfileSub(tunnel, cfg.Users, vlessRoutes(cfg, tunnel.Tag), false)
-			if werr := os.WriteFile(caddyfilePath, []byte(fallback), 0600); werr != nil {
-				return fmt.Errorf("write Caddyfile: %w", werr)
-			}
-			fmt.Fprintf(os.Stderr, "Caddy rejected the subscription route (%s); NaïveProxy runs without subscription links\n", lastLine(string(outB)))
-		}
+	if err := validateAndWriteCaddy(filepath.Join(config.DefaultBinDir, "caddy-naive"), caddyfilePath, []byte(caddyfile)); err != nil {
+		return err
 	}
 
 	binPath := filepath.Join(config.DefaultBinDir, "caddy-naive")
@@ -83,15 +73,7 @@ func createNaiveService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 		Environment: env,
 	}
 
-	if err := service.Create(unit); err != nil {
-		return err
-	}
-
-	// Restart if already running (e.g. Caddyfile updated with new credentials)
-	if _, err := service.Status(unit.Name); err == nil {
-		return service.Restart(unit.Name)
-	}
-	return service.Start(unit.Name)
+	return service.Apply(unit, preserve)
 }
 
 // vlessRoute is a WebSocket path Caddy hands to a local server: a VLESS
@@ -342,4 +324,25 @@ func randomToken(n int) string {
 func fileExists(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
+}
+
+// A rejected candidate must not remove the existing subscription route or
+// replace its healthy Caddyfile. Engine diagnostics may contain private data.
+func validateAndWriteCaddy(bin, path string, body []byte) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".Caddyfile-validate-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(body); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := exec.Command(bin, "validate", "--config", tmp.Name(), "--adapter", "caddyfile").Run(); err != nil {
+		return fmt.Errorf("Caddy rejected the private configuration; existing Caddyfile and subscription route were retained")
+	}
+	return safefile.Write(path, body, 0600)
 }

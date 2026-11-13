@@ -84,7 +84,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 	}
 
 	for _, dir := range []string{config.DefaultConfigDir, config.DefaultTunnelDir} {
-		if err := system.EnsureDir(dir, config.SystemUser); err != nil {
+		if err := system.EnsureDir(dir, "root"); err != nil {
 			return actions.NewError(actions.SystemInstall, fmt.Sprintf("failed to create %s", dir), err)
 		}
 	}
@@ -980,7 +980,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 	out.Print("    - Add more users:   sudo rovunet users")
 	out.Print("")
 
-	return nil
+	return CompleteBootstrap()
 }
 
 // naiveURIVariant is one client-visible flavor of a server-side NaiveProxy
@@ -1223,6 +1223,7 @@ func installCores(cfg *config.Config, out actions.OutputWriter, protocols []stri
 			ports = []int{31444, 31445, 31446}
 		case "xhttp", "hysteria2", "trojan":
 			if protocol == "hysteria2" {
+				o.HysteriaSalamander, o.HysteriaObfsConfigured = true, true
 				ports = []int{8443, 4443, 2096}
 			} else if protocol == "trojan" {
 				ports = []int{30444, 30445, 30446}

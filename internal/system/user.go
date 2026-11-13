@@ -2,10 +2,12 @@ package system
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
@@ -61,17 +63,34 @@ func RemoveSpecificUser(username string) error {
 	return run("userdel", username)
 }
 
-// EnsureDir creates a directory owned by the rovunet user.
+// EnsureDir changes only the requested directory. A configuration tree may
+// also contain root-only backup identities, core keys and recovery snapshots;
+// recursively changing their ownership grants the service account access.
 func EnsureDir(path, owner string) error {
 	if err := os.MkdirAll(path, 0750); err != nil {
 		return err
 	}
-	return run("chown", "-R", owner+":"+config.SystemGroup, path)
+	info, err := os.Lstat(path)
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("managed configuration directory must be a regular directory")
+	}
+	return run("chown", "--no-dereference", "--", owner+":"+config.SystemGroup, path)
 }
 
 // AddSSHUser creates a system user in the rovunet-ssh group.
 // If the user already exists, it updates the password instead.
 func AddSSHUser(username, password string) error {
+	if err := config.ValidateUsername(username); err != nil {
+		return err
+	}
+	if err := config.ValidatePassword(password); err != nil {
+		return err
+	}
+	if userExists(username) {
+		if err := requireOwnedSSHAccount(username); err != nil {
+			return err
+		}
+	}
 	// Ensure SSH group exists
 	if !groupExists(config.SSHGroup) {
 		if err := run("groupadd", "--system", config.SSHGroup); err != nil {
@@ -101,11 +120,42 @@ func AddSSHUser(username, password string) error {
 
 // RemoveSSHUser kills active sessions and removes a user from the system.
 func RemoveSSHUser(username string) error {
+	if err := requireOwnedSSHAccount(username); err != nil {
+		return err
+	}
 	// SIGKILL all processes owned by the user so userdel isn't blocked by a
 	// live SSH session. pkill returns before the kernel reaps the processes,
 	// so userdel -f forces removal even if a process is briefly still listed.
-	_ = run("pkill", "-KILL", "-u", username)
+	if err := TerminateSSHUserSessions(username); err != nil {
+		return fmt.Errorf("could not end owned SSH sessions; account retained: %w", err)
+	}
 	return run("userdel", "-f", username)
+}
+
+// TerminateSSHUserSessions is called only after an explicit password change,
+// never by routine startup/update credential synchronization.
+func TerminateSSHUserSessions(username string) error {
+	if err := requireOwnedSSHAccount(username); err != nil {
+		return err
+	}
+	err := exec.Command("pkill", "-KILL", "-u", username).Run()
+	var exit *exec.ExitError
+	if errors.As(err, &exit) && exit.ExitCode() == 1 {
+		return nil // no matching session
+	}
+	return err
+}
+
+func requireOwnedSSHAccount(username string) error {
+	if err := config.ValidateUsername(username); err != nil {
+		return err
+	}
+	uidBytes, err := exec.Command("id", "-u", username).Output()
+	uid, parseErr := strconv.ParseUint(strings.TrimSpace(string(uidBytes)), 10, 32)
+	if err != nil || parseErr != nil || uid == 0 || username == config.SystemUser || !IsSSHUser(username) {
+		return errors.New("refusing to modify an account outside the owned Rovunet SSH group")
+	}
+	return nil
 }
 
 // ListSSHUsers returns all users in the rovunet-ssh group: those whose
@@ -183,7 +233,12 @@ const sshMatchBlock = `
 Match Group rovunet-ssh
     PasswordAuthentication yes
     AuthenticationMethods any
-    AllowTcpForwarding yes
+    AllowTcpForwarding local
+    AllowStreamLocalForwarding no
+    GatewayPorts no
+    PermitTunnel no
+    PermitTTY no
+    PermitUserRC no
     X11Forwarding no
     AllowAgentForwarding no
     ForceCommand /bin/false
@@ -218,7 +273,7 @@ func withRovunetSSHConfig(content string) string {
 	}
 	// Replace an older Rovunet block, which is always last in the file
 	if idx := strings.Index(content, "# Rovunet SSH tunnel users"); idx >= 0 {
-		content = strings.TrimRight(content[:idx], "\n") + "\n"
+		return replaceOwnedSSHBlock(content, idx)
 	} else if strings.Contains(content, "Match Group rovunet-ssh") {
 		return content // a block we didn't write: can't safely replace it
 	}

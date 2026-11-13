@@ -8,7 +8,7 @@
 sudo rovunet update
 ```
 
-The update downloads the latest release, verifies it against the release's SHA256SUMS, replaces the binary atomically (rolling back if the install fails), refreshes the transport binaries and regenerates the services. Tunnels, users and keys are untouched, and existing client links keep working.
+In v1.21.2, the updater authenticates the release manifest and asset digest against the installed production public key before replacement. It keeps a private recovery snapshot and reports pending setup failures. Normal update adds missing managed cores and migrates old Hy2 to Salamander once, retaining account credentials and subscription addresses. Then press **Update** on the same saved subscription in the app; do not delete it or send a replacement URL. Explicit Hy2 plain mode and stopped-service choices are preserved. Old panels perform their first transition using their existing verification; the new signed updater applies afterward. See [v1.21.2 scope and compatibility](../releases/v1.21.2.md).
 
 ### Migrating from the earlier name
 
@@ -23,8 +23,7 @@ sudo rovunet tunnel status
 The migration stops the old services, moves `/etc/slipgate` to `/etc/rovunet`, rewrites stored paths without touching any password, renames the system users and groups with the same UIDs and GIDs, recreates the services as `rovunet-*`, updates the sshd configuration only after `sshd -t` accepts it, makes `config.json` owner-only and installs the command as `/usr/local/bin/rovunet`. A server running upstream SlipGate can switch the same way:
 
 ```bash
-curl -fsSL -o /tmp/rovunet https://github.com/msVPNco/rovunet-panel/releases/latest/download/rovunet-linux-amd64
-sudo install -m 755 /tmp/rovunet /usr/local/bin/rovunet
+# First use the authenticated installer from Getting started.
 sudo rovunet post-update
 ```
 
@@ -34,12 +33,13 @@ A backup holds everything needed to run the setup elsewhere: the configuration, 
 
 ```bash
 sudo rovunet backup                      # asks: save to a file, or print text to copy
-sudo rovunet backup /root/rovunet-backup.txt
-sudo rovunet restore /root/rovunet-backup.txt
-ssh root@old rovunet backup - | ssh root@new rovunet restore - --yes   # server to server
+sudo rovunet backup /root/rovunet-backup.age
+sudo rovunet backup-check /root/rovunet-backup.age
+sudo rovunet restore /root/rovunet-backup.age
+# Automated transfer: see ../security/encrypted-backups.md
 ```
 
-The backup is one block of text between `-----BEGIN ROVUNET BACKUP-----` and `-----END ROVUNET BACKUP-----`. It contains every private key and password: keep it private. Backups made under the earlier name still restore.
+Backups are authenticated age-encrypted text by default. Keep the recovery passphrase/identity separately. The old ROVUNET BACKUP format remains readable; creating plaintext now requires an explicit --plaintext choice. Automated migration needs a public --recipient at the source and an owner-only --identity-file at the destination; the old unkeyed SSH pipe is no longer sufficient. See [encrypted backup guidance](../security/encrypted-backups.md).
 
 Restoring on a new server:
 

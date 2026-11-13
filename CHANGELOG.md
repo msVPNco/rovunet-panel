@@ -2,6 +2,27 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v1.21.2
+
+- Normal install/update completes missing managed cores; eligible unlimited accounts receive 24 subscription profiles on Android and current Windows through their existing subscription URLs.
+- Current Windows feeds now include AmneziaWG and Shadowsocks 2022. Old compatible readers preserve supported items and skip unsupported ones; no subscription/token/account reissue.
+- Fresh Hy2 uses Salamander. An old account-managed Hy2 is migrated once with its endpoint/auth retained; explicit plain mode and stopped states survive later updates. Update the same saved subscription after upgrading the server.
+- Resume missing setup and pending compatibility migration even when the installed version already matches Latest. Keep private recovery and prior valid feeds on errors.
+- Fix stale Xray API sockets after power loss, private-file ownership during restore, subscription token/path boundaries and stale account/config updates. Preserve restricted quota eligibility and known held-stream limits.
+- Authenticated Ed25519 releases/bootstrap and recoverable binary updates; publisher key stays in the owner's Windows-local DPAPI vault. CI stages an unsigned draft for local verification/signing.
+- Preserve the reviewed preview promotion path and all published assets. Broad runtime/source/native ABI, off-site custody, physical-device and full provider/recovery qualification remain open; candidate runtime pins are not promoted in this functional release.
+
+
+## Unreleased — private engineering review (2026-11-12)
+
+- Stage and authenticate downloaded executables before replacement; exact runtime pins, independent production-key requirement, bootstrap/update recovery journals, atomic files and preserved stopped-service choices. Production roots remain unprovisioned and runtime/recovery/client gates stay open; no new public release.
+- Validate subscription tokens before file paths, reject stale config writes, preserve strict v1 and old links during normal refresh, add independent link rotation and retain the last valid feed on oversized/failed address expansion.
+- Default operator backups to authenticated age encryption; keep legacy decode and explicit plaintext export; report partial restore with a nonzero exit. Protect administrator SSH accounts, narrow owned forwarding rules and target explicit password-change sessions.
+- Bound DNS workers, queue, pending maps, backend sockets, TCP response memory and aggregate UDP rates; prove a narrow DNS systemd restriction with start/restart payload tests. Add versioned out-of-band capability/security/privacy/provenance documentation and isolated CI acceptance checks.
+- فارسی: این نسخه خصوصیِ بررسی است؛ ساخت و آزمایش محلی انجام می‌شود، انتشار عمومی/سرور زنده تغییر نمی‌کند. کلید اعتماد تولیدی، بررسی موتورهای قدیمی، بازیابی کامل VM و پذیرش کلاینت‌های متناظر هنوز شرط باز انتشارند. لینک‌ها و نام‌های تأییدشده حفظ شده و محدودیت دستگاهِ لغوشده فعال نشده است.
+- Русский: частная проверка; публикация закрыта до принятия корня доверия, runtime, восстановления VM и клиентской совместимости.
+- 简体中文：私人审查版本；生产信任根、运行时审查、虚拟机恢复与匹配客户端验收仍是发布条件。
+
 ## v1.21.1
 
 ### English

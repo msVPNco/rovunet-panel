@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/binary"
-	"log"
 	"math/rand/v2"
 	"net"
 	"strings"
@@ -117,8 +116,6 @@ func (r *Router) handleVerify(packet []byte, from net.Addr, reply replyFunc) boo
 	if !hmac.Equal(clientProof, expected) {
 		return false
 	}
-
-	log.Printf("verify: valid probe from %s, responding", from)
 
 	// Valid probe. Compute response: HMAC-SHA256(key, nonce || 0x01)
 	mac2 := hmac.New(sha256.New, vr.pubkey)

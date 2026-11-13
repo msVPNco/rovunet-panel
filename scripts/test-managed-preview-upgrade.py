@@ -359,6 +359,24 @@ class UpgradeTests(unittest.TestCase):
         self.assertEqual(result['profiles_checked'], 4)
         self.assertEqual(result['profile_names_changed'], 2)
 
+    def test_public_promotion_allows_only_the_two_reviewed_windows_additions(self):
+        self.names_fixture(self.f)
+        manifest=self.f.operation.manifest
+        manifest['approved_windows_core_additions']=['managed-awg','managed-ss2022']
+        upgrade.write_json(self.f.package/'UPGRADE-MANIFEST.json',manifest)
+        self.f.checksums()
+        refresh=self.f.host.refresh
+        def add_windows(binary,directory):
+            refresh(binary,directory)
+            path=self.f.paths.subscriptions/'sub'/(TOKEN+'.windows.json')
+            document=json.loads(path.read_text())
+            for profile_id,inner in [('managed-awg','wireguard://fixture'),('managed-ss2022','ss://fixture')]:
+                document['items'].append({'id':profile_id,'link':inner})
+            upgrade.write_json(path,document)
+        self.f.host.refresh=add_windows
+        self.assertTrue(self.f.operation.apply()['display_names_only_verified'])
+        self.assertEqual(len(json.loads(self.f.feeds()[TOKEN+'.windows.json'])['items']),4)
+
     def test_display_name_guard_rolls_back_any_connection_identity_or_unapproved_name_change(self):
         for tamper in ('field-0', 'field-3', 'field-12', 'field-84', 'field-85', 'unapproved-name', 'item-id', 'order', 'count', 'collection-name'):
             with self.subTest(tamper=tamper), tempfile.TemporaryDirectory() as root:

@@ -6,7 +6,7 @@
 
 | Item | Requirement |
 |---|---|
-| Operating system | Linux with systemd: Ubuntu 20.04+, Debian 10+ or similar |
+| Operating system | Linux with systemd; Ubuntu 24.04 LTS tested. Other distributions require runtime/ABI compatibility checks |
 | Access | Root (or sudo) over SSH |
 | Domain | A domain whose DNS records you control. Needed for DNS tunnels, NaïveProxy, VLESS and the TLS-based Xray cores |
 | Hardware | 1 vCPU, 1 GB RAM and 20 GB disk are enough for a small group; bandwidth matters more than CPU |
@@ -63,7 +63,9 @@ VLESS behind Cloudflare is the one exception that uses a **proxied** record; see
 ### Online (recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v1.21.2/install.sh -o rovunet-install.sh
+python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="a8aaa38d979049fa5e42c9f8f444e519d28625d1d67872ddaeff2d0dfc6b3498", "Installer checksum mismatch"'
+sudo bash rovunet-install.sh
 ```
 
 The installer asks which protocols to enable, downloads the binaries they need, generates keys, creates the systemd services and firewall rules, creates the first user and prints all of that user's configurations.

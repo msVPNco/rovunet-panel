@@ -9,7 +9,7 @@ import (
 )
 
 // createVLESSService runs the built-in VLESS over WebSocket server.
-func createVLESSService(tunnel *config.TunnelConfig, cfg *config.Config) error {
+func createVLESSService(tunnel *config.TunnelConfig, cfg *config.Config, preserve bool) error {
 	execStart, err := buildVLESSExecStart(tunnel, cfg)
 	if err != nil {
 		return err
@@ -27,13 +27,7 @@ func createVLESSService(tunnel *config.TunnelConfig, cfg *config.Config) error {
 		Restart:    "always",
 	}
 
-	if err := service.Create(unit); err != nil {
-		return err
-	}
-	if _, err := service.Status(unit.Name); err == nil {
-		return service.Restart(unit.Name)
-	}
-	return service.Start(unit.Name)
+	return service.Apply(unit, preserve)
 }
 
 func buildVLESSExecStart(tunnel *config.TunnelConfig, cfg *config.Config) (string, error) {

@@ -69,6 +69,10 @@ def snapshot(root):
     return {str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
 
 def child(a):
+    for name in ('mnt','net','pid'):
+        parent=os.environ.get('ROVUNET_COMPLETE_PARENT_'+name.upper())
+        if not parent or parent==os.readlink('/proc/self/ns/'+name):
+            raise RuntimeError('Private mount/network/PID namespaces are required')
     work=pathlib.Path(a.work)
     # Preserve resolved tools: binding /etc hides Debian alternatives symlinks.
     nettools={name:str(pathlib.Path(shutil.which(name)).resolve()) for name in ('iptables','iptables-save','iptables-restore') if shutil.which(name)}
@@ -119,7 +123,7 @@ def child(a):
         output=run('/usr/local/bin/rovunet','complete-setup').stdout.decode()
         (work/'first-setup.log').write_text(output)
         after=feeds()
-        assert len(after['android'][1]['items'])==24 and len(after['windows'][1]['items'])==22
+        assert len(after['android'][1]['items'])==24 and len(after['windows'][1]['items'])==24
         for platform in before:assert before[platform][0]==after[platform][0]
         links={item['id']:item['link'] for item in after['android'][1]['items']}
         for item in before['android'][1]['items']:assert links[item['id']]==item['link']
@@ -139,7 +143,7 @@ def child(a):
             assert 'stop rovunet-core-'+name+'.service' not in calls
             assert 'restart rovunet-core-'+name+'.service' not in calls
         print(json.dumps({'actual_panel_cli':True,'actual_xray_and_awg_processes':True,'systemd':'simulated','host_modified':False,
-            'android_profiles':24,'windows_profiles':22,'old_urls_profiles_credentials_core_files':'preserved',
+            'android_profiles':24,'windows_profiles':24,'old_urls_profiles_credentials_core_files':'preserved',
             'legacy_runtime_and_processes':'preserved','private_backup_validation':'PASS','idempotent_retry':'PASS'},indent=2))
     finally:
         pids=[p.pid for p in processes]
@@ -172,7 +176,8 @@ def main():
         run('go','test','-count=1','-run','^TestExportCompleteCLIFixture$','./internal/handlers',env=env)
         argv=[sys.executable,str(pathlib.Path(__file__).resolve()),'--child','--work',str(work)]
         for name in ('panel','xray','engine','tool'):argv+=['--'+name,getattr(a,name)]
-        result=subprocess.run(['unshare','--mount','--net','--fork']+argv,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        env=dict(os.environ,**{'ROVUNET_COMPLETE_PARENT_'+n.upper():os.readlink('/proc/self/ns/'+n) for n in ('mnt','net','pid')})
+        result=subprocess.run(['unshare','--mount','--net','--pid','--mount-proc','--kill-child','--fork']+argv,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,env=env)
         (root/'complete-setup-integration.log').write_bytes(result.stdout)
         print(result.stdout.decode())
         if result.returncode:

@@ -9,7 +9,7 @@
 sudo rovunet update
 ```
 
-更新会下载最新发布版本，按其 SHA256SUMS 校验，原子替换二进制文件（安装失败时回滚），刷新传输二进制文件并重新生成服务。隧道、用户和密钥保持不变，现有客户端链接继续可用。
+v1.21.2 在替换前使用面板内置的生产公钥验证发布清单签名和文件摘要，并保留私有恢复副本，明确报告未完成的设置。正常更新补齐缺失的内核，并将旧 Hy2 一次性迁移到 Salamander，同时保留账户凭据和订阅地址。随后在应用中对原有订阅点击 **Update**，无需删除订阅或发送新链接。手动选择的普通 Hy2 模式和已停止的服务保持不变。旧面板首次升级仍使用其原有验证方法，之后使用新的签名更新机制。[发布范围和兼容性](../releases/v1.21.2.md)。
 
 ### 从旧名称迁移
 
@@ -24,8 +24,7 @@ sudo rovunet tunnel status
 迁移会停止旧服务，把 `/etc/slipgate` 移到 `/etc/rovunet`，在不触碰任何密码的前提下改写已存储的路径，以相同的 UID 和 GID 重命名系统用户和组，以 `rovunet-*` 重建服务，仅在 `sshd -t` 通过后修改 sshd 配置，把 `config.json` 设为仅所有者可读，并将命令安装为 `/usr/local/bin/rovunet`。运行上游 SlipGate 的服务器也可同样切换：
 
 ```bash
-curl -fsSL -o /tmp/rovunet https://github.com/msVPNco/rovunet-panel/releases/latest/download/rovunet-linux-amd64
-sudo install -m 755 /tmp/rovunet /usr/local/bin/rovunet
+# First use the authenticated installer from Getting started.
 sudo rovunet post-update
 ```
 
@@ -35,12 +34,13 @@ sudo rovunet post-update
 
 ```bash
 sudo rovunet backup                      # asks: save to a file, or print text to copy
-sudo rovunet backup /root/rovunet-backup.txt
-sudo rovunet restore /root/rovunet-backup.txt
-ssh root@old rovunet backup - | ssh root@new rovunet restore - --yes   # server to server
+sudo rovunet backup /root/rovunet-backup.age
+sudo rovunet backup-check /root/rovunet-backup.age
+sudo rovunet restore /root/rovunet-backup.age
+# Automated transfer: see ../security/encrypted-backups.md
 ```
 
-备份是位于 `-----BEGIN ROVUNET BACKUP-----` 与 `-----END ROVUNET BACKUP-----` 之间的一段文本，包含所有私钥和密码，请妥善保管。旧名称下创建的备份同样可以恢复。备份还包含每个用户已用的流量，因此恢复不会让限量用户重新获得额度。
+备份默认采用具有完整性验证的 age 加密文本。请分开保存恢复口令或私钥。仍可读取旧 ROVUNET BACKUP 格式；明文导出需要明确选择 --plaintext。自动迁移时，源端需要公开的 --recipient，目标端需要私有的 --identity-file。[加密备份说明](../security/encrypted-backups.md)。
 
 在新服务器上恢复：
 

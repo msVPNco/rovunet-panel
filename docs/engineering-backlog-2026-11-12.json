@@ -1,0 +1,327 @@
+{
+  "schema": 1,
+  "baseline": "2601c1a9cce2fb718e18a051663b81c115f20daa",
+  "tasks": [
+    {
+      "id": "OLD-01",
+      "priority": "P1",
+      "origin": "Previous prompt sections 2, 6-11.",
+      "Status": "implemented; real nine-core VM and five controlled Windows payloads passed; phone/native C gates open",
+      "Evidence / confirmed cause": "Managed Xray loopback; actual AWG namespace TCP/UDP/revoke; actual CLI 20-to-24 preserved old core/runtime/account state. Nov13: full Ubuntu VM nine services survived normal reboot and abrupt power cut with same credentials; Windows pinned native engine transferred140800 bytes per case for WG/Hy2/Trojan/VLESSenc/SS2022; new AWG two-peer revoke/reconnect passed. Subsequent WAN: existing AWG passes installed-preview HTTPS only after a failed cold request; do not generalize immediate connection or physical-device support.",
+      "Dependencies": "Real reboot and supported client/device.",
+      "Acceptance": "Private credentials per account; no cross-account export; correct listeners, firewall and idempotent rollback; timed eligibility; no unvalidated quota access.",
+      "Next": "Physical released phone, WAN/UDP/carrier and source/ABI promotion review.",
+      "Rollback": "Reviewed previous release plus compatible config/usage snapshot.",
+      "Effort": "0.5-2 remaining validation. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "OLD-02",
+      "priority": "P0",
+      "origin": "Previous prompt sections 11-12.",
+      "Status": "implemented with restrictive policy; hard-limit/timer proof incomplete",
+      "Evidence / confirmed cause": "Go accounting/policy/history suites plus six real-engine protocol modes; new-session removal measured, established streams survived for the new three. Nov13 latest Xray repeats per-account data/counters/new-session revoke; existing streams still survive in all three added Xray protocols. Timer delay and quota overshoot remain null; excluded quota paths stay excluded.",
+      "Dependencies": "OLD-01; isolated real engine.",
+      "Acceptance": "Quota paths match server credentials and metering; reset/crash/read failure never fabricates zero; open-session limitations explicit.",
+      "Next": "Measure timer/overshoot and retained quota paths; do not enable excluded paths on the basis of a new engine tag.",
+      "Rollback": "Keep restrictive eligibility; restore usage with supported recovery tools.",
+      "Effort": "1-3 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "OLD-03",
+      "priority": "P1",
+      "origin": "Previous prompt section 13.",
+      "Status": "implemented; full-VM actual systemd completion passed; public DNS/Soar acceptance incomplete",
+      "Evidence / confirmed cause": "Private namespace real panel/engines gives Android24 / Windows22; repeat no-op, existing20 links and credentials retained; systemd simulated. Nov13 actual panel plus nine real engines/systemd:20-to24 Android/22 Windows; existing20 links, five core files/PIDs and cfg unchanged; one backup; repeat all-nine no-op.",
+      "Dependencies": "Missing public DNS/TLS on fresh VPS.",
+      "Acceptance": "Eligible full fixture has Android 24 / Windows 22; complete setup does not pretend missing prerequisites succeeded.",
+      "Next": "Public DNS/TLS and final fresh-host/Soar TTY flow remain separately gated.",
+      "Rollback": "Existing backups and missing-only retry.",
+      "Effort": "0.5-1.5 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "OLD-04",
+      "priority": "P0",
+      "origin": "Conversation: old subscription updates without resending URL.",
+      "Status": "implemented; same-URL full-VM export and matching released readers passed",
+      "Evidence / confirmed cause": "20-to-24 retained token/URI/IDs; stale timer/token-rotation tests and actual path-containment CLI regression passed. Nov13 actual VM20-to24 retained URL tokens and all20 previous links byte-for-byte; exact released Android v1 reader accepted24, Windows accepted22 conservative/23 full. Explicit Hy2 mode toggle on the full VM retains saved URL tokens, item counts and auth; only the one Hy2 link per feed changes and off restores exact old links.",
+      "Dependencies": "Client fetch behavior owned by client.",
+      "Acceptance": "Ordinary upgrade/refresh keeps links and identity; transient feed error preserves last valid feed; explicit revocation retires old files.",
+      "Next": "Physical APK fetch/update and address/group identity migration remain distinct open cases.",
+      "Rollback": "Keep old feed until valid atomic replacement.",
+      "Effort": "0.5-1 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "OLD-05",
+      "priority": "P1",
+      "origin": "Conversation: apply all proposed display names only.",
+      "Status": "complete; approved display-name regression retained",
+      "Evidence / confirmed cause": "Existing mapping/name-only/native-field regression suites passed; no second rename.",
+      "Dependencies": "None.",
+      "Acceptance": "Name-only tests and legacy fixtures pass.",
+      "Next": "Retain approved mappings and custom names.",
+      "Rollback": "Revert only label mapping.",
+      "Effort": "0. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "OLD-06",
+      "priority": "P0",
+      "origin": "Conversation: both fresh installation and update must add four missing cores.",
+      "Status": "implemented; automatic missing-four completion passed on actual full VM",
+      "Evidence / confirmed cause": "Actual20-to24 namespace test passed; old services/processes/runtime/config preserved; full VM/fresh server prerequisites remain. Nov13 removed only four owned lab cores to recreate20, then actual complete-setup installed missing four; old five unchanged and repeat idempotent. No live VPS changed.",
+      "Dependencies": "Real host prerequisites and user upgrade.",
+      "Acceptance": "20-to-24 and repeat no-op; missing prerequisite visibly pending; no keys/users regenerated.",
+      "Next": "Fresh public DNS/TLS bootstrap and second production server acceptance remain unknown.",
+      "Rollback": "Setup backup plus reviewed restore; do not revert usage blindly.",
+      "Effort": "0.5-2 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "OLD-07",
+      "priority": "P3",
+      "origin": "Conversation: publish 1.21.0, README and amd64; subsequent automatic-setup update.",
+      "Status": "complete for prior authorized public releases; no new publication",
+      "Evidence / confirmed cause": "Publicv1.21.0/v1.21.1 history retained, v1.21.1 25 assets; this mission prepares only private commits/build/review files.",
+      "Dependencies": "None.",
+      "Acceptance": "Published tag and asset evidence retained. This does not authorize a new release.",
+      "Next": "No new tag, push or release in this review.",
+      "Rollback": "Never replace bytes of a published tag.",
+      "Effort": "0. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "OLD-08",
+      "priority": "P1",
+      "origin": "Previous prompt section 15.",
+      "Status": "partial; actual reboot/power-cut/SSH/certificate checker passed; WARP blocked",
+      "Evidence / confirmed cause": "Stopped service preservation, atomic Caddy validation and owned SSH text tests passed; actual DNS systemd start/restart passed. Nov13 actual nine-core VM, private-CA leaf reissue and scoped three-core restart; real sshd no-shell forwarding/selective revoke/admin isolation; WARP stopped at provider registration with cleanup.",
+      "Dependencies": "Dedicated VM reboot, cloud firewall and valid DNS/cert.",
+      "Acceptance": "Each claimed service survives restart/reboot/cert renewal and restores keys/consumption without touching unrelated rules.",
+      "Next": "Reachable WARP registration/data path, public ACME, external firewall and full base-tunnel restore.",
+      "Rollback": "Validated private backup and unit/rule snapshots.",
+      "Effort": "2-4 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "OLD-09",
+      "priority": "P1",
+      "origin": "Previous prompt sections 10, 16; repo docs status/quota-access.",
+      "Status": "partial; WAN failure diagnosed, Salamander Hy2 repair and rollback prepared; phone/Mac and AWG cold start open",
+      "Evidence / confirmed cause": "Bounded DNS5000+100 lab, actual systemd2x200 DNS requests, Xray loopback and AWG namespace data; no physical-device/Doze claim. Nov13 Windows native released Xray and generated configs passed five payload cases over private VM forwarding without host routing/proxy changes; Android native v1 envelope reader passed on JVM only. Owner-authorized live WAN evidence: standard WG/Hy2 fail on two VPS paths, keys/cert match, small/large raw UDP reaches the second VPS; WG response leaves server but is not received by client. Installed Windows preview reproduces WG; transient Salamander Hy2 passes2/2, plain fails2/2. The panel now offers explicit opt-in mask switching with actual VM validation/startup rollback proof; no production switch.",
+      "Dependencies": "Dedicated VM, representative devices/networks and matching client owners.",
+      "Acceptance": "Record attempts/failures, durations, p50/p95, reconnect, other-user impact; no fabricated pass for skipped cases.",
+      "Next": "Physical Android/Mac Salamander and AWG cold-start acceptance, carrier/long-session behavior; no silent protocol substitution.",
+      "Rollback": "Isolated experimental environment only.",
+      "Effort": "2-4 plus external waiting. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "OLD-10",
+      "priority": "P1",
+      "origin": "Previous prompt section 14; docs/ROVUNET-STATUS.md.",
+      "Status": "partial; strict v1 preserved; native grouping/address-order migration open",
+      "Evidence / confirmed cause": "Versioned out-of-band matrix, pinned client-source review, strict generated-feed tests and oversized-feed retention; existing status IDs kept.",
+      "Dependencies": "Client source readers and explicit fixture ownership.",
+      "Acceptance": "No unsupported effective setting silently dropped; v1 readers remain compatible; changing address does not remint server/account IDs.",
+      "Next": "Run matching released readers; plan compatible native grouping and reorder-independent address IDs.",
+      "Rollback": "Keep existing schema v1 and platform filters.",
+      "Effort": "1-3 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "CANCEL-01",
+      "priority": "cancelled",
+      "origin": "Conversation: device cap 15; later explicitly cancelled.",
+      "Status": "cancelled by user; unchanged",
+      "Evidence / confirmed cause": "No device/IP/socket cap added.",
+      "Dependencies": "New explicit request required.",
+      "Acceptance": "No device enforcement claimed or enabled.",
+      "Next": "Only a new explicit request can reactivate it.",
+      "Rollback": "N/A",
+      "Effort": "0. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-01",
+      "priority": "P0",
+      "origin": "New prompt 3.1 and appendix 0-3.",
+      "Status": "partial; real local production identity/custody works; publication P0 remains open",
+      "Evidence / confirmed cause": "Ed25519 verifier, empty production root, signed exact-assets bootstrap/updater, pinned transport catalog, legacy setup helper; 14-case ephemeral-key bootstrap and release-authority tests passed. Runtime source/license and advisory gaps are explicit. Nov13 actual panel root provisioned on owner instruction; DPAPI signing + age backup + three fresh local recoveries and independent OpenSSL signature verification passed. Fourteen candidate runtimes have source/patch/notice records; legacy/native/ABI review unfinished.",
+      "Dependencies": "Production signing identity/trust-root distribution; upstream license/source investigation.",
+      "Acceptance": "Tamper/wrong arch/wrong signature/missing verification/truncation never execute; same panel version never follows mutable upstream latest.",
+      "Next": "Actual offline/off-site copy and independently reviewed root delivery; finish runtime promotion review.",
+      "Rollback": "Old released install remains available; new path must not weaken to unsigned fallback.",
+      "Effort": "2-5 remaining plus authority/source waiting. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-02",
+      "priority": "P0",
+      "origin": "New prompt 3.2.",
+      "Status": "partial; actual VM power-cut and core recovery passed; full cross-service transaction unproven",
+      "Evidence / confirmed cause": "Atomic durable replace/journals, retained recovery copy/snapshot, strict pending update, stopped-service preservation, owned-path migration, stale-writer rejection; 18 preview recovery and rollback suites retained. Actual CLI now proves invalid legacy-layout restore/check/keygen/version do not migrate, and authenticated confirmed legacy restore migrates successfully. Nov13 real KVM guest recovered all nine engines after normal reboot and abrupt QEMU power cut, preserving config/keys/tokens. Stale API socket and recursive chown bugs reproduced and fixed. Encrypted nine-core restore, actual SSH and cert checker passed. New Hy2 switch validates before mutation, keeps a private recovery copy and passed actual missing-cert and forced-start failure rollback; full multi-operation concurrency/crash reconciliation remains open.",
+      "Dependencies": "NEW-01; ownership snapshots; isolated fault injection.",
+      "Acceptance": "404/504/truncation/no space/interrupt/repeat/post failure leave usable binary or explicit compatible recovery; no false success; existing recovery tests retained.",
+      "Next": "Base DNS/WARP/public ACME restore and failure/concurrency across all services; no atomic-all-services claim.",
+      "Rollback": "Retain binary plus validated config/usage/unit snapshot; no automatic stale usage rollback.",
+      "Effort": "1-3 remaining VM cases. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-03",
+      "priority": "P0",
+      "origin": "New prompt 3.3; appendix 1.",
+      "Status": "partial; matching released reader and five native Windows payload cases passed",
+      "Evidence / confirmed cause": "No extra v1/native fields; pinned Android reader source; capabilities-v1.json distinguishes client/ABI/options/account/evidence, Windows SS2022 import vs payload and AWG absence. Nov13 exact Windows Beta source00f6fe8 and source ZIP checksum; native reader22/22 and23/24; matching checksum-pinned Windows Xray passed WG,Hy2,Trojan,VLESSenc,SS2022. Exact alpha19 Kotlin v1 reader24 + seven malformed rejects on JVM; no phone. Current installed Windows0.1.2-preview.5 was checked independently of public Beta: native AWG path passes with cold retry; ordinary WG fails; Salamander Hy2 passes WAN. No blanket downgrade of new client capabilities to the old public matrix.",
+      "Dependencies": "Client-owner hardware confirmation for AWG dialect/Windows SS2022.",
+      "Acceptance": "Actual feeds accepted by matching strict readers; unsupported with reasons; counts from actual records; no schema field additions without compatibility proof.",
+      "Next": "Physical APK/Mac data path, protocol-aware current-client negotiation and remaining transport/Doze cases.",
+      "Rollback": "Retain existing v1 and conservative platform filters.",
+      "Effort": "1-3 remaining shared with OLD-10. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-04",
+      "priority": "P1",
+      "origin": "New prompt 4.1.",
+      "Status": "partial; actual restricted sshd and selective session removal passed",
+      "Evidence / confirmed cause": "Existing strict SOCKS/stream credential tests retained. AddSSHUser/removal/session kill refuse unmanaged/admin/UID0 accounts; owned SSH blocks preserve foreign rules; explicit password change targets only owned sessions. Nov13 real guest OS users/password authentication + two SSH forwarding sessions: no PTY/shell, existing admin password policy preserved, target removed while other account survived; elapsed7.419s. Shared Soar direct restrictions retained.",
+      "Dependencies": "Real SSH/Soar environment for end-to-end gates.",
+      "Acceptance": "Wrong/no credentials, password change, deletion/last user, limiting account and old saved configs tested; direct and SSH results separate; admin/other users retained.",
+      "Next": "Public Soar/SSH/SOCKS end-to-end, timer removal and provider/network cases.",
+      "Rollback": "Preserve direct configs unless operator explicitly rotates shared key.",
+      "Effort": "1-2 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-05",
+      "priority": "P1",
+      "origin": "New prompt 4.2.",
+      "Status": "partial; latest-candidate data/counter/revoke revalidated; strict quota remains unproved",
+      "Evidence / confirmed cause": "Actual six SS2022/Trojan/VLESSenc modes pass; counter/new-session/other-account behavior measured; established streams remain alive; timer SLO/overshoot null, conservative exclusions unchanged. Nov13 real candidate Xray three protocols: bidirectional payload, distinct counters, shared idempotent total, selective new-session block, other account healthy and private core/TLS restore passed. Established streams survive; scheduler SLO/overshoot null.",
+      "Dependencies": "Controlled rate lab and engine availability.",
+      "Acceptance": "Expiry/quota/renew/restart/restore/read failure/concurrent accounts preserve totals; measured delay and other-account impact; report soft limit honestly.",
+      "Next": "Scheduled timer and quantitative overshoot on retained quota paths; design before admitting unsupported hard-quota protocols.",
+      "Rollback": "No enablement of quota for unsupported protocols.",
+      "Effort": "2-4 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-06",
+      "priority": "P1",
+      "origin": "New prompt 4.3 subscription.",
+      "Status": "implemented locally; operational retention/deployment review remains",
+      "Evidence / confirmed cause": "Independent rotate_link, strict active/archived tokens, stale-writer and retired-file regressions; historical path escape reproduced then prevented; diagnostics no longer auto-dump journal. Privacy/opt-in retention documented.",
+      "Dependencies": "Operator choice only for explicit rotation.",
+      "Acceptance": "Old rotated URL removed; stable refresh/renew; URLs/tokens/passwords absent in ordinary diagnostics/errors/logs.",
+      "Next": "Host log-policy and real HTTPS no-store/listing behavior on full VM; no forced token rotation.",
+      "Rollback": "Existing token preserved until explicit rotation commits.",
+      "Effort": "0.5-1 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-07",
+      "priority": "P1",
+      "origin": "New prompt 4.3 backup.",
+      "Status": "partial; encrypted actual nine-core restore and protected signing-key recovery passed",
+      "Evidence / confirmed cause": "age1.3.2, private key handling, atomic output; actual CLI wrong-key/tamper/truncate rejected before mutation, authenticated IDs/tokens/usage restored; partial restore exits nonzero. Full bundle tests retain keys/core/history. Actual CLI now proves invalid legacy-layout restore/check/keygen/version do not migrate, and authenticated confirmed legacy restore migrates successfully. Nov13 age wrong key rejected before mutation; actual guest OS/core restore preserved account IDs/tokens/passwords and root-private unrelated recovery-key owner. Local DPAPI production signer recovered three times into fresh vaults using portable age backup.",
+      "Dependencies": "Maintained library and operator key storage.",
+      "Acceptance": "Wrong key/tamper fail before mutation; interrupted export keeps old file; roundtrip retains all keys/IDs/usage; secrets absent from argv/logs.",
+      "Next": "Offline/off-site signing kit and full base DNS/WARP/usage-forward reconciliation acceptance.",
+      "Rollback": "Legacy plaintext still decodes; encrypted key retained separately offline.",
+      "Effort": "0.5-1 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-08",
+      "priority": "P1",
+      "origin": "New prompt 5 DNS.",
+      "Status": "implemented resource bounds; controlled loopback measurements passed",
+      "Evidence / confirmed cause": "Bounded UDP workers/queue/global+backend pending/sockets/TCP-response memory/rates;5000 bounded burst then100/0 healthy same resolver; accepted idle TCP closes on shutdown.",
+      "Dependencies": "Isolated loopback/namespace lab.",
+      "Acceptance": "Resource ceiling holds under bounded overload and healthy shared-resolver traffic recovers; publish scenario/attempts/latency and unknowns.",
+      "Next": "Real DNS-tunnel/HMAC/MTU/amplification and sustained host resources; synthetic echo ratio not generalized.",
+      "Rollback": "Revert router code and restart only router; no host firewall changes.",
+      "Effort": "1-2 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-09",
+      "priority": "P1",
+      "origin": "New prompt 5 systemd.",
+      "Status": "partial; narrow DNS confinement and real full-VM reboot passed",
+      "Evidence / confirmed cause": "Per-service requirements table; actual NoNewPrivs=1 and200 UDP/TCP requests before/after owned systemd restart. No blanket AWG/TUN/certificate/WARP restrictions. Prior actual DNS NoNewPrivs/restart evidence retained. Nov13 root ownership of configuration parents and nonrecursive EnsureDir preserve unrelated private keys; no claim all old child ACLs or every service capability is migrated.",
+      "Dependencies": "Dedicated systemd VM for reboot/renew/WARP proofs.",
+      "Acceptance": "Restrictions must not break AWG/TUN/NET_ADMIN or cert reload; systemd score alone insufficient.",
+      "Next": "Review each TUN/WARP/native backend confinement and pre-existing child ownership separately.",
+      "Rollback": "Restore prior owned unit; daemon-reload and restart only affected service.",
+      "Effort": "2-4 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-10",
+      "priority": "P1",
+      "origin": "New prompt 5 maintenance.",
+      "Status": "partial; source-built candidates, notices and Go/Rust scans pass within scope; promotion open",
+      "Evidence / confirmed cause": "SECURITY/threat/privacy/recovery/provenance docs; pinned actions/tools; all shell scripts linted/formatted; official332-record mirror and panel source0 findings after crypto update; runtime findings explicitly not clean. Nov13 fourteen amd64/arm64 candidate assets, nine base source archives/patches,348 notice records; official DNSTT CLI compatibility patch; crypto/net/sys/compress/brotli/Tokio updates. Five attributable Go source scans and panel scan zero findings; Caddy/Xray root OSV ranges separately reviewed; RustSec zero findings. Native C/older-Linux ABI unknown.",
+      "Dependencies": "Confirmed source/licensing and public advisory evidence.",
+      "Acceptance": "No speculative CVE claims; maintain both legacy/dedicated engines; CI checks relevant changed behavior, scripts formatted/linted.",
+      "Next": "C/OpenSSL/picoquic/picotls review, compatible Slipstream builds, full client transport acceptance and GitHub CI after authorization.",
+      "Rollback": "Revert CI/docs only; engine pins do not silently change.",
+      "Effort": "1-3 plus upstream reconstruction. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-11",
+      "priority": "P2",
+      "origin": "New prompt 6; appendix 2.",
+      "Status": "gated experiment; no new public protocol family enabled",
+      "Evidence / confirmed cause": "Android alpha19 now has constrained AnyTLS/TUIC/Mieru adapter per pinned source/provenance; panel does not deploy them. WG/Hy2 own-panel failures not declared fixed. Capability/acceptance prerequisites recorded. A bounded real WAN experiment justified existing Hy2 Salamander support; no replacement protocol family enabled and no WG profile silently replaced.",
+      "Dependencies": "NEW-03, OLD-09, client-owner maintained engine/testing.",
+      "Acceptance": "Each new experiment has auth/quota/revoke/service/log/backup and compatible client plus controlled payload test before public support.",
+      "Next": "Stabilize existing clients/options/data first; maintained exact-source experiment only for a justified need.",
+      "Rollback": "Feature remains off until acceptance and release approval.",
+      "Effort": "3-8 per justified family; not a schedule. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-12",
+      "priority": "P2",
+      "origin": "New prompt 6; appendix 3.",
+      "Status": "partial; lab certificate lifecycle and private endpoint mapping passed; public address migration open",
+      "Evidence / confirmed cause": "Existing front/parser/address/eligibility tests pass; extra-address build errors now retain the prior valid feed; >1000 items rejected. Native grouping and positional address IDs remain known gaps. Nov13 private-CA leaf replacement restarted exactly hy2,managed-trojan,xh; other six processes preserved. Windows payload used explicit test endpoints/CA, with system trust and default routes unchanged.",
+      "Dependencies": "Valid DNS/cert and IPv6 VM/network for external proofs.",
+      "Acceptance": "Local tests cover invalid routing and stable dedup; hardware/network outcomes explicitly separate.",
+      "Next": "Real SNI/ALPN/IPv6/multi-address reordering, public ACME and WARP routing.",
+      "Rollback": "Preserve existing SNI/port/routes; no automatic reconfiguration.",
+      "Effort": "2-4 remaining. Person-days estimate; external waiting excluded, shared work not additive."
+    },
+    {
+      "id": "NEW-13",
+      "priority": "P3",
+      "origin": "New prompt P3 and 8; appendix 4.",
+      "Status": "partial; review.2 source/build/evidence/custody handoff prepared; public release held",
+      "Evidence / confirmed cause": "All prior/new rows retained with status/evidence/dependencies/acceptance/rollback/remaining effort; four-language notes, security docs, local source/build/report bundle. No release/deploy/account-key rotation. Nov13 bilingual evidence report, updated four-language README notices, all24 backlog rows retained, new source/runtime archives and protected Windows key-recovery guide. Review artifacts do not authorize deployment or publication. Redacted WAN evidence, explicit rollback instructions and installed-preview source/engine identities are included in the final local review.",
+      "Dependencies": "All independent work and validation results.",
+      "Acceptance": "No item silently dropped; no complete security audit/global protocol-health claim; no unapproved release/deploy.",
+      "Next": "Finish open engineering/physical/provider gates; optional presentation extras remain unstarted.",
+      "Rollback": "Local commits/patch are reversible; no published mutations.",
+      "Effort": "0-0.5 packaging/review. Person-days estimate; external waiting excluded, shared work not additive."
+    }
+  ],
+  "additional_authentication_ordering_finding": {
+    "id": "FOUND-06",
+    "priority": "P0",
+    "cause": "Automatic CLI legacy migration preceded restore authentication",
+    "resolution": "Defer restore migration until authenticated and confirmed; read-only validation/keygen/version do not migrate",
+    "evidence": "Actual private-namespace CLI regression fails on review48a79f5 and passes on repaired source",
+    "remaining_gate": "Full VM migration/recovery remains OPEN"
+  },
+  "latest_review_date": "2026-11-13",
+  "latest_evidence": "docs/engineering-acceptance-2026-11-13.md",
+  "new_confirmed_findings": [
+    {
+      "id": "FIND-07",
+      "tasks": [
+        "NEW-02",
+        "OLD-08"
+      ],
+      "cause": "Abrupt guest power loss leaves persistent Unix API sockets; Xray cannot bind after reboot.",
+      "fix": "Remove only verified stale owned Unix socket after liveness/type/path checks; preserve live/file/link endpoints.",
+      "evidence": "full-vm-reboot.json; TestPrepareAPISocketAfterPowerCut"
+    },
+    {
+      "id": "FIND-08",
+      "tasks": [
+        "NEW-02",
+        "NEW-07",
+        "NEW-09"
+      ],
+      "cause": "Recursive config-directory chown changes unrelated root-private recovery identity owner; repeated restore fails and service gains ownership.",
+      "fix": "Root-owned config parents; nonrecursive, no-dereference EnsureDir; preserve children.",
+      "evidence": "full-vm-backup-ssh.json; TestEnsureDirRejectsSymlinkWithoutChangingTarget"
+    }
+  ]
+}

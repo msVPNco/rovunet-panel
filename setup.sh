@@ -13,7 +13,6 @@ cleanup() {
         echo ""
         echo "ERROR: Failed during: ${STEP}"
         echo "Fix the issue and re-run the script."
-        rm -f ./caddy 2>/dev/null || true
     fi
     exit ${exit_code}
 }
@@ -60,6 +59,7 @@ check_os() {
         echo "Error: Cannot detect OS (missing /etc/os-release)."
         exit 1
     fi
+    # shellcheck disable=SC1091 # OS-owned file; not a repository dependency.
     source /etc/os-release
     case "${ID}" in
         ubuntu)
@@ -96,8 +96,8 @@ validate_username() {
         return 1
     fi
     local reserved=("root" "daemon" "bin" "sys" "sync" "games" "man" "lp" "mail"
-                     "news" "uucp" "proxy" "www-data" "backup" "list" "irc" "gnats"
-                     "nobody" "systemd-network" "systemd-resolve" "messagebus" "sshd")
+        "news" "uucp" "proxy" "www-data" "backup" "list" "irc" "gnats"
+        "nobody" "systemd-network" "systemd-resolve" "messagebus" "sshd")
     local r
     for r in "${reserved[@]}"; do
         if [[ "${name}" == "${r}" ]]; then
@@ -117,7 +117,7 @@ backup_caddyfile() {
 
 reload_caddy() {
     local caddyfile="/etc/caddy-naive/Caddyfile"
-    if ! /usr/bin/caddy-naive validate --config "${caddyfile}" 2>/dev/null; then
+    if ! /usr/bin/caddy-naive validate --config "${caddyfile}" 2> /dev/null; then
         echo "  Error: Caddyfile validation failed. Rolling back..."
         if [[ -f "${caddyfile}.bak" ]]; then
             cp "${caddyfile}.bak" "${caddyfile}"
@@ -125,8 +125,8 @@ reload_caddy() {
         fi
         return 1
     fi
-    if systemctl is-active --quiet caddy-naive 2>/dev/null; then
-        /usr/bin/caddy-naive reload --config "${caddyfile}" 2>/dev/null
+    if systemctl is-active --quiet caddy-naive 2> /dev/null; then
+        /usr/bin/caddy-naive reload --config "${caddyfile}" 2> /dev/null
         echo "  Caddy reloaded."
     else
         systemctl start caddy-naive
@@ -135,12 +135,12 @@ reload_caddy() {
 }
 
 ensure_slipnet_group() {
-    if ! getent group slipnet &>/dev/null; then
+    if ! getent group slipnet &> /dev/null; then
         groupadd slipnet
         echo "  Created 'slipnet' group."
     fi
-    if ! grep -q "^# BEGIN SlipNet" /etc/ssh/sshd_config 2>/dev/null; then
-        cat >> /etc/ssh/sshd_config <<'SSHEOF'
+    if ! grep -q "^# BEGIN SlipNet" /etc/ssh/sshd_config 2> /dev/null; then
+        cat >> /etc/ssh/sshd_config << 'SSHEOF'
 
 # BEGIN SlipNet
 Match Group slipnet
@@ -152,7 +152,7 @@ Match Group slipnet
     ForceCommand /bin/false
 # END SlipNet
 SSHEOF
-        systemctl reload sshd 2>/dev/null || systemctl reload ssh 2>/dev/null || true
+        systemctl reload sshd 2> /dev/null || systemctl reload ssh 2> /dev/null || true
         echo "  Configured sshd for SlipNet tunnel users."
     fi
 }
@@ -161,7 +161,7 @@ rewrite_caddyfile_settings() {
     local domain="$1" email="$2" decoy="$3"
     local caddyfile="/etc/caddy-naive/Caddyfile"
     local auth_lines
-    auth_lines="$(grep '            basic_auth ' "${caddyfile}" 2>/dev/null)" || auth_lines=""
+    auth_lines="$(grep '            basic_auth ' "${caddyfile}" 2> /dev/null)" || auth_lines=""
     decoy="${decoy%/}"
 
     if [[ -z "${auth_lines}" ]]; then
@@ -169,7 +169,7 @@ rewrite_caddyfile_settings() {
         return 1
     fi
 
-    cat > "${caddyfile}" <<CADDYEOF
+    cat > "${caddyfile}" << CADDYEOF
 {
     order forward_proxy before file_server
 }
@@ -208,7 +208,7 @@ show_menu() {
 
         if is_installed; then
             local status="installed"
-            if systemctl is-active --quiet caddy-naive 2>/dev/null; then
+            if systemctl is-active --quiet caddy-naive 2> /dev/null; then
                 status="running"
             fi
             echo "  Status: caddy-naive is ${status}"
@@ -228,10 +228,19 @@ show_menu() {
             echo ""
 
             case "${choice}" in
-                1) do_reconfigure; wait_for_enter ;;
-                2) do_show_config; wait_for_enter ;;
+                1)
+                    do_reconfigure
+                    wait_for_enter
+                    ;;
+                2)
+                    do_show_config
+                    wait_for_enter
+                    ;;
                 3) do_manage_users ;;
-                4) do_uninstall; wait_for_enter ;;
+                4)
+                    do_uninstall
+                    wait_for_enter
+                    ;;
                 0) exit 0 ;;
                 *) echo "Invalid choice." ;;
             esac
@@ -243,7 +252,10 @@ show_menu() {
             echo ""
 
             case "${choice}" in
-                1) do_install; wait_for_enter ;;
+                1)
+                    do_install
+                    wait_for_enter
+                    ;;
                 0) exit 0 ;;
                 *) echo "Invalid choice." ;;
             esac
@@ -259,6 +271,16 @@ do_install() {
     echo "[Pre-flight] Checking requirements..."
 
     check_os
+
+    # Bootstrap trust comes from an independently reviewed panel installation,
+    # never from a mutable Go toolchain/plugin downloaded by this legacy menu.
+    if [[ ! -x /usr/local/bin/rovunet ]] ||
+        ! /usr/local/bin/rovunet legacy-naive-runtime --help > /dev/null 2>&1; then
+        echo "Install the reviewed panel package with legacy-naive-runtime support first."
+        echo "Standalone reconfiguration and user management remain available."
+        STEP=""
+        return
+    fi
 
     if is_installed; then
         echo ""
@@ -339,33 +361,14 @@ do_install() {
     echo "[1/7] Installing dependencies..."
 
     apt-get update -qq
-    apt-get install -y -qq curl git golang-go > /dev/null 2>&1 || \
-        apt-get install -y -qq curl git > /dev/null 2>&1
+    apt-get install -y -qq ca-certificates curl libcap2-bin iproute2 > /dev/null 2>&1
+    echo "  Dependencies installed from the OS package trust store."
 
-    ensure_go
-    echo "  Dependencies installed."
-
-    # ─── Build Caddy ────────────────────
-
-    STEP="Building Caddy with forwardproxy"
-    echo "[2/7] Building Caddy with NaiveProxy plugin (this may take a few minutes)..."
-
-    go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
-
-    BUILD_DIR="$(mktemp -d)"
-    pushd "${BUILD_DIR}" > /dev/null
-
-    "${GOPATH}/bin/xcaddy" build \
-        --with github.com/caddyserver/forwardproxy=github.com/klzgrad/forwardproxy@naive
-
-    mv caddy /usr/bin/caddy-naive
-    chmod +x /usr/bin/caddy-naive
+    STEP="Verifying pinned Caddy runtime"
+    echo "[2/7] Verifying the reviewed NaiveProxy runtime..."
+    /usr/local/bin/rovunet legacy-naive-runtime
     setcap cap_net_bind_service=+ep /usr/bin/caddy-naive
-
-    popd > /dev/null
-    rm -rf "${BUILD_DIR}"
-
-    echo "  Built: $(/usr/bin/caddy-naive version)"
+    echo "  Runtime verified."
 
     # ─── Caddyfile ──────────────────────
 
@@ -378,7 +381,7 @@ do_install() {
         echo "[4/7] Creating SSH user..."
 
         ensure_slipnet_group
-        if ! id "${PROXY_USER}" &>/dev/null; then
+        if ! id "${PROXY_USER}" &> /dev/null; then
             useradd -m -s /bin/false -G slipnet "${PROXY_USER}"
         else
             usermod -aG slipnet "${PROXY_USER}"
@@ -394,7 +397,7 @@ do_install() {
     STEP="Creating systemd service"
     echo "[5/7] Creating systemd service..."
 
-    cat > /etc/systemd/system/caddy-naive.service <<'UNITEOF'
+    cat > /etc/systemd/system/caddy-naive.service << 'UNITEOF'
 [Unit]
 Description=SlipNet Caddy-Naive Proxy Server
 Documentation=https://github.com/klzgrad/naiveproxy
@@ -423,7 +426,7 @@ UNITEOF
     STEP="Configuring firewall"
     echo "[6/7] Checking firewall..."
 
-    if command -v ufw &>/dev/null && ufw status | grep -q "Status: active"; then
+    if command -v ufw &> /dev/null && ufw status | grep -q "Status: active"; then
         ufw allow 80,443/tcp > /dev/null 2>&1
         echo "  UFW: allowed ports 80, 443/tcp"
     else
@@ -454,9 +457,9 @@ do_reconfigure() {
     # Read current values from Caddyfile
     local current_caddyfile="/etc/caddy-naive/Caddyfile"
     local current_domain current_email current_decoy
-    current_domain="$(grep -oP '^:443, \K[^ ]+' "${current_caddyfile}" 2>/dev/null | head -1)" || current_domain=""
-    current_email="$(grep -oP 'tls \K\S+' "${current_caddyfile}" 2>/dev/null | head -1)" || current_email=""
-    current_decoy="$(grep -oP 'reverse_proxy \K\S+' "${current_caddyfile}" 2>/dev/null | head -1)" || current_decoy=""
+    current_domain="$(grep -oP '^:443, \K[^ ]+' "${current_caddyfile}" 2> /dev/null | head -1)" || current_domain=""
+    current_email="$(grep -oP 'tls \K\S+' "${current_caddyfile}" 2> /dev/null | head -1)" || current_email=""
+    current_decoy="$(grep -oP 'reverse_proxy \K\S+' "${current_caddyfile}" 2> /dev/null | head -1)" || current_decoy=""
 
     echo "Current configuration:"
     echo "  Domain: ${current_domain}"
@@ -526,11 +529,11 @@ do_show_config() {
     fi
 
     local domain email
-    domain="$(grep -oP '^:443, \K[^ ]+' "${caddyfile}" 2>/dev/null | head -1)" || domain="unknown"
-    email="$(grep -oP 'tls \K\S+' "${caddyfile}" 2>/dev/null | head -1)" || email="unknown"
+    domain="$(grep -oP '^:443, \K[^ ]+' "${caddyfile}" 2> /dev/null | head -1)" || domain="unknown"
+    email="$(grep -oP 'tls \K\S+' "${caddyfile}" 2> /dev/null | head -1)" || email="unknown"
 
     local status="stopped"
-    if systemctl is-active --quiet caddy-naive 2>/dev/null; then
+    if systemctl is-active --quiet caddy-naive 2> /dev/null; then
         status="running"
     fi
 
@@ -571,7 +574,7 @@ do_uninstall() {
 
     echo ""
     echo "[1/5] Stopping caddy-naive service..."
-    if systemctl is-active --quiet caddy-naive 2>/dev/null; then
+    if systemctl is-active --quiet caddy-naive 2> /dev/null; then
         systemctl stop caddy-naive
         echo "  Service stopped."
     else
@@ -579,7 +582,7 @@ do_uninstall() {
     fi
 
     echo "[2/5] Disabling caddy-naive service..."
-    if systemctl is-enabled --quiet caddy-naive 2>/dev/null; then
+    if systemctl is-enabled --quiet caddy-naive 2> /dev/null; then
         systemctl disable caddy-naive
         echo "  Service disabled."
     else
@@ -587,25 +590,25 @@ do_uninstall() {
     fi
 
     echo "[3/5] Removing SlipNet SSH users..."
-    if getent group slipnet &>/dev/null; then
+    if getent group slipnet &> /dev/null; then
         local members
         members="$(getent group slipnet | cut -d: -f4)" || members=""
         if [[ -n "${members}" ]]; then
             IFS=',' read -ra user_array <<< "${members}"
             for u in "${user_array[@]}"; do
-                userdel -r "${u}" 2>/dev/null || true
+                userdel -r "${u}" 2> /dev/null || true
                 echo "  Removed SSH user: ${u}"
             done
         fi
-        groupdel slipnet 2>/dev/null || true
+        groupdel slipnet 2> /dev/null || true
         echo "  Removed slipnet group."
     else
         echo "  No slipnet group found."
     fi
 
-    if grep -q "^# BEGIN SlipNet" /etc/ssh/sshd_config 2>/dev/null; then
+    if grep -q "^# BEGIN SlipNet" /etc/ssh/sshd_config 2> /dev/null; then
         sed -i '/^# BEGIN SlipNet$/,/^# END SlipNet$/d' /etc/ssh/sshd_config
-        systemctl reload sshd 2>/dev/null || systemctl reload ssh 2>/dev/null || true
+        systemctl reload sshd 2> /dev/null || systemctl reload ssh 2> /dev/null || true
         echo "  Cleaned sshd configuration."
     fi
 
@@ -620,8 +623,8 @@ do_uninstall() {
     echo "    /usr/bin/caddy-naive"
 
     echo "[5/5] Checking firewall..."
-    if command -v ufw &>/dev/null && ufw status | grep -q "Status: active"; then
-        ufw delete allow 80,443/tcp 2>/dev/null || true
+    if command -v ufw &> /dev/null && ufw status | grep -q "Status: active"; then
+        ufw delete allow 80,443/tcp 2> /dev/null || true
         echo "  Removed UFW rules for ports 80,443."
     else
         echo "  UFW not active, skipping."
@@ -649,7 +652,7 @@ add_user() {
         return
     fi
 
-    if grep -q "basic_auth ${username} " "${caddyfile}" 2>/dev/null; then
+    if grep -q "basic_auth ${username} " "${caddyfile}" 2> /dev/null; then
         echo "  Error: User '${username}' already exists in Caddyfile."
         return
     fi
@@ -660,7 +663,7 @@ add_user() {
     read -rp "  Create SSH tunnel access? [y/N]: " create_ssh
     create_ssh="${create_ssh:-n}"
 
-    if [[ "${create_ssh}" == [yY] ]] && id "${username}" &>/dev/null; then
+    if [[ "${create_ssh}" == [yY] ]] && id "${username}" &> /dev/null; then
         echo "  Error: OS user '${username}' already exists."
         return
     fi
@@ -674,7 +677,7 @@ add_user() {
 
     if [[ "${create_ssh}" == [yY] ]]; then
         ensure_slipnet_group
-        if ! useradd -m -s /bin/false -G slipnet "${username}" 2>/dev/null; then
+        if ! useradd -m -s /bin/false -G slipnet "${username}" 2> /dev/null; then
             echo "  Error: Failed to create OS user '${username}'. Rolling back Caddyfile..."
             if [[ -f "${caddyfile}.bak" ]]; then
                 cp "${caddyfile}.bak" "${caddyfile}"
@@ -687,7 +690,7 @@ add_user() {
 
     if ! reload_caddy; then
         if [[ "${ssh_created}" == true ]]; then
-            userdel -r "${username}" 2>/dev/null || true
+            userdel -r "${username}" 2> /dev/null || true
         fi
         return
     fi
@@ -705,7 +708,7 @@ delete_user() {
     local caddyfile="/etc/caddy-naive/Caddyfile"
 
     local -a users
-    mapfile -t users < <(grep -oP 'basic_auth \K\S+' "${caddyfile}" 2>/dev/null || true)
+    mapfile -t users < <(grep -oP 'basic_auth \K\S+' "${caddyfile}" 2> /dev/null || true)
 
     if [[ ${#users[@]} -eq 0 ]]; then
         echo "  No users found."
@@ -746,8 +749,8 @@ delete_user() {
     backup_caddyfile
     sed -i "/basic_auth ${target} /d" "${caddyfile}"
 
-    if id "${target}" &>/dev/null; then
-        userdel -r "${target}" 2>/dev/null || true
+    if id "${target}" &> /dev/null; then
+        userdel -r "${target}" 2> /dev/null || true
         echo "  Removed OS user '${target}'."
     fi
 
@@ -770,12 +773,12 @@ list_users() {
     local found=false
     while read -r _ user pass _; do
         local ssh_status="no"
-        if id "${user}" &>/dev/null; then
+        if id "${user}" &> /dev/null; then
             ssh_status="yes"
         fi
         printf "  │ %-18.18s │ %-24.24s │ %-8s │\n" "${user}" "${pass}" "${ssh_status}"
         found=true
-    done < <(grep 'basic_auth' "${caddyfile}" 2>/dev/null || true)
+    done < <(grep 'basic_auth' "${caddyfile}" 2> /dev/null || true)
 
     if [[ "${found}" == false ]]; then
         echo "  │          No users configured yet.                     │"
@@ -806,9 +809,18 @@ do_manage_users() {
         echo ""
 
         case "${uchoice}" in
-            1) add_user; wait_for_enter ;;
-            2) delete_user; wait_for_enter ;;
-            3) list_users; wait_for_enter ;;
+            1)
+                add_user
+                wait_for_enter
+                ;;
+            2)
+                delete_user
+                wait_for_enter
+                ;;
+            3)
+                list_users
+                wait_for_enter
+                ;;
             0) break ;;
             *) echo "  Invalid choice." ;;
         esac
@@ -816,46 +828,6 @@ do_manage_users() {
 }
 
 # ─── Shared helpers ─────────────────────
-
-ensure_go() {
-    install_go_from_tarball() {
-        echo "  Installing Go from official tarball..."
-        local GO_VERSION
-        GO_VERSION="$(curl -fsSL 'https://go.dev/VERSION?m=text' | head -1)"
-        local ARCH
-        ARCH="$(dpkg --print-architecture)"
-        case "${ARCH}" in
-            amd64) ARCH="amd64" ;;
-            arm64) ARCH="arm64" ;;
-            armhf) ARCH="armv6l" ;;
-            *) echo "Error: Unsupported architecture: ${ARCH}"; exit 1 ;;
-        esac
-        curl -fsSL "https://go.dev/dl/${GO_VERSION}.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz
-        rm -rf /usr/local/go
-        tar -C /usr/local -xzf /tmp/go.tar.gz
-        rm -f /tmp/go.tar.gz
-        export PATH="/usr/local/go/bin:${PATH}"
-        echo "  Installed $(go version)"
-    }
-
-    if command -v go &>/dev/null; then
-        local GO_VER GO_MAJOR GO_MINOR
-        GO_VER="$(go version | grep -oP 'go\K[0-9]+\.[0-9]+')"
-        GO_MAJOR="${GO_VER%%.*}"
-        GO_MINOR="${GO_VER#*.}"
-        if [[ "${GO_MAJOR}" -lt 1 ]] || { [[ "${GO_MAJOR}" -eq 1 ]] && [[ "${GO_MINOR}" -lt 21 ]]; }; then
-            echo "  Go ${GO_VER} is too old (need 1.21+)."
-            install_go_from_tarball
-        else
-            echo "  Go ${GO_VER} — OK"
-        fi
-    else
-        install_go_from_tarball
-    fi
-
-    export GOPATH="${GOPATH:-/root/go}"
-    export PATH="${GOPATH}/bin:/usr/local/go/bin:${PATH}"
-}
 
 write_caddyfile() {
     STEP="Creating Caddyfile"
@@ -865,7 +837,7 @@ write_caddyfile() {
 
     DECOY_URL="${DECOY_URL%/}"
 
-    cat > /etc/caddy-naive/Caddyfile <<CADDYEOF
+    cat > /etc/caddy-naive/Caddyfile << CADDYEOF
 {
     order forward_proxy before file_server
 }
@@ -901,7 +873,7 @@ start_and_verify() {
     local TLS_OK=false
     for _ in $(seq 1 12); do
         sleep 5
-        if curl -fsSo /dev/null "https://${DOMAIN}" 2>/dev/null; then
+        if curl -fsSo /dev/null "https://${DOMAIN}" 2> /dev/null; then
             TLS_OK=true
             break
         fi

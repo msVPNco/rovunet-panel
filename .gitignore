@@ -22,3 +22,9 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/
+
+# Local Python caches and private review/signing material
+__pycache__/
+*.pyc
+*.agekey
+*.private.pem

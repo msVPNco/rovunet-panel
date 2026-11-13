@@ -17,6 +17,11 @@ func currentBackend(r *Router, addr string) *backendConn {
 func TestTXIDNotReusedOnConnection(t *testing.T) {
 	addr := startEchoBackend(t)
 	r := New("127.0.0.1:0")
+	t.Cleanup(func() { r.Close() })
+	// This identifier-space test deliberately sends all 65536 requests without
+	// waiting for replies. Normal serving retains the much smaller default cap.
+	r.maxPending = 1 << 16
+	r.maxBackendPending = 1 << 16
 	ignore := func([]byte) {}
 
 	query := buildQuery(0, "x.t.example.com")
@@ -59,6 +64,7 @@ func TestTXIDNotReusedOnConnection(t *testing.T) {
 func TestRetiredBackendClosedOnceDrained(t *testing.T) {
 	addr := startEchoBackend(t)
 	r := New("127.0.0.1:0")
+	t.Cleanup(func() { r.Close() })
 	r.cleanInterval = 20 * time.Millisecond
 	answered := make(chan struct{}, 1)
 	if err := r.forward(addr, buildQuery(9, "x.t.example.com"), func([]byte) { answered <- struct{}{} }); err != nil {

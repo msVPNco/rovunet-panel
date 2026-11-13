@@ -35,10 +35,11 @@ const defaultCleanInterval = 5 * time.Second
 // queries go out on a fresh connection, while the retired one keeps reading
 // until nothing is pending on it and is then closed.
 type backendConn struct {
-	conn     *net.UDPConn
-	pending  sync.Map      // serverTxID (uint16) → *pendingQuery
-	nextTxID atomic.Uint32 // counter for server-side TXID allocation
-	retired  atomic.Bool   // replaced by a new connection; see cleanPending
+	pendingCount atomic.Int64
+	conn         *net.UDPConn
+	pending      sync.Map      // serverTxID (uint16) → *pendingQuery
+	nextTxID     atomic.Uint32 // counter for server-side TXID allocation
+	retired      atomic.Bool   // replaced by a new connection; see cleanPending
 }
 
 // pendingQuery tracks a forwarded query so the response can be routed back.
@@ -57,10 +58,24 @@ type pendingQuery struct {
 // forward sends packet to the backend at addr and arranges for the answer to
 // reach reply. It rewrites packet's TXID in place.
 func (r *Router) forward(addr string, packet []byte, reply replyFunc) error {
+	if len(packet) < 12 {
+		return errors.New("short DNS query")
+	}
+	if !reserve(&r.pending, 1, r.maxPending) {
+		r.budgetDrops.Add(1)
+		return errBudget
+	}
+	peak(&r.pendingPeak, r.pending.Load())
+	stored := false
+	defer func() {
+		if !stored {
+			r.pending.Add(-1)
+		}
+	}()
 	pq := &pendingQuery{
 		reply:        reply,
 		originalTxID: binary.BigEndian.Uint16(packet[:2]),
-		question:     questionSection(packet),
+		question:     append([]byte(nil), questionSection(packet)...),
 		timestamp:    time.Now(),
 	}
 	for {
@@ -68,19 +83,33 @@ func (r *Router) forward(addr string, packet []byte, reply replyFunc) error {
 		if err != nil {
 			return err
 		}
+		if !reserve(&bc.pendingCount, 1, r.maxBackendPending) {
+			r.budgetDrops.Add(1)
+			return errBudget
+		}
 		n := bc.nextTxID.Add(1)
 		if n > 1<<16 {
+			bc.pendingCount.Add(-1)
 			// Every ID has been used on this connection.
 			r.retireBackend(addr, bc)
 			continue
 		}
 		serverTxID := uint16(n) // 1, 2, … 65535, then 0
 		bc.pending.Store(serverTxID, pq)
+		stored = true
 
 		binary.BigEndian.PutUint16(packet[:2], serverTxID)
 		if _, err := bc.conn.Write(packet); err != nil {
-			bc.pending.Delete(serverTxID)
+			if bc.pending.CompareAndDelete(serverTxID, pq) {
+				r.releasePending(bc)
+			}
 			return err
+		}
+		if r.closed() {
+			if bc.pending.CompareAndDelete(serverTxID, pq) {
+				r.releasePending(bc)
+			}
+			return net.ErrClosed
 		}
 		return nil
 	}
@@ -90,9 +119,16 @@ func (r *Router) forward(addr string, packet []byte, reply replyFunc) error {
 func (r *Router) getBackend(addr string) (*backendConn, error) {
 	r.backendsMu.Lock()
 	defer r.backendsMu.Unlock()
+	if r.closed() {
+		return nil, net.ErrClosed
+	}
 
 	if bc, ok := r.backends[addr]; ok {
 		return bc, nil
+	}
+	if len(r.allBackends) >= r.maxBackendConnections {
+		r.budgetDrops.Add(1)
+		return nil, errBudget
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
@@ -108,6 +144,7 @@ func (r *Router) getBackend(addr string) (*backendConn, error) {
 
 	bc := &backendConn{conn: conn}
 	r.backends[addr] = bc
+	r.allBackends[bc] = struct{}{}
 
 	// Start response reader goroutine
 	go r.readBackendResponses(bc, addr)
@@ -132,6 +169,14 @@ func (r *Router) retireBackend(addr string, bc *backendConn) {
 
 // readBackendResponses reads responses from a backend and routes them to clients.
 func (r *Router) readBackendResponses(bc *backendConn, addr string) {
+	defer func() {
+		r.backendsMu.Lock()
+		delete(r.allBackends, bc)
+		if r.backends[addr] == bc {
+			delete(r.backends, addr)
+		}
+		r.backendsMu.Unlock()
+	}()
 	// Large enough for any DNS message, since TCP clients aren't bound by UDP sizes.
 	buf := make([]byte, 65535)
 	for {
@@ -165,6 +210,7 @@ func (r *Router) readBackendResponses(bc *backendConn, addr string) {
 		if !questionMatches(pq.question, buf[:n]) || !bc.pending.CompareAndDelete(serverTxID, val) {
 			continue
 		}
+		r.releasePending(bc)
 
 		// Restore the client's original TXID before forwarding.
 		binary.BigEndian.PutUint16(buf[:2], pq.originalTxID)
@@ -181,13 +227,26 @@ func (r *Router) cleanPending(bc *backendConn) {
 	// A query can still be storing its TXID at the moment bc is retired, so
 	// closing waits for one sweep after the retirement was first seen.
 	sawRetired := false
-	for range ticker.C {
+	for {
+		select {
+		case <-r.done:
+			bc.pending.Range(func(k, v any) bool {
+				if bc.pending.CompareAndDelete(k, v) {
+					r.releasePending(bc)
+				}
+				return true
+			})
+			return
+		case <-ticker.C:
+		}
 		now := time.Now()
 		drained := true
 		bc.pending.Range(func(key, value any) bool {
 			pq := value.(*pendingQuery)
-			if now.Sub(pq.timestamp) > pendingTimeout {
-				bc.pending.Delete(key)
+			if now.Sub(pq.timestamp) > r.pendingTTL {
+				if bc.pending.CompareAndDelete(key, value) {
+					r.releasePending(bc)
+				}
 			} else {
 				drained = false
 			}
@@ -216,6 +275,9 @@ func questionSection(msg []byte) []byte {
 			return nil
 		}
 		l := int(msg[off])
+		if l > 63 || off-12+l+1 > 255 {
+			return nil
+		}
 		if l == 0 {
 			off++
 			break

@@ -97,7 +97,10 @@ func completeAfterUpdate(ctx *actions.Context, cfg *config.Config) error {
 
 // HandleCompleteSetup is also the retry-only CLI entry point.
 func HandleCompleteSetup(ctx *actions.Context) error {
-	return completeAfterUpdate(ctx, ctx.Config.(*config.Config))
+	if err := completeAfterUpdate(ctx, ctx.Config.(*config.Config)); err != nil {
+		return err
+	}
+	return CompleteBootstrap()
 }
 
 type completeSetupOps struct {
@@ -286,6 +289,7 @@ func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops c
 			o.Subnet = "10.203.72.0/24"
 		}
 		o.DedicatedXray = spec.protocol == "ss2022" || spec.protocol == "trojan" || spec.protocol == "vlessenc"
+		o.HysteriaSalamander, o.HysteriaObfsConfigured = spec.protocol == "hysteria2", spec.protocol == "hysteria2"
 		if !backedUp {
 			path, err := ops.backup(cfg)
 			if err != nil {
@@ -339,8 +343,12 @@ func reportCompleteProfiles(cfg *config.Config, out actions.OutputWriter) error 
 			out.Info("Traffic-limited account: restricted protocol set retained")
 			continue
 		}
-		if len(android) < 24 || len(windows) < 22 {
-			problems = append(problems, fmt.Errorf("account %s: complete setup pending (Android %d/24, Windows %d/22); check missing/disabled tunnels, DNS, certificates and core errors above", u.Username, len(android), len(windows)))
+		required := 24
+		if u.ExpiresAt != "" {
+			required--
+		} // shared-key Soar Direct is excluded for timed accounts
+		if len(android) < required || len(windows) < required {
+			problems = append(problems, fmt.Errorf("account %s: complete setup pending (Android %d/%d, Windows %d/%d); check missing/disabled tunnels, DNS, certificates and core errors above", u.Username, len(android), required, len(windows), required))
 		}
 	}
 	return errors.Join(problems...)

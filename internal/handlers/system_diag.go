@@ -15,6 +15,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/msVPNco/rovunet-panel/internal/coreplan"
+	"github.com/msVPNco/rovunet-panel/internal/protocols"
 	"github.com/msVPNco/rovunet-panel/internal/service"
 	"github.com/msVPNco/rovunet-panel/internal/version"
 	"github.com/msVPNco/rovunet-panel/internal/warp"
@@ -354,7 +355,11 @@ func handleSystemDiag(ctx *actions.Context) error {
 
 			if coreplan.Metered(c.Protocol) {
 				if coreinstall.StatsWorking(c.Name) {
-					check(fmt.Sprintf("[%s] traffic statistics", c.Name), true, "answering (traffic limits count this core)")
+					detail := "answering (traffic-limited accounts may use this core)"
+					if !protocols.QuotaEligible(c.Protocol) {
+						detail = "answering; traffic-limited accounts excluded because established streams cannot be revoked safely"
+					}
+					check(fmt.Sprintf("[%s] traffic statistics", c.Name), true, detail)
 				} else {
 					info(fmt.Sprintf("[%s] traffic statistics", c.Name), "no answer: traffic-limited users are not given this core's config")
 				}
@@ -421,13 +426,9 @@ func handleSystemDiag(ctx *actions.Context) error {
 }
 
 func showRecentLogs(out actions.OutputWriter, svcName string) {
-	logs, err := service.Logs(svcName, "10")
-	if err != nil || strings.TrimSpace(logs) == "" {
-		return
-	}
-	for _, line := range strings.Split(strings.TrimSpace(logs), "\n") {
-		out.Print(fmt.Sprintf("         %s", line))
-	}
+	// Upstream journals can contain credentials, URIs and query destinations.
+	// A diagnostic summary must not silently copy them into a shareable report.
+	out.Info("Inspect private service logs locally: journalctl -u " + svcName + ".service -n 10 --no-pager")
 }
 
 func checkFileExists(check func(string, bool, string), tag, label, path string) {

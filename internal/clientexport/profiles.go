@@ -5,6 +5,7 @@ package clientexport
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -50,9 +51,6 @@ func Build(cfg *config.Config, user config.UserConfig, tunnels []config.TunnelCo
 			errs = append(errs, err)
 		}
 		for _, p := range cores {
-			if opts.Client == "windows" && (p.Protocol == "amneziawg" || p.Protocol == "ss2022") {
-				continue
-			}
 			if user.MeteredOnly() && !opts.StatsWorking(p.Core) {
 				continue
 			}
@@ -61,7 +59,33 @@ func Build(cfg *config.Config, user config.UserConfig, tunnels []config.TunnelCo
 				continue
 			}
 			link := p.Link
-			if opts.Format != "standard" {
+			// These two entries are additions to the old Windows feed. Older
+			// Windows readers skip unsupported standard profiles, but reject
+			// the entire subscription for unsupported native xray envelopes.
+			// Retain native metadata for every previously published item.
+			if opts.Client == "windows" && (p.Protocol == "amneziawg" || p.Protocol == "ss2022") {
+				if p.Protocol == "amneziawg" {
+					name := clientcfg.ProfileDisplayName(p.Core)
+					if name == "" {
+						name = p.Core
+					}
+					link, err = clientcfg.WireGuardClientURI(name, link)
+					if err != nil {
+						errs = append(errs, fmt.Errorf("core %s: %w", p.Core, err))
+						continue
+					}
+				} else {
+					u, parseErr := url.Parse(link)
+					if parseErr != nil || u.Scheme != "ss" {
+						errs = append(errs, fmt.Errorf("core %s: invalid Shadowsocks profile", p.Core))
+						continue
+					}
+					if name := clientcfg.ProfileDisplayName(p.Core); name != "" {
+						u.Fragment = name
+					}
+					link = u.String()
+				}
+			} else if opts.Format != "standard" {
 				link, err = clientcfg.GenerateCoreURI(p.Core, p.Link, cfg, clientcfg.URIOptions{Username: user.Username, DisplayName: clientcfg.ProfileDisplayName(p.Core)})
 				if err != nil {
 					errs = append(errs, fmt.Errorf("core %s: %w", p.Core, err))

@@ -20,6 +20,27 @@ func refreshCoreSubscriptions() error {
 }
 
 func init() {
+	rootCmd.AddCommand(&cobra.Command{Use: "core-hy2-obfs <name> <on|off>", Short: "Switch one Hy2 core's Salamander mode with private recovery and rollback", Args: cobra.ExactArgs(2), RunE: func(cmd *cobra.Command, args []string) error {
+		if args[1] != "on" && args[1] != "off" {
+			return fmt.Errorf("mode must be on or off")
+		}
+		cfg, err := loadOrDefaultConfig()
+		if err != nil {
+			return err
+		}
+		backup, err := coreinstall.ChangeHysteriaObfuscation(args[0], args[1] == "on", cfg.Users)
+		if backup != "" {
+			fmt.Fprintln(cmd.OutOrStdout(), "Private core recovery files:", backup)
+		}
+		if err != nil {
+			return err
+		}
+		if err := refreshCoreSubscriptions(); err != nil {
+			return fmt.Errorf("core mode applied; retry subscriptions-refresh: %w", err)
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), "Hy2 mode applied. Existing subscription URLs are retained; clients must refresh their saved profiles.")
+		return nil
+	}})
 	rootCmd.AddCommand(&cobra.Command{Use: "core-confirm <name>", Hidden: true, Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error { return coreinstall.Confirm(args[0]) }})
 	rootCmd.AddCommand(&cobra.Command{Use: "core-prepare <name>", Hidden: true, Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := loadOrDefaultConfig()

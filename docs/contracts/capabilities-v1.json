@@ -1,0 +1,557 @@
+{
+  "schema": 1,
+  "contract": "out-of-band capability evidence; never inserted into strict subscription v1",
+  "observed_at": "2026-11-13",
+  "panel_baseline": "2601c1a9cce2fb718e18a051663b81c115f20daa",
+  "client_source_review": "c8da349ab4f4e4b413cbaa5b1d4a4a9a18adf866",
+  "clients": [
+    {
+      "id": "android-alpha19-full",
+      "version": "0.3.0-alpha19",
+      "version_code": 40,
+      "architectures": [
+        "arm64-v8a",
+        "armeabi-v7a",
+        "x86_64"
+      ],
+      "artifact_sha256": "d44c432113035329ef83f8f84cc7c005290c434089f0cdddc384f4530bd1bc46",
+      "source_commit": "e8c93787fc4703cf4fea6c52ae056fae2724b105",
+      "feed_suffix": ".json",
+      "auxiliary_engine_commit": "3f27ef39f8c96bbfbc8b0b9bb10f5c9ef60149d8",
+      "auxiliary_native_sha256": {
+        "lib/arm64-v8a/librovunet_awg.so": "44b1a5ca4f0cd9f913427003f42a88820396b15c612bb1d7cf4fa527efa65c64",
+        "lib/armeabi-v7a/librovunet_awg.so": "0f7dc0a392a08144ca7556bde6531d4a3fcab5de7efcb039fa111e99e0f99af8",
+        "lib/x86_64/librovunet_awg.so": "15d68b6b37841f9b728f180a56887cbcefbb63cbf82ee1419753785ddda1b553"
+      },
+      "phone_network_measurement": null,
+      "screen_off_battery_measurement": null,
+      "own_panel_hysteria2_wireguard": "Controlled Windows native-engine WG/Hy2 payload passed; physical matching Android runtime/network reports remain unverified.",
+      "source_archive_sha256": "2ed77f73f71476b7e7947d39448415edaf27745b3449a639276b6d2ae3efb9a5",
+      "reader_execution": {
+        "unchanged_source": true,
+        "environment": "Kotlin/JVM with Android org.json; native v1 envelope only",
+        "profiles_accepted": 24,
+        "malformed_rejected": 7,
+        "apk_or_device_test": false
+      }
+    },
+    {
+      "id": "windows-0.1.1-beta-x64",
+      "version": "0.1.1 Beta",
+      "architectures": [
+        "x64"
+      ],
+      "artifact_sha256": null,
+      "source_commit": "00f6fe8fbcf63fa2c0c36ad364983a11890faef1",
+      "source_review_commit": "c8da349ab4f4e4b413cbaa5b1d4a4a9a18adf866",
+      "feed_suffix": ".windows.json",
+      "network_mode": "local HTTP/SOCKS plus optional Windows system proxy; no device-wide TUN",
+      "amneziawg": "not integrated",
+      "ss2022": "Released Beta reader/config and matching pinned native Windows engine passed controlled TCP payload to full VM; legacy22 feed retained for version compatibility.",
+      "hardware_network_measurement": null,
+      "source_archive_sha256": "f546b19ed520a85cf37754e97764d72e3081be40d97b0ee3da8e931d9ff3fa03",
+      "engine_archive_sha256": "2e04a9995a6f2ad1b28c0bb25c708ecb2695e43a1c9c7889c4b6ac2b48cf7a6a",
+      "reader_execution": {
+        "unchanged_source": true,
+        "conservative_accepted": 22,
+        "conservative_total": 22,
+        "full_accepted": 23,
+        "full_total": 24,
+        "unsupported_full_item": "amneziawg",
+        "malformed_rejected": 7
+      },
+      "controlled_payload": {
+        "protocols": [
+          "trojan",
+          "vlessenc",
+          "hysteria2",
+          "wireguard",
+          "ss2022"
+        ],
+        "bytes_each": 140800,
+        "sha256_echo_matched": true,
+        "scope": "Explicit SOCKS requests, exact released Core sources/pinned native engine; own VM endpoint/CA mapping; no UI/TUN/carrier/general network claim"
+      }
+    }
+  ],
+  "protocols": [
+    {
+      "id": "vless-ws",
+      "panel_managed": true,
+      "account_policy": "eligible for traffic-limited users only with working accounting",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "reality",
+      "panel_managed": true,
+      "account_policy": "eligible for traffic-limited users only with working accounting",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "xhttp",
+      "panel_managed": true,
+      "account_policy": "eligible for traffic-limited users only with working accounting",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "naive",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "ssh",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "stuntls",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "dnstt",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "noizdns",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "vaydns",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "slipstream",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "soar-ssh",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "soar-direct",
+      "panel_managed": true,
+      "account_policy": "unlimited without expiry only; shared server key",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "hysteria2",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "UDP; OS routing/TUN requirements vary by client",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null,
+      "controlled_windows_payload_evidence": "Exact released Beta Core-generated config and checksum-pinned native Windows engine:140800-byte echo/hash passed against owned full VM. No system proxy/TUN/carrier claim."
+    },
+    {
+      "id": "wireguard",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": null,
+      "network_mode": "UDP; OS routing/TUN requirements vary by client",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null,
+      "controlled_windows_payload_evidence": "Exact released Beta Core-generated config and checksum-pinned native Windows engine:140800-byte echo/hash passed against owned full VM. No system proxy/TUN/carrier claim."
+    },
+    {
+      "id": "amneziawg",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "filtered pending version-specific data acceptance",
+      "panel_real_engine_evidence": "dedicated namespace TCP/UDP and per-peer revoke test; final artifact rerun recorded separately",
+      "network_mode": "UDP; OS routing/TUN requirements vary by client",
+      "effective_options_required": [
+        "dialect",
+        "Jc/Jmin/Jmax/S1/S2/H1-H4",
+        "MTU",
+        "AllowedIPs",
+        "endpoint",
+        "route/egress"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "ss2022",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "Legacy .windows.json remains filtered; full .json was accepted by exact tested Beta reader; no negotiation contract exists for all older clients.",
+      "panel_real_engine_evidence": "loopback TCP/UDP as applicable, counters and new-session revoke; established streams survived",
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "method",
+        "PSK length",
+        "identity-key chain",
+        "UDP mode"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null,
+      "controlled_windows_payload_evidence": "Exact released Beta Core-generated config and checksum-pinned native Windows engine:140800-byte echo/hash passed against owned full VM. No system proxy/TUN/carrier claim."
+    },
+    {
+      "id": "trojan",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": "loopback TCP/UDP as applicable, counters and new-session revoke; established streams survived",
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null,
+      "controlled_windows_payload_evidence": "Exact released Beta Core-generated config and checksum-pinned native Windows engine:140800-byte echo/hash passed against owned full VM. No system proxy/TUN/carrier claim."
+    },
+    {
+      "id": "vlessenc",
+      "panel_managed": true,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "Exact alpha19 SubscriptionPayload.kt accepted native v1 envelope24 on JVM; core admission/APK/device not proven.",
+      "windows_export": "produced when installed/enabled/account-eligible; not a runtime guarantee",
+      "panel_real_engine_evidence": "loopback TCP/UDP as applicable, counters and new-session revoke; established streams survived",
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null,
+      "controlled_windows_payload_evidence": "Exact released Beta Core-generated config and checksum-pinned native Windows engine:140800-byte echo/hash passed against owned full VM. No system proxy/TUN/carrier claim."
+    },
+    {
+      "id": "anytls",
+      "panel_managed": false,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "source reviewed; matching released reader execution is a separate gate",
+      "windows_export": "not produced by panel",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "tuic-v5",
+      "panel_managed": false,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "source reviewed; matching released reader execution is a separate gate",
+      "windows_export": "not produced by panel",
+      "panel_real_engine_evidence": null,
+      "network_mode": "UDP; OS routing/TUN requirements vary by client",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    },
+    {
+      "id": "mieru",
+      "panel_managed": false,
+      "account_policy": "excluded from traffic-limited accounts",
+      "android_import_evidence": "source reviewed; matching released reader execution is a separate gate",
+      "windows_export": "not produced by panel",
+      "panel_real_engine_evidence": null,
+      "network_mode": "protocol-specific proxy/DNS transport; not universal device-wide VPN",
+      "effective_options_required": [
+        "host/port",
+        "TLS/SSH identity if used",
+        "transport-specific options"
+      ],
+      "payload_on_matching_client_device": null,
+      "connection_success_rate": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "reconnect_ms": null,
+      "metering_on_device": null,
+      "quota_overshoot_bytes": null
+    }
+  ],
+  "acceptance_dimensions": [
+    "source",
+    "build",
+    "import",
+    "engine-config",
+    "runtime",
+    "connection",
+    "payload",
+    "metering",
+    "new-session-revoke",
+    "established-session-stop",
+    "real-device/network",
+    "recovery"
+  ],
+  "counts": {
+    "scope": "single-address active unlimited fully provisioned fixture only",
+    "android": 24,
+    "windows": 22,
+    "new_protocol_count": 4
+  },
+  "stable_identity": {
+    "status_account_server_ids": true,
+    "ordinary_tokens_preserved": true,
+    "extra_address_reorder_stability": "open; suffix depends on list position",
+    "native_address_independent_grouping": "open migration/reader contract"
+  },
+  "not_a_support_guarantee": true,
+  "released_reader_execution": "Exact released source archives; details in ../engineering-acceptance-2026-11-13.md"
+}

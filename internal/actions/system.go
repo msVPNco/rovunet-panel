@@ -35,12 +35,13 @@ func init() {
 				{Value: "add", Label: "Add user"},
 				{Value: "bulk_add", Label: "Add multiple users (random creds)"},
 				{Value: "edit_password", Label: "Edit user password"},
+				{Value: "rotate_link", Label: "Replace subscription link (keep connection credentials)"},
 				{Value: "renew", Label: "Renew a stopped user (expired or traffic used up)"},
 				{Value: "remove", Label: "Remove user"},
 				{Value: "list", Label: "List users"},
 				{Value: "configs", Label: "Show all configs (every tunnel and user)"},
 			}},
-			{Key: "username", Label: "Username", DependsOn: "action", DependsOnValues: []string{"add", "edit_password", "remove", "renew"}},
+			{Key: "username", Label: "Username", DependsOn: "action", DependsOnValues: []string{"add", "edit_password", "rotate_link", "remove", "renew"}},
 			{Key: "password", Label: "New password (leave blank to generate)", DependsOn: "action", DependsOnValues: []string{"edit_password"}},
 			{Key: "count", Label: "How many users", DependsOn: "action", DependsOnValues: []string{"bulk_add"}},
 			{Key: "prefix", Label: "Username prefix", DependsOn: "action", DependsOnValues: []string{"bulk_add"}},
@@ -76,6 +77,9 @@ func init() {
 		Category: "system",
 		Inputs: []InputField{
 			{Key: "file", Label: `File to write the backup to ("-" for stdout)`, CLIOnly: true},
+			{Key: "recipient", Label: "Age X25519 public recipient (not a secret)", CLIOnly: true},
+			{Key: "passphrase-file", Label: "Owner-only passphrase file", CLIOnly: true},
+			{Key: "plaintext", Label: "Explicitly export an unencrypted backup", CLIOnly: true, Bool: true},
 		},
 	})
 
@@ -86,6 +90,8 @@ func init() {
 		Inputs: []InputField{
 			{Key: "file", Label: `Backup file to restore ("-" for stdin)`, CLIOnly: true},
 			{Key: "yes", Label: "Restore without asking for confirmation", CLIOnly: true, Bool: true},
+			{Key: "identity-file", Label: "Owner-only age private identity file", CLIOnly: true},
+			{Key: "passphrase-file", Label: "Owner-only passphrase file", CLIOnly: true},
 		},
 	})
 

@@ -63,6 +63,40 @@ func startRouter(t *testing.T, backend string) string {
 	return startRouterWith(t, backend, nil)
 }
 
+func TestShutdownClosesAcceptedIdleTCPConnections(t *testing.T) {
+	var router *Router
+	addr := startRouterWith(t, startEchoBackend(t), func(r *Router) { router = r })
+	c, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	// Confirm the connection was accepted by sending and receiving real DNS.
+	query := buildQuery(123, "healthy.t.example.com")
+	framed := make([]byte, 2, len(query)+2)
+	binary.BigEndian.PutUint16(framed, uint16(len(query)))
+	framed = append(framed, query...)
+	c.SetDeadline(time.Now().Add(2 * time.Second))
+	if _, err := c.Write(framed); err != nil {
+		t.Fatal(err)
+	}
+	response := make([]byte, len(framed))
+	if _, err := io.ReadFull(c, response); err != nil {
+		t.Fatal(err)
+	}
+	if err := router.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var b [1]byte
+	_, err = c.Read(b[:])
+	if err == nil {
+		t.Fatal("idle connection survived router shutdown")
+	}
+	if timeout, ok := err.(net.Error); ok && timeout.Timeout() {
+		t.Fatal("shutdown left idle TCP connection waiting for its timeout")
+	}
+}
+
 // startRouterWith is startRouter with a hook to adjust the Router before it
 // starts serving.
 func startRouterWith(t *testing.T, backend string, configure func(*Router)) string {
@@ -75,6 +109,7 @@ func startRouterWith(t *testing.T, backend string, configure func(*Router)) stri
 	ln.Close()
 
 	r := New(addr)
+	t.Cleanup(func() { r.Close() })
 	r.AddRoute("t.example.com", backend)
 	if configure != nil {
 		configure(r)

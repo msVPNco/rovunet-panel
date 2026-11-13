@@ -1,0 +1,15 @@
+# Compatibility contract v1
+
+The capability document here is **out of band**. It is not a new feed endpoint, not embedded in subscriptions and not a client negotiation protocol. Existing Android .json and Windows .windows.json feeds keep version 1 and only version/name/items with id/link entries. Do not append min_app_version/capabilities to that strict envelope. Native link versions/fields are unchanged.
+
+The Android reader inspected at app commit c8da349ab4f4e4b413cbaa5b1d4a4a9a18adf866 is SubscriptionPayload.kt, blob 8564c589b19de1ab0055dc88d3b3f4f30fc7d864. It requires literal numeric1, known root/item keys, 1..1000 items, nonblank unique IDs up to200 characters and nesting<=16. [Pinned reader](https://github.com/msVPNco/rovunet-app/blob/c8da349ab4f4e4b413cbaa5b1d4a4a9a18adf866/app/src/main/java/app/slipnet/data/subscription/SubscriptionPayload.kt).
+
+The [JSON schema](subscription-v1.schema.json) is a review aid; it does not execute the Kotlin/C# native readers. Go tests enforce the generated feed's key set, item limits/unique IDs and stable identities in addition to the existing production 20-to-24 and name-only regression tests. Matching released reader and controlled Windows native-engine results are now recorded in [the November13 acceptance](../engineering-acceptance-2026-11-13.md); physical APK/device results remain separate.
+
+Use the [capability snapshot](capabilities-v1.json) with its exact observation date and app commit. Missing measurements are null, not zero. An importer accepting SS2022 does not prove payload or quota; an AWG parser/runtime requires the matching dialect and options. The exact released Windows Beta reader/config plus pinned native engine passed controlled SS2022 payload on November13; the conservative22 feed stays filtered because older-client negotiation/distribution has not been established. Windows AWG is unsupported; Android and Windows counts remain different.
+
+Current normal single-address, active, unlimited full fixture is 24 Android/22 Windows records. This is not 24 independent protocols or a promise for quota/expired/disabled/multi-address cases. Shared policy controls both provisioned credentials and export.
+
+ServerID/AccountID/PeriodID exist in account/status data. Native collection grouping still has address-derived behavior, and extra-address suffixes depend on list position; stable grouping and reorder-independent address IDs require a migration plan. Do not rotate tokens or rewrite IDs simply to make a new matrix look consistent.
+
+Before adding a protocol, require a maintained exact-source core/license, explicit protocol options/account eligibility, an adapter that reports unsupported settings, private-key/export review, TCP/UDP payload as applicable, bad auth, renewal/revoke, backup/restart and resource evidence. AnyTLS/TUIC/Mieru already appear in current Android source; that does not mean the panel deploys them or Windows supports them. They remain gated experiments after the controlled Windows WireGuard/Hy2 pass is extended to actual APK/phone and operator-network behavior.

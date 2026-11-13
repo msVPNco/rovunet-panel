@@ -69,7 +69,7 @@ func TestReleasedClientCapabilitiesAndAccountPolicy(t *testing.T) {
 	for _, tc := range []struct {
 		platform    string
 		quota, want int
-	}{{"android", 0, 4}, {"windows", 0, 2}, {"android", 1, 0}, {"windows", 1, 0}} {
+	}{{"android", 0, 4}, {"windows", 0, 4}, {"android", 1, 0}, {"windows", 1, 0}} {
 		u.QuotaGB = tc.quota
 		got, err := Build(cfg, u, nil, Options{Client: tc.platform, StatsWorking: func(string) bool { return true }})
 		if err != nil || len(got) != tc.want {
