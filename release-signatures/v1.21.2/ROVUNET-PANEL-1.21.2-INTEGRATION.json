@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "component": "rovunet-panel",
+  "version": "1.21.2",
+  "source_commit": "ac23d1a3ed07009567e004415606da7fed8779d3",
+  "publication_state": "بستهٔ ریلیز ۱.۲۱.۲؛ وضعیت واقعی انتشار از صفحهٔ GitHub تعیین شود",
+  "release_url": "https://github.com/msVPNco/rovunet-panel/releases/tag/v1.21.2",
+  "normative_contract": "https://github.com/msVPNco/rovunet-panel/blob/ac23d1a3ed07009567e004415606da7fed8779d3/docs/contracts/panel-integration-v1.md",
+  "client_version_policy": "dated evidence only; require capabilities and retest exact final client artifacts",
+  "next_client_prerequisites": [
+    "AWG-v3 exact options/runtime",
+    "SS2022 complete PSK chain",
+    "Hy2 Salamander and verified TLS",
+    "same-source/item-ID atomic refresh and safe unsupported handling",
+    "stable account/status lower-bound semantics",
+    "actual final artifact/device/runtime integration acceptance"
+  ],
+  "no_feed_schema_change": true,
+  "saved_urls_and_item_ids_preserved": true,
+  "full_qualification_gates_closed": false,
+  "device_cap_activated": false,
+  "private_credentials_attached": false
+}

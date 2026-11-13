@@ -1,0 +1,174 @@
+{
+  "schema": 1,
+  "tag": "v1.21.2",
+  "source_commit": "ac23d1a3ed07009567e004415606da7fed8779d3",
+  "phase": "final",
+  "scope": "Owner-authorized functional compatibility release; no complete security/physical-device qualification claim",
+  "ci_url": "https://github.com/msVPNco/rovunet-panel/actions/runs/43404910695",
+  "release_build_url": "https://github.com/msVPNco/rovunet-panel/actions/runs/43404941863",
+  "asset_review": {
+    "tag": "v1.21.2",
+    "source_commit": "ac23d1a3ed07009567e004415606da7fed8779d3",
+    "build_assets": 28,
+    "source_archive_matches_reviewed_tree": true,
+    "build_checksums": true,
+    "both_architectures_valid_ELF": true,
+    "clean_exact_commit_build": true,
+    "installer_matches_reviewed_production_root": true,
+    "panel_version": "rovunet v1.21.2 (ac23d1a)",
+    "archive_sha256": "75dd675416443ef73fad61cbe325fc95f93486ece9b69c83efef54db1a2eb6e8",
+    "panel_sha256": "c190d4474e0d322d44c2dd9acb17b788cc0269e81893b05e3e1a78b05b40e5b8"
+  },
+  "normal": {
+    "passed_tests": 290,
+    "failed_events": 0,
+    "skipped_tests": 2
+  },
+  "race": {
+    "passed_tests": 290,
+    "failed_events": 0,
+    "skipped_tests": 2
+  },
+  "preview_recovery_cases": 21,
+  "version_independent_contract": "docs/contracts/panel-integration-v1.md",
+  "native_to_standard_equivalence": {
+    "owned_synthetic_VM_feed": true,
+    "ids_and_URL_source_preserved": true,
+    "unchanged_native_items": 22,
+    "lossless_core_encodings": 2,
+    "keys_endpoints_options_and_unprotected_state_verified": true
+  },
+  "windows_reader_fixtures": [
+    {
+      "reader": "Windows 0.1.0 Beta unchanged source",
+      "total": 24,
+      "accepted": 22,
+      "negativeRejected": 8,
+      "allIdsUnique": true
+    },
+    {
+      "reader": "Windows 0.1.1 Beta unchanged source",
+      "total": 24,
+      "accepted": 23,
+      "negativeRejected": 8,
+      "allIdsUnique": true
+    },
+    {
+      "reader": "Installed Windows 0.1.2-preview.5 unchanged Core.dll",
+      "total": 24,
+      "accepted": 24,
+      "negativeRejected": 8,
+      "allIdsUnique": true
+    }
+  ],
+  "mac_shared_reader_fixture": {
+    "reader": "macOS 0.1.6 Beta unchanged shared Core; reader execution on Windows, not physical Mac/runtime acceptance",
+    "total": 24,
+    "accepted": 22,
+    "negativeRejected": 8,
+    "allIdsUnique": true
+  },
+  "full_qualification_gates": "four remain open; see docs/release-gates.json",
+  "shipping_runtime_catalog_and_account_policy": "unchanged",
+  "ordinary_WireGuard_or_operator_network_guarantee": false,
+  "device_cap_activated": false,
+  "private_credentials_attached": false,
+  "exact_vm_upgrade": {
+    "old_public_binary": "v1.21.1 (2601c1a)",
+    "new_public_binary": "v1.21.2 (ac23d1a)",
+    "new_binary_sha256": "c190d4474e0d322d44c2dd9acb17b788cc0269e81893b05e3e1a78b05b40e5b8",
+    "actual_full_systemd_VM": true,
+    "existing_accounts_and_saved_URLs_preserved": true,
+    "before_counts": {
+      ".json": 24,
+      ".windows.json": 22
+    },
+    "after_counts": {
+      ".json": 24,
+      ".windows.json": 24
+    },
+    "unchanged_existing_core_processes": 9,
+    "same_key_endpoint_option_conversion": true,
+    "already_current_retry_noop": true,
+    "transport_scope": "HTTPS proxy serves exact staged release bytes using a subprocess-only lab CA; compiled production signing root is unchanged",
+    "real_GitHub_or_OS_trust_modified": false,
+    "runtime_scope": "Existing owned-VM runtimes/dropins retained; shipping-runtime data acceptance separately exercised in release CI"
+  },
+  "exact_vm_hy2": {
+    "owned_real_systemd_VM": true,
+    "panel_sha256": "c190d4474e0d322d44c2dd9acb17b788cc0269e81893b05e3e1a78b05b40e5b8",
+    "feed_counts": {
+      ".json": 24,
+      ".windows.json": 24
+    },
+    "auth_endpoint_account_and_saved_URLs_preserved": true,
+    "only_selected_Hy2_restarted": true,
+    "changed_profile_per_feed": {
+      ".json": 1,
+      ".windows.json": 1
+    },
+    "repeat_noop": true,
+    "explicit_off_saved": true,
+    "off_restores_exact_feed_links": true
+  },
+  "production_bootstrap": {
+    "production_bootstrap_checks": [
+      {
+        "case": "fresh",
+        "unmodified_production_installer_and_root": true,
+        "exact_signed_binary_installed": true,
+        "old_binary_backup_preserved": false,
+        "repeat_preserves_pending_recovery": true,
+        "setup_scope": "--no-run bootstrap only; complete setup separately tested"
+      },
+      {
+        "case": "existing-public-v1.21.1",
+        "unmodified_production_installer_and_root": true,
+        "exact_signed_binary_installed": true,
+        "old_binary_backup_preserved": true,
+        "repeat_preserves_pending_recovery": true,
+        "setup_scope": "--no-run bootstrap only; complete setup separately tested"
+      }
+    ],
+    "isolated_network_mount_PID_namespaces": true,
+    "download_transport": "Local stub serves exact reviewed signed assets; no production trust-root substitution",
+    "panel_sha256": "c190d4474e0d322d44c2dd9acb17b788cc0269e81893b05e3e1a78b05b40e5b8"
+  },
+  "exact_vm_reboot": {
+    "scope": "Owned QEMU/KVM full Ubuntu 24.04 VM; actual kernel/systemd; no service mocks",
+    "normal_reboot": {
+      "new_boot_id": true,
+      "all_nine_cores_active": true,
+      "credentials_urls_and_usage_preserved": true,
+      "measured_recovery_seconds": 15.162
+    },
+    "abrupt_power_cut": {
+      "qemu_process_identity_verified": true,
+      "new_boot_id": true,
+      "all_nine_cores_active": true,
+      "qemu_start_attempts": 1,
+      "credentials_urls_and_usage_preserved": true,
+      "measured_recovery_seconds": 13.302
+    },
+    "live_vps_modified": false,
+    "windows_rebooted": false,
+    "usage_scope": "Persisted guest state; no nonzero quota/overshoot/held-stream enforcement claim"
+  },
+  "final_signature_bootstrap_recheck": "Required after signing and before publication; result retained in final verification",
+  "android_core_fixture_results": [
+    {
+      "reader": "alpha181-core unchanged released sources",
+      "profiles": 24,
+      "unchanged_native_items": 22,
+      "standard_core_outbounds_equivalent": 2,
+      "scope": "Exact released CoreLink, AmneziaConfig and CoreSharing on JVM; no APK/device claim"
+    },
+    {
+      "reader": "alpha20 unchanged released sources",
+      "profiles": 24,
+      "unchanged_native_items": 22,
+      "standard_core_outbounds_equivalent": 2,
+      "scope": "Exact released CoreLink, AmneziaConfig and CoreSharing on JVM; no APK/device claim"
+    }
+  ]
+}
