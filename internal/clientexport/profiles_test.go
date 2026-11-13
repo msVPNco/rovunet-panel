@@ -75,5 +75,21 @@ func TestReleasedClientCapabilitiesAndAccountPolicy(t *testing.T) {
 		if err != nil || len(got) != tc.want {
 			t.Fatalf("platform=%s quota=%d profiles=%d want=%d err=%v", tc.platform, tc.quota, len(got), tc.want, err)
 		}
+		if tc.quota == 0 && tc.platform == "android" {
+			for _, p := range got {
+				if !strings.HasPrefix(p.Link, "rovunet://") {
+					t.Fatal("CLI native export changed")
+				}
+			}
+			feed, err := Build(cfg, u, nil, Options{Client: "android", CompatibleSubscription: true})
+			if err != nil || len(feed) != 4 {
+				t.Fatal("compatible subscription generation failed")
+			}
+			for _, p := range feed {
+				if p.Protocol == "amneziawg" && !strings.HasPrefix(p.Link, "wireguard://") || p.Protocol == "ss2022" && !strings.HasPrefix(p.Link, "ss://") {
+					t.Fatal("unsafe older-client encoding")
+				}
+			}
+		}
 	}
 }

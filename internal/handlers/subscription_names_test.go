@@ -45,14 +45,14 @@ func TestApprovedTwentyFourNamesKeepSubscriptionIdentity(t *testing.T) {
 					t.Fatalf("unexpected or duplicate profile ID %s", item.ID)
 				}
 				seen[item.ID] = true
-				if client == "windows" && item.ID == "managed-awg" {
+				if item.ID == "managed-awg" {
 					link, err := url.Parse(item.Link)
 					if err != nil || link.Scheme != "wireguard" || link.Fragment != name || link.Query().Get("headerprotectionkey") == "" {
 						t.Fatal("invalid backward-compatible AmneziaWG profile")
 					}
 					continue
 				}
-				if client == "windows" && item.ID == "managed-ss2022" {
+				if item.ID == "managed-ss2022" {
 					link, err := url.Parse(item.Link)
 					if err != nil || link.Scheme != "ss" || link.Fragment != name {
 						t.Fatal("invalid backward-compatible Shadowsocks display name")

@@ -4,8 +4,10 @@ Changes in Rovunet Panel. Each release's notes come from its section here.
 
 ## v1.21.2
 
+The owner requests this functional release now. App version observations are historical fixtures; future app-dependent work follows the version-independent integration handoff.
+
 - Normal install/update completes missing managed cores; eligible unlimited accounts receive 24 subscription profiles on Android and current Windows through their existing subscription URLs.
-- Current Windows feeds now include AmneziaWG and Shadowsocks 2022. Old compatible readers preserve supported items and skip unsupported ones; no subscription/token/account reissue.
+- Current Windows feeds now include AmneziaWG and Shadowsocks 2022. Both feeds use lossless standard AWG/SS2022 URIs so older Windows/macOS readers preserve supported items and skip unsupported ones; no subscription/token/account reissue. The other 22 native items and native CLI output are retained.
 - Fresh Hy2 uses Salamander. An old account-managed Hy2 is migrated once with its endpoint/auth retained; explicit plain mode and stopped states survive later updates. Update the same saved subscription after upgrading the server.
 - Resume missing setup and pending compatibility migration even when the installed version already matches Latest. Keep private recovery and prior valid feeds on errors.
 - Fix stale Xray API sockets after power loss, private-file ownership during restore, subscription token/path boundaries and stale account/config updates. Preserve restricted quota eligibility and known held-stream limits.

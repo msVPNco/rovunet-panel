@@ -8,7 +8,7 @@
   "requirements": [
     "same subscription URL/token/account identity",
     "24 subscription profiles for a fully eligible unlimited account on Android/current Windows",
-    "older Windows keeps supported entries through compatible import",
+    "older Windows/macOS keep supported entries through compatible import",
     "same account auth when migrating old Hy2 to Salamander",
     "operator explicit off and stopped state retained",
     "missing-only setup and retry",
@@ -25,5 +25,8 @@
   "unchanged_files_sha256": {
     "internal/binary/transport-catalog.json": "e41de86cd8d037a78cd43e2a8dafd2cc8879c0b8138580ade87904e0a70c24b1",
     "internal/protocols/policy.go": "14a6d54abeeeca5e692359178eefef0385417916519401aa577f29e633c08ceb"
-  }
+  },
+  "publication_status": "owner requests this functional release now; future app-dependent changes require app foundations and joint integration first",
+  "client_contract": "docs/contracts/panel-integration-v1.md",
+  "client_version_policy": "Capabilities and exact final artifact tests; current app versions are historical fixtures only"
 }

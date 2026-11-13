@@ -17,6 +17,7 @@
 
 ---
 
+
 **v1.21.2 — 安装或更新服务器后，在应用中更新原订阅。** 满足全部条件的不限量账户可向 Android 和当前 Windows 客户端提供24个原生配置。更新补齐缺少的核心，并在保留账户认证与订阅 URL 的情况下将旧 Hy2 迁移到 Salamander。无需删除订阅或重新发送链接。旧 Windows Beta 保留其支持的条目；AWG 需要当前客户端。[兼容性说明](docs/releases/v1.21.2.md) · [尚未完成的全面验收](docs/release-gates.json)。
 
 

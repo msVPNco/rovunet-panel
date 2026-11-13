@@ -48,9 +48,8 @@ func TestGeneratedSubscriptionsKeepStrictV1Contract(t *testing.T) {
 				strings.TrimSpace(id) == "" || len([]rune(id)) > 200 || seen[id] {
 				t.Fatal("invalid or duplicate item identity")
 			}
-			compatibleExtra := suffix == ".windows.json" &&
-				(id == "managed-awg" && strings.HasPrefix(link, "wireguard://") ||
-					id == "managed-ss2022" && strings.HasPrefix(link, "ss://"))
+			compatibleExtra := id == "managed-awg" && strings.HasPrefix(link, "wireguard://") ||
+				id == "managed-ss2022" && strings.HasPrefix(link, "ss://")
 			if !strings.HasPrefix(link, "rovunet://") && !compatibleExtra {
 				t.Fatal("unexpected profile encoding")
 			}

@@ -25,8 +25,8 @@ import (
 //	{"version":1,"name":"<user>","items":[{"id":"<tag>","link":"rovunet://..."}]}
 //
 // This is the only shape the app accepts (it rejects any other key). The
-// file holds exactly the rovunet:// configs `users configs` prints for the
-// user, so the two can never disagree, and is served by the NaïveProxy
+// file holds the same per-account configurations as `users configs`, with
+// two lossless standard URI encodings for older readers. It is served by NaïveProxy
 // Caddy on its port (443) at /sub/<token>.json.
 
 type subItem struct {
@@ -47,7 +47,7 @@ func userSubscriptionItems(cfg *config.Config, u config.UserConfig) ([]subItem, 
 }
 
 func subscriptionItemsForClient(cfg *config.Config, u config.UserConfig, client string) ([]subItem, error) {
-	profiles, err := clientexport.Build(cfg, u, cfg.Tunnels, clientexport.Options{Client: client, All: showAllConfigs(), StatsWorking: statsWorking})
+	profiles, err := clientexport.Build(cfg, u, cfg.Tunnels, clientexport.Options{Client: client, All: showAllConfigs(), CompatibleSubscription: true, StatsWorking: statsWorking})
 	var items []subItem
 	for _, p := range profiles {
 		items = append(items, subItem{ID: p.ID, Link: p.Link})
