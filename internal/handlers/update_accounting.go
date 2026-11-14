@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/binary"
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/safefile"
 )
@@ -35,7 +36,14 @@ func finishInstallationAccounting(cfg *config.Config, fresh map[string]bool) err
 	if e := MigrateFiniteAccounting(cfg, &actions.StdOutput{}); e != nil {
 		return e
 	}
-	return EnsureExpiryTimer(cfg)
+	if err := EnsureExpiryTimer(cfg); err != nil {
+		return err
+	}
+	path, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	return binary.RecordOwnedFile(path)
 }
 
 func prepareCandidateRecovery(cfg *config.Config, candidate string) (string, error) {

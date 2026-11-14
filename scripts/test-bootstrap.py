@@ -35,6 +35,9 @@ def inside(work):
     target = work/'target'
     target.mkdir()
     run('mount', '--bind', target, '/usr/local/bin')
+    private_root = work/'private-root'
+    private_root.mkdir()
+    run('mount', '--bind', private_root, '/root')
     dest = pathlib.Path('/usr/local/bin')
     fake = work/'fakebin'
     fake.mkdir()
@@ -164,6 +167,20 @@ dest.write_bytes(data)
     if result.returncode == 0 or (dest/'rovunet.bak').read_bytes() != old:
         raise RuntimeError('Repeated pending install overwrote recovery')
     results.append(dict(case='verified-stage-and-pending-repeat', passed=True))
+    # Older uninstallers removed the panel but left this authenticated receipt.
+    (dest/'rovunet').unlink()
+    result = subprocess.run(['bash', str(installer), '--no-run'], env=dict(env, BOOTSTRAP_CASE='ok'), capture_output=True, timeout=10)
+    archives = list(private_root.glob('rovunet-orphan-bootstrap-*'))
+    if result.returncode or (dest/'rovunet').read_bytes() != binary or len(archives) != 1 or (archives[0]/'rovunet.bak').read_bytes() != old or not (archives[0]/'.rovunet-install-state.json').is_file() or (work/'executed').exists():
+        raise RuntimeError('Orphan bootstrap receipt recovery did not preserve the original backup')
+    results.append(dict(case='orphan-receipt-retained-and-fresh-install-completed', passed=True))
+    (dest/'rovunet').unlink()
+    (dest/'rovunet.bak').write_bytes(old)
+    (dest/'.rovunet-install-state.json').write_text('{"schema":1,"phase":"unknown"}')
+    result = subprocess.run(['bash', str(installer), '--no-run'], env=dict(env, BOOTSTRAP_CASE='ok'), capture_output=True, timeout=10)
+    if result.returncode == 0 or (dest/'rovunet').exists() or (dest/'rovunet.bak').read_bytes() != old:
+        raise RuntimeError('Invalid orphan bootstrap receipt was silently discarded')
+    results.append(dict(case='invalid-orphan-receipt-fails-closed', passed=True))
     reset()
     # Give the private bootstrap a controlling terminal and observe only the
     # final installed path executing. This is not a full panel install test.

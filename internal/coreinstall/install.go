@@ -186,7 +186,7 @@ func EnsureXray() error {
 		os.Remove(tmp)
 		return err
 	}
-	return nil
+	return binary.RecordOwnedFile(XrayPath)
 }
 
 // TestConfig asks Xray itself to validate a config before it is deployed.

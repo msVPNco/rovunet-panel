@@ -224,10 +224,20 @@ func UpdateInstalled(name string) error {
 		return err
 	}
 	defer os.Remove(tmp)
+	previous, err := FileSHA256(dest)
+	if err != nil {
+		return err
+	}
 	if err := safefile.Copy(dest, dest+".bak", 0755); err != nil {
 		return err
 	}
+	if err := RecordOwnedBackup(dest, dest+".bak", previous); err != nil {
+		return err
+	}
 	if err := os.Rename(tmp, dest); err != nil {
+		return err
+	}
+	if err := RecordOwnedFile(dest); err != nil {
 		return err
 	}
 	return safefile.SyncDir(filepath.Dir(dest))

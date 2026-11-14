@@ -84,13 +84,27 @@ func EnsureDir(path, owner string) error {
 // AddSSHUser creates a system user in the rovunet-ssh group.
 // If the user already exists, it updates the password instead.
 func AddSSHUser(username, password string) error {
+	return addSSHUser(username, password, false)
+}
+
+// AddNewSSHUser never resets a pre-existing account, including a concurrent
+// creation after the installer's availability check.
+func AddNewSSHUser(username, password string) error {
+	return addSSHUser(username, password, true)
+}
+
+func addSSHUser(username, password string, requireNew bool) error {
 	if err := config.ValidateUsername(username); err != nil {
 		return err
 	}
 	if err := config.ValidatePassword(password); err != nil {
 		return err
 	}
-	if userExists(username) {
+	existed := userExists(username)
+	if requireNew && existed {
+		return fmt.Errorf("Linux account %q already exists; choose another name", username)
+	}
+	if existed {
 		if err := requireOwnedSSHAccount(username); err != nil {
 			return err
 		}
@@ -102,7 +116,7 @@ func AddSSHUser(username, password string) error {
 		}
 	}
 
-	if !userExists(username) {
+	if !existed {
 		if err := run("useradd", "--system", "--no-create-home",
 			"--shell", "/bin/false",
 			"--gid", config.SSHGroup,

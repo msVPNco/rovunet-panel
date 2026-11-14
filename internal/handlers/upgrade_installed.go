@@ -30,6 +30,9 @@ func UpgradeInstalled(target string) error {
 		return err
 	}
 	defer lock.Close()
+	if err := binary.RecordOwnedFile(lock.Name()); err != nil {
+		return err
+	}
 	if err = syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
 		return err
 	}

@@ -109,6 +109,9 @@ func handleSystemInstall(ctx *actions.Context) error {
 		if err := binary.EnsureInstalled(bin); err != nil {
 			return actions.NewError(actions.SystemInstall, fmt.Sprintf("failed to download %s", bin), err)
 		}
+		if err := binary.UpdateInstalled(bin); err != nil {
+			return actions.NewError(actions.SystemInstall, fmt.Sprintf("failed to prepare reviewed %s; recovery binary retained", bin), err)
+		}
 		out.Success(fmt.Sprintf("  %s (%s/%s)", bin, runtime.GOOS, runtime.GOARCH))
 	}
 
@@ -735,98 +738,6 @@ func handleSystemInstall(ctx *actions.Context) error {
 		}
 	}
 
-	// ── Step 6: Create first user ──────────────────────────────────
-	// Offer user creation when at least one tunnel needs credentials
-	// (domain-based tunnels or direct transports with SSH backend like StunTLS).
-	// Soar authenticates by server key alone.
-	needsUser := false
-	for _, t := range allTunnels {
-		if (t.Domain != "" && t.Transport != config.TransportSoar) || t.Backend == config.BackendSSH {
-			needsUser = true
-			break
-		}
-	}
-
-	fresh := map[string]bool{}
-	createUser := false
-
-	if needsUser && len(cfg.Users) == 0 {
-		out.Print("")
-		out.Print("  ── User Setup ──────────────────────────────────────")
-		out.Print("")
-
-		var err error
-		createUser, err = prompt.ConfirmYes("Create a user now?")
-		if err != nil {
-			return err
-		}
-	}
-
-	if createUser {
-		if err := cfg.RefreshIfChanged(); err != nil {
-			return err
-		}
-		username, err := prompt.String("Username", "user1")
-		if err != nil {
-			return err
-		}
-		password, err := prompt.String("Password (leave blank to generate)", "")
-		if err != nil {
-			return err
-		}
-		if password == "" {
-			password = system.GeneratePassword(16)
-			out.Info(fmt.Sprintf("Generated password: %s", password))
-		} else if err := config.ValidatePassword(password); err != nil {
-			return actions.NewError(actions.SystemInstall, err.Error(), nil)
-		}
-
-		if cfg.GetUser(username) != nil {
-			return fmt.Errorf("account %q already exists", username)
-		}
-		if err := system.AddSSHUser(username, password); err != nil {
-			return actions.NewError(actions.SystemInstall, "failed to create user", err)
-		}
-
-		u := newUser(username, password, 0, 0, time.Now())
-		if err := rememberNewPeriod(cfg, u); err != nil {
-			return err
-		}
-		fresh[u.AccountID] = true
-		cfg.AddUser(u)
-		if err := cfg.Save(); err != nil {
-			return actions.NewError(actions.SystemInstall, "failed to save config", err)
-		}
-
-		out.Success(fmt.Sprintf("User %q created (SSH + SOCKS)", username))
-
-		// Update NaiveProxy tunnels with user credentials and restart
-		for i := range allTunnels {
-			if allTunnels[i].Transport == config.TransportNaive && allTunnels[i].Naive != nil {
-				allTunnels[i].Naive.User = username
-				allTunnels[i].Naive.Password = password
-				cfg.UpdateTunnel(allTunnels[i])
-			}
-		}
-		if err := cfg.Save(); err != nil {
-			out.Warning("Failed to save config: " + err.Error())
-		}
-
-		// Recreate naive services with correct auth
-		for i := range allTunnels {
-			if allTunnels[i].Transport == config.TransportNaive {
-				out.Info(fmt.Sprintf("Updating NaiveProxy %q with user credentials...", allTunnels[i].Tag))
-				if err := transport.CreateService(&allTunnels[i], cfg); err != nil {
-					out.Warning(fmt.Sprintf("Failed to update %s: %s", allTunnels[i].Tag, err.Error()))
-				}
-			}
-		}
-	}
-
-	if complete && len(cfg.Users) == 0 {
-		return actions.NewError(actions.SystemInstall, "Complete setup needs at least one account; create a user before completing setup", nil)
-	}
-
 	// ── Step 6b: WARP outbound (default off) ──────────────────────
 	out.Print("")
 	enableWarp := cfg.Warp.Enabled
@@ -904,6 +815,120 @@ func handleSystemInstall(ctx *actions.Context) error {
 	}
 
 	ensureServerAddress(cfg, out, allTunnels)
+	if complete {
+		out.Info("Preparing reviewed protocol engines before account setup...")
+		var protocols []string
+		for _, spec := range completeCoreSpecs {
+			protocols = append(protocols, spec.protocol)
+		}
+		if err := coreinstall.PrepareReviewedEngines(protocols); err != nil {
+			return actions.NewError(actions.SystemInstall, "Protocol preparation is pending; existing accounts and files were retained. Resolve the error and retry installation", err)
+		}
+	}
+
+	// ── Step 6: Create first user ──────────────────────────────────
+	// Offer user creation when at least one tunnel needs credentials
+	// (domain-based tunnels or direct transports with SSH backend like StunTLS).
+	// Soar authenticates by server key alone.
+	needsUser := false
+	for _, t := range allTunnels {
+		if (t.Domain != "" && t.Transport != config.TransportSoar) || t.Backend == config.BackendSSH {
+			needsUser = true
+			break
+		}
+	}
+
+	fresh := map[string]bool{}
+	createUser := false
+
+	if needsUser && len(cfg.Users) == 0 {
+		out.Print("")
+		out.Print("  ── User Setup ──────────────────────────────────────")
+		out.Print("")
+
+		var err error
+		createUser, err = prompt.ConfirmYes("Create a user now?")
+		if err != nil {
+			return err
+		}
+	}
+
+	if createUser {
+		if err := cfg.RefreshIfChanged(); err != nil {
+			return err
+		}
+		username, err := askAvailableInstallUsername(cfg, out)
+		if err != nil {
+			return err
+		}
+		password, err := prompt.String("Password (leave blank to generate)", "")
+		if err != nil {
+			return err
+		}
+		if password == "" {
+			password = system.GeneratePassword(16)
+			out.Info(fmt.Sprintf("Generated password: %s", password))
+		} else if err := config.ValidatePassword(password); err != nil {
+			return actions.NewError(actions.SystemInstall, err.Error(), nil)
+		}
+
+		if cfg.GetUser(username) != nil {
+			return fmt.Errorf("account %q already exists", username)
+		}
+		if err := system.AddNewSSHUser(username, password); err != nil {
+			return actions.NewError(actions.SystemInstall, "failed to create user", err)
+		}
+
+		u := newUser(username, password, 0, 0, time.Now())
+		if err := rememberNewPeriod(cfg, u); err != nil {
+			return err
+		}
+		fresh[u.AccountID] = true
+		cfg.AddUser(u)
+		if err := cfg.Save(); err != nil {
+			return actions.NewError(actions.SystemInstall, "failed to save config", err)
+		}
+
+		out.Success(fmt.Sprintf("User %q created (SSH + SOCKS)", username))
+
+		// Update NaiveProxy tunnels with user credentials and restart
+		for i := range allTunnels {
+			if allTunnels[i].Transport == config.TransportNaive && allTunnels[i].Naive != nil {
+				allTunnels[i].Naive.User = username
+				allTunnels[i].Naive.Password = password
+				cfg.UpdateTunnel(allTunnels[i])
+			}
+		}
+		if err := cfg.Save(); err != nil {
+			out.Warning("Failed to save config: " + err.Error())
+		}
+
+		// Recreate naive services with correct auth
+		for i := range allTunnels {
+			if allTunnels[i].Transport == config.TransportNaive {
+				out.Info(fmt.Sprintf("Updating NaiveProxy %q with user credentials...", allTunnels[i].Tag))
+				if err := transport.CreateService(&allTunnels[i], cfg); err != nil {
+					out.Warning(fmt.Sprintf("Failed to update %s: %s", allTunnels[i].Tag, err.Error()))
+				}
+			}
+		}
+	}
+
+	if complete && len(cfg.Users) == 0 {
+		return actions.NewError(actions.SystemInstall, "Complete setup needs at least one account; create a user before completing setup", nil)
+	}
+
+	if setupSOCKS {
+		var err error
+		if directSOCKS {
+			err = proxy.SetupSOCKSExternalWithUsers(cfg.Users)
+		} else {
+			err = proxy.SetupSOCKSWithUsers(cfg.Users)
+		}
+		if err != nil {
+			return actions.NewError(actions.SystemInstall, "Account created; SOCKS setup is pending", err)
+		}
+	}
 	var completeErr error
 	if complete {
 		completeErr = EnsureCompleteSetup(cfg, out)

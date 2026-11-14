@@ -140,11 +140,11 @@ fi
 # Network and verification finish before any replacement. No process kills or
 # service stops are necessary. Keep a complete recovery binary on the same FS.
 python3 - "$stage" "$INSTALL_DIR" "$RELEASE_TAG" << 'PY'
-import hashlib,json,os,pathlib,shutil,sys
+import hashlib,json,os,pathlib,shutil,sys,tempfile
 stage=pathlib.Path(sys.argv[1]); root=pathlib.Path(sys.argv[2]); dest=root/'rovunet'; backup=root/'rovunet.bak'
 journal=root/'.rovunet-install-state.json'
-if journal.exists(): sys.exit('An earlier verified installation needs completion. Run rovunet install; retain rovunet.bak for recovery.')
 if dest.is_symlink() or (dest.exists() and not dest.is_file()) or backup.is_symlink(): sys.exit('Refusing non-regular installation destination')
+if journal.is_symlink(): sys.exit('Refusing non-regular bootstrap receipt')
 def sync_file(p,mode):
     os.chmod(p,mode)
     with p.open('rb') as f: os.fsync(f.fileno())
@@ -152,6 +152,24 @@ def sync_dir():
     fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
     try: os.fsync(fd)
     finally: os.close(fd)
+if journal.exists():
+    # A previous uninstall could leave only its receipt/backup. Preserve those
+    # privately instead of treating an absent executable as a resumable install.
+    if dest.exists(): sys.exit('An earlier verified installation needs completion. Run rovunet install; retain rovunet.bak for recovery.')
+    receipt=json.loads(journal.read_bytes())
+    if receipt.get('schema')!=1 or receipt.get('phase')!='verified-before-replace' or not isinstance(receipt.get('sha256'),str) or len(receipt['sha256'])!=64: sys.exit('Invalid orphan bootstrap receipt; retain it for explicit recovery')
+    recovery=pathlib.Path(tempfile.mkdtemp(prefix='rovunet-orphan-bootstrap-',dir='/root'))
+    recovery.chmod(0o700)
+    for old in (journal,backup):
+        if old.exists():
+            shutil.move(str(old),str(recovery/old.name))
+            sync_file(recovery/old.name,0o600)
+    for parent in (recovery,recovery.parent):
+        fd=os.open(parent,os.O_RDONLY|os.O_DIRECTORY)
+        try: os.fsync(fd)
+        finally: os.close(fd)
+    sync_dir()
+    print('Private orphan bootstrap recovery retained at '+str(recovery))
 if dest.exists():
     shutil.copyfile(dest,stage/'previous'); sync_file(stage/'previous',0o755)
     os.replace(stage/'previous',backup); sync_dir()

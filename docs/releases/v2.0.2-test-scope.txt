@@ -1,0 +1,27 @@
+Rovunet Panel 2.0.2: signed patch release scope
+
+Thirty unrestricted, twenty-nine time-only and six finite-budget profiles.
+The shared legacy /sub/TOKEN.trust.json path serves the public Slipstream
+certificate companion for eligible SOCKS and SSH profiles. Normal panel Update
+must regenerate and validate the running Caddy configuration. Existing source
+URLs, profile IDs, connection credentials, account/period IDs and recorded
+usage must survive the exact signed update. v2 remains explicit opt-in.
+
+Fresh installation prepares reviewed engines before asking for the first user,
+rejects an occupied Linux name without changing it, and resumes orphaned
+bootstrap receipts while privately retaining their recovery material.
+Uninstall stops services and timers, validates SSH cleanup, privately archives
+data/WAL/keys and SSH configuration before removal, and deletes shared-bin files
+only with a valid exact-path/digest ownership receipt. Unknown, changed or
+still-used shared objects are retained and reported.
+
+Publication requires source CI, exact signed fresh-install/update acceptance,
+four account modes, legacy trust HTTP and binding tests, accounting preservation
+and relevant negative/recovery tests. Corresponding runtime/source/notice bytes
+are reused only after authentication; CI cannot sign or substitute new bytes.
+
+Controlled tests do not certify every ISP or final physical app. UDP reachability,
+physical ARM64, independent off-site root custody, WARP provider registration and
+complete fresh-target runtime/Caddy/firewall/provider recovery remain separate
+qualifications. There is no exact fifteen-device cap or Slipstream managed-session
+start/heartbeat/stop API. HTTP Date/revision never authorizes pin rotation.

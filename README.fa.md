@@ -1,8 +1,15 @@
 # پنل Rovunet نسخهٔ ۲
 
+## اصلاحات ۲٫۰٫۲
+
+مسیر مشترک گواهی Slipstream یعنی `/sub/TOKEN.trust.json` برای هر دو حالت SOCKS و SSH اصلاح شد. از Update عادی پنل استفاده کنید تا تنظیم فعال Caddy هم بازتولید شود؛ تعویض تنها فایل اجرایی کافی نیست. لینک‌های قبلی، هویت حساب و مصرف ثبت‌شده حفظ می‌شوند. فعال‌سازی خودکار v2، API نشست یا تعویض خودکار pin اضافه نشده است.
+
+ساخت نخستین حساب پس از آماده‌سازی موتورهای پروتکل انجام می‌شود و در صورت تداخل نام لینوکس، نام دیگری می‌پرسد. موتور قدیمیِ باقی‌مانده از مسیر ارتقای معتبر آماده می‌شود. حذف، تایمرها و تنظیم SSH را هم بررسی می‌کند و یک پشتیبان خصوصی نگه می‌دارد؛ حذف فایل در مسیر مشترک bin به رسید مسیر و هش همان نصب وابسته است. فایل ناشناخته یا تغییریافته حفظ و گزارش می‌شود.
+
+
 پنل لینوکسی مدیریت حساب، اشتراک چندپروتکلی، به‌روزرسانی امضاشده و پشتیبان رمزگذاری‌شده.
 
-[English](README.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md) · [دانلود](https://github.com/msVPNco/rovunet-panel/releases) · [یادداشت نسخه](docs/releases/v2.0.1.md)
+[English](README.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md) · [دانلود](https://github.com/msVPNco/rovunet-panel/releases) · [یادداشت نسخه](docs/releases/v2.0.2.md)
 
 ## نصب کامل و تعداد کانفیگ‌ها
 
@@ -11,9 +18,9 @@
 سرور تازهٔ Ubuntu 24.04، دسترسی root و systemd لازم است. فایل‌های amd64 و arm64 جدا هستند؛ آزمون شبیه‌سازی ARM با سخت‌افزار واقعی یکی نیست. دامنهٔ HTTPS باید به سرور اشاره کند و زیردامنه‌های DNS به شنوندهٔ authoritative سرور واگذار شوند. برای UDP و پروتکل‌های مستقیم، پروکسی ابری را خاموش و پورت لازم را در فایروال ابری باز کنید.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.1/install.sh -o rovunet-install.sh
-python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="897108ce22f619bad23aecc6792283e4af01df0172b917b28e03082675fe76a6", "Installer checksum mismatch"'
-sudo env ROVUNET_RELEASE_TAG=v2.0.1 bash rovunet-install.sh
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.2/install.sh -o rovunet-install.sh
+python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="4ecf359cd96cfb8583ad89bdae5bfe4e14bfe1ee4dc12cedd603b77ec7519555", "Installer checksum mismatch"'
+sudo env ROVUNET_RELEASE_TAG=v2.0.2 bash rovunet-install.sh
 ```
 
 

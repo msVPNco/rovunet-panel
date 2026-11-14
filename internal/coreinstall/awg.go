@@ -60,6 +60,9 @@ func ensureEngine(protocol string) error {
 			_ = os.Remove(tmp)
 			return err
 		}
+		if err := binary.RecordOwnedFile(item.path); err != nil {
+			return err
+		}
 	}
 	if _, err := os.Stat(awgManifestPath()); os.IsNotExist(err) {
 		tmp, err := binary.Download(fmt.Sprintf("%s/awg-provenance-linux-%s.json", binary.RuntimeDownloadBase(), runtime.GOARCH), filepath.Dir(AWGGoPath))
@@ -68,6 +71,9 @@ func ensureEngine(protocol string) error {
 		}
 		if err := os.Rename(tmp, awgManifestPath()); err != nil {
 			_ = os.Remove(tmp)
+			return err
+		}
+		if err := binary.RecordOwnedFile(awgManifestPath()); err != nil {
 			return err
 		}
 	}

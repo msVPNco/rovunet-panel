@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/msVPNco/rovunet-panel/internal/binary"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,7 +55,10 @@ func recordEngine(path, source, commit, license string, args ...string) error {
 		}
 	}
 	r := engineRecord{Source: source, Commit: commit, BuildCommit: buildCommit, SHA256: hex.EncodeToString(sum[:]), Version: strings.TrimSpace(string(out)), License: license}
-	return writeJSON(path+".provenance.json", r)
+	if err := writeJSON(path+".provenance.json", r); err != nil {
+		return err
+	}
+	return binary.RecordOwnedFile(path + ".provenance.json")
 }
 
 func verifyXray() error {

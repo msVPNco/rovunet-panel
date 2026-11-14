@@ -74,7 +74,10 @@ func (tx *UpdateTransaction) SavePhase(phase string) error {
 	if err != nil {
 		return err
 	}
-	return safefile.Write(updateStatePath(tx.Target), append(b, '\n'), 0600)
+	if err := safefile.Write(updateStatePath(tx.Target), append(b, '\n'), 0600); err != nil {
+		return err
+	}
+	return RecordOwnedFile(updateStatePath(tx.Target))
 }
 
 // BeginUpdate never unlinks/truncates a working binary. A failed rename leaves
@@ -103,11 +106,17 @@ func BeginUpdate(target, candidate, recovery string) (*UpdateTransaction, error)
 	if err := safefile.Copy(target, tx.Backup, 0755); err != nil {
 		return nil, fmt.Errorf("retain previous executable: %w", err)
 	}
+	if err := RecordOwnedBackup(target, tx.Backup, old); err != nil {
+		return nil, err
+	}
 	if err := tx.SavePhase("prepared"); err != nil {
 		return nil, err
 	}
 	if err := os.Rename(candidate, target); err != nil {
 		return nil, fmt.Errorf("atomic replacement failed; previous binary remains installed: %w", err)
+	}
+	if err := RecordOwnedFile(target); err != nil {
+		return tx, err
 	}
 	if err := safefile.SyncDir(filepath.Dir(target)); err != nil {
 		return tx, err

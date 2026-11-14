@@ -190,9 +190,9 @@ func RefreshInstalledEngines() error {
 	for _, p := range pins {
 		expected[p.Name] = p.SHA256
 	}
-	if _, err := os.Stat(Root); os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
+	// A removed configuration may leave old executables behind. Preparing a
+	// fresh installation must authenticate/update those too, before admission.
+	if err := os.MkdirAll(Root, 0750); err != nil {
 		return err
 	}
 	lock, err := os.OpenFile(filepath.Join(Root, ".runtime-upgrade.lock"), os.O_CREATE|os.O_RDWR, 0600)
@@ -296,6 +296,9 @@ func RefreshInstalledEngines() error {
 			if hash, err := binary.FileSHA256(f.Backup); err != nil || hash != f.Before {
 				return fmt.Errorf("installed runtime recovery backup missing or changed")
 			}
+			if err := binary.RecordOwnedFile(f.Target); err != nil {
+				return err
+			}
 			continue
 		}
 		if current != f.Before {
@@ -308,11 +311,17 @@ func RefreshInstalledEngines() error {
 		} else if err != nil || hash != f.Before {
 			return fmt.Errorf("runtime recovery backup mismatch")
 		}
+		if err := binary.RecordOwnedBackup(f.Target, f.Backup, f.Before); err != nil {
+			return err
+		}
 		hash, err := binary.FileSHA256(f.Staged)
 		if err != nil || hash != f.After {
 			return fmt.Errorf("staged runtime unavailable; preserve recovery record and backups")
 		}
 		if err = os.Rename(f.Staged, f.Target); err != nil {
+			return err
+		}
+		if err = binary.RecordOwnedFile(f.Target); err != nil {
 			return err
 		}
 		if err = safefile.SyncDir(filepath.Dir(f.Target)); err != nil {

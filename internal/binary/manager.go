@@ -100,6 +100,9 @@ func EnsureInstalled(name string) error {
 	if err := os.Rename(tmp, dest); err != nil {
 		return err
 	}
+	if err := RecordOwnedFile(dest); err != nil {
+		return err
+	}
 	return safefile.SyncDir(filepath.Dir(dest))
 }
 

@@ -3,7 +3,7 @@ package version
 import "fmt"
 
 var (
-	Version    = "2.0.1"
+	Version    = "2.0.2"
 	Commit     = "unknown"
 	ReleaseTag = "" // set via ldflags for dev builds (e.g. "dev-abc1234")
 

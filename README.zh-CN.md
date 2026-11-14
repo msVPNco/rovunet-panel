@@ -1,15 +1,20 @@
 # Rovunet Panel 2
 
-[English — complete reference](README.md) · [فارسی](README.fa.md) · [Release notes](docs/releases/v2.0.1.md)
+## 2.0.2 修复
+
+Slipstream SOCKS 和 SSH 现在支持共用的 `/sub/TOKEN.trust.json`。请使用面板正常更新，以同时重新生成正在使用的 Caddy 配置。旧订阅链接、账户标识和流量记录保持不变；不会自动启用 v2 或更换 pin。首个账户在协议引擎准备完成后创建。卸载涵盖定时器和 SSH 配置，并保留私有恢复备份；共享 bin 中只有所有权记录及哈希匹配的文件才会删除。
+
+
+[English — complete reference](README.md) · [فارسی](README.fa.md) · [Release notes](docs/releases/v2.0.2.md)
 
 完整安装配置 15 个核心及基础服务。无限制账户获得 30 个配置；仅限制时间的账户获得 29 个；限制流量的账户获得 6 个可计量路径。主协议组在前，全部 10 个 DNS 路径在最后；顺序并非实测速率排名。25 GB = 25,600 MB = 26,843,545,600 字节。正常更新保留订阅地址及已记录流量，在应用中刷新原订阅即可。未知流量不会按零处理。需要正确的域名、DNS 委派及云防火墙端口。组件遵循各自许可证；面板测试不保证每种应用或网络的兼容性。
 
 ## Install / Ubuntu 24.04, systemd, root
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.1/install.sh -o rovunet-install.sh
-python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="897108ce22f619bad23aecc6792283e4af01df0172b917b28e03082675fe76a6", "Installer checksum mismatch"'
-sudo env ROVUNET_RELEASE_TAG=v2.0.1 bash rovunet-install.sh
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.2/install.sh -o rovunet-install.sh
+python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="4ecf359cd96cfb8583ad89bdae5bfe4e14bfe1ee4dc12cedd603b77ec7519555", "Installer checksum mismatch"'
+sudo env ROVUNET_RELEASE_TAG=v2.0.2 bash rovunet-install.sh
 ```
 
 ## Profiles

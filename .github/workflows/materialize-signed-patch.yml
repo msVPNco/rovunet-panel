@@ -1,0 +1,44 @@
+name: Materialize approved signed patch
+
+on:
+  push:
+    branches: ['release-materialize/v2.0.2']
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Retain approved request and authenticate its release identity
+        run: |
+          cp release-request.json "$RUNNER_TEMP/release-request.json"
+          python3 scripts/materialize-signed-patch.py identity "$RUNNER_TEMP/release-request.json"
+      - name: Check out the exact signed source
+        run: |
+          source=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["source_commit"])' "$RUNNER_TEMP/release-request.json")
+          git fetch --no-tags origin "$source"
+          git checkout --detach "$source"
+          test "$(git rev-parse HEAD)" = "$source"
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.4'
+      - name: Assemble exact bytes and verify the local production signature
+        run: python3 scripts/materialize-signed-patch.py assemble "$RUNNER_TEMP/release-request.json"
+      - name: Exercise shipped AWG and automatic complete setup
+        run: |
+          assets="$RUNNER_TEMP/approved-patch"
+          chmod +x "$assets/"*-linux-amd64 "$assets/"*-linux-arm64
+          go build -o "$RUNNER_TEMP/awg-helper" ./internal/coreinstall/testdata/awg-helper
+          sudo python3 -u scripts/test-managed-awg.py --panel "$assets/rovunet-linux-amd64" --helper "$RUNNER_TEMP/awg-helper" --engine "$assets/amneziawg-go-linux-amd64" --tool "$assets/awg-linux-amd64" --work "$RUNNER_TEMP/awg-patch-test"
+          sudo env "PATH=$PATH" "GOPATH=$(go env GOPATH)" "GOCACHE=$(go env GOCACHE)" GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory "GIT_CONFIG_VALUE_0=$PWD" python3 scripts/test-complete-setup.py --panel "$assets/rovunet-linux-amd64" --xray "$assets/xray-linux-amd64" --engine "$assets/amneziawg-go-linux-amd64" --tool "$assets/awg-linux-amd64" --sing-box "$assets/sing-box-linux-amd64" --mita "$assets/mita-linux-amd64" --work "$RUNNER_TEMP/complete-patch-test"
+      - name: Upload authenticated assets and publish Latest
+        run: python3 scripts/materialize-signed-patch.py publish "$RUNNER_TEMP/release-request.json"

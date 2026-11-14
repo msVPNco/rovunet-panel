@@ -61,7 +61,10 @@ func ensureSupplemental(kind string) error {
 	if e = os.Chmod(temp, 0755); e != nil {
 		return e
 	}
-	return os.Rename(temp, path)
+	if err := os.Rename(temp, path); err != nil {
+		return err
+	}
+	return binary.RecordOwnedFile(path)
 }
 func supplementalUnit(name, dir, protocol, condition, confirm string) *service.Unit {
 	kind := coreplan.SupplementalRuntime(protocol)

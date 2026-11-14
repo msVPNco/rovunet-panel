@@ -1,8 +1,15 @@
 # Rovunet Panel 2
 
+## Patch 2.0.2
+
+The existing shared `/sub/TOKEN.trust.json` companion is served for Slipstream SOCKS and SSH. Use the normal panel Update so the active Caddy configuration is regenerated; replacing only the executable does not update the route. Existing subscription URLs, identities and recorded usage remain in place. No v2 opt-in, session API or automatic pin rotation is added.
+
+First-account setup follows runtime preparation and retries an occupied Linux username. Explicit installation updates leftover engines through authenticated staging. Uninstall stops timers, validates SSH cleanup and retains a private recovery archive; shared-bin objects require an exact ownership receipt and hash before removal. Unknown or operator-modified files are retained and reported.
+
+
 Self-hosted Linux access server with account management, signed updates, encrypted backups and multi-protocol subscriptions.
 
-[فارسی](README.fa.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md) · [Releases](https://github.com/msVPNco/rovunet-panel/releases) · [Release notes](docs/releases/v2.0.1.md) · [License](LICENSE)
+[فارسی](README.fa.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md) · [Releases](https://github.com/msVPNco/rovunet-panel/releases) · [Release notes](docs/releases/v2.0.2.md) · [License](LICENSE)
 
 ## Complete installation
 
@@ -11,9 +18,9 @@ A normal installation provisions **15 managed cores** and the base HTTPS, SSH an
 Use a fresh Ubuntu 24.04 LTS server with root access and systemd. AMD64 and ARM64 binaries are supplied. ARM64 emulation and native AMD64 evidence are distinguished in the acceptance report. Other distributions need runtime qualification. Point the HTTPS hostname to the server and delegate DNS tunnel subdomains to its authoritative DNS listener. Cloud proxying must be disabled for UDP/raw protocol endpoints. Permit the required cloud-firewall ports.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.1/install.sh -o rovunet-install.sh
-python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="897108ce22f619bad23aecc6792283e4af01df0172b917b28e03082675fe76a6", "Installer checksum mismatch"'
-sudo env ROVUNET_RELEASE_TAG=v2.0.1 bash rovunet-install.sh
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.2/install.sh -o rovunet-install.sh
+python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="4ecf359cd96cfb8583ad89bdae5bfe4e14bfe1ee4dc12cedd603b77ec7519555", "Installer checksum mismatch"'
+sudo env ROVUNET_RELEASE_TAG=v2.0.2 bash rovunet-install.sh
 ```
 
 

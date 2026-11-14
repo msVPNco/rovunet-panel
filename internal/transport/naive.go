@@ -179,12 +179,16 @@ func buildCaddyfileSub(tunnel *config.TunnelConfig, users []config.UserConfig, v
 var SubscriptionDir = "/var/lib/rovunet/subscriptions"
 
 // subscriptionRouteLines serves /sub/<token>.json and the status file
-// /sub/<token>.status.json from SubscriptionDir as plain static files, before
+// /sub/<token>.status.json and the shared <token>.trust.json companion from
+// SubscriptionDir as plain static files, before
 // the proxy and the decoy. There is no listing and no application behind it:
 // a path that is not a token's file is a 404. Nothing may keep a copy: the
 // status changes every few minutes and the files name the user's token.
 func subscriptionRouteLines() string {
-	return "    @rovunet_sub path_regexp ^/sub/[0-9a-f]{32}(\\.windows)?(\\.status)?\\.json$\n" +
+	return "    @rovunet_sub {\n" +
+		"        path_regexp ^/sub/[0-9a-f]{32}((\\.windows)?(\\.status)?|\\.trust)\\.json$\n" +
+		"        expression `{http.request.uri.query} == ''`\n" +
+		"    }\n" +
 		"    header @rovunet_sub Cache-Control \"no-store\"\n" +
 		"    root @rovunet_sub " + SubscriptionDir + "\n" +
 		"    file_server @rovunet_sub\n"

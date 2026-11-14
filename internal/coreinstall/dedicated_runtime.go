@@ -86,6 +86,9 @@ func ensureOptionsEngine(o coreplan.Options) error {
 	if err := os.Rename(temp, path); err != nil {
 		return err
 	}
+	if err := binary.RecordOwnedFile(path); err != nil {
+		return err
+	}
 	return verifyXrayFile(path)
 }
 
