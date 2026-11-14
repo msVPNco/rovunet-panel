@@ -55,6 +55,8 @@ jobs:
           go_bin=$(command -v go)
           modcache=$(go env GOMODCACHE)
           cache="$RUNNER_TEMP/isolated-go-cache"
+          # Each suite gets fresh host paths; unit fixtures must not leak into race tests.
+          for suite in unit race; do
           sudo unshare --mount --net --pid --fork --mount-proc --kill-child \
             env "PATH=$PATH" ROVUNET_REVIEW25_ISOLATED=github-ci \
             GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory "GIT_CONFIG_VALUE_0=$PWD" \
@@ -69,9 +71,13 @@ jobs:
               export GOCACHE="$3" GOMODCACHE="$2" GOPROXY=off GOTOOLCHAIN=local GOENV=off
               export GOMAXPROCS=4 GOFLAGS=-p=4
               unset XRAY ROVUNET_REVIEWED_XRAY
-              "$1" test ./...
-              "$1" test -race ./...
-            ' ci-isolated "$go_bin" "$modcache" "$cache"
+              if test "$4" = race; then
+                "$1" test -race ./...
+              else
+                "$1" test ./...
+              fi
+            ' ci-isolated "$go_bin" "$modcache" "$cache" "$suite"
+          done
       - name: Build
         run: make build-linux
 
