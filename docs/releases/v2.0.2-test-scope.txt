@@ -10,10 +10,14 @@ usage must survive the exact signed update. v2 remains explicit opt-in.
 Fresh installation prepares reviewed engines before asking for the first user,
 rejects an occupied Linux name without changing it, and resumes orphaned
 bootstrap receipts while privately retaining their recovery material.
+Missing AWG provenance must recover through authenticated release assets;
+no engine admission or restart may bypass its exact reviewed provenance.
 Uninstall stops services and timers, validates SSH cleanup, privately archives
 data/WAL/keys and SSH configuration before removal, and deletes shared-bin files
 only with a valid exact-path/digest ownership receipt. Unknown, changed or
 still-used shared objects are retained and reported.
+Only the exact generated resolved stub override is removed; custom resolver
+files and shared firewall/package state remain preserved for explicit review.
 
 Publication requires source CI, exact signed fresh-install/update acceptance,
 four account modes, legacy trust HTTP and binding tests, accounting preservation

@@ -69,7 +69,11 @@ var runtimeUpgradeRecord = func(files []runtimeUpgradeFile) error {
 		}
 	}
 	if awg {
-		return recordAWG()
+		// A partial uninstall may leave the two executables without their
+		// reviewed manifest. Complete that authenticated family before recording
+		// provenance or restarting workers. Failure keeps the installed journal
+		// and recovery binaries for a retry; admission remains exact-hash checked.
+		return ensureEngine("amneziawg")
 	}
 	return nil
 }

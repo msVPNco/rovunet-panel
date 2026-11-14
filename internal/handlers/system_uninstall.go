@@ -16,6 +16,7 @@ import (
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/binary"
 	"github.com/msVPNco/rovunet-panel/internal/config"
+	"github.com/msVPNco/rovunet-panel/internal/network"
 	"github.com/msVPNco/rovunet-panel/internal/prompt"
 	"github.com/msVPNco/rovunet-panel/internal/safefile"
 	"github.com/msVPNco/rovunet-panel/internal/service"
@@ -202,7 +203,7 @@ func handleSystemUninstall(ctx *actions.Context) error {
 		return err
 	}
 	// Stop every panel writer before copying SQLite/WAL and private keys.
-	archivePaths := append(append([]string{}, uninstallDataPaths...), "/etc/ssh/sshd_config")
+	archivePaths := append(append([]string{}, uninstallDataPaths...), "/etc/ssh/sshd_config", "/etc/systemd/resolved.conf.d/rovunet-no-stub.conf", "/etc/resolv.conf")
 	archive, err := archiveUninstallData("/root", archivePaths)
 	if err != nil {
 		return fmt.Errorf("recovery archive failed; active data retained: %w", err)
@@ -210,6 +211,9 @@ func handleSystemUninstall(ctx *actions.Context) error {
 	out.Info("Private recovery archive (contains secrets; keep private): " + archive)
 	if err := system.RemoveOwnedSSHConfig(); err != nil {
 		return fmt.Errorf("uninstall pending; config and executable retained: %w", err)
+	}
+	if err := network.RemoveResolvedStubDropin(); err != nil {
+		return fmt.Errorf("uninstall pending; custom DNS and panel data retained: %w", err)
 	}
 	if err := system.RemoveOwnedTunnelAccounts(); err != nil {
 		return fmt.Errorf("uninstall pending; config and executable retained: %w", err)
@@ -265,5 +269,6 @@ func handleSystemUninstall(ctx *actions.Context) error {
 		out.Warning("Preserved unowned, changed or still-used shared-bin object: " + filepath.Join(config.DefaultBinDir, name))
 	}
 	out.Success("Owned panel data and units removed. Unknown/shared files and the private recovery archive were retained: " + archive)
+	out.Info("Shared firewall rules, package dependencies and administrator DNS files were retained for review.")
 	return nil
 }
