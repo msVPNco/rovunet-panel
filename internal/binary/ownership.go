@@ -30,7 +30,7 @@ func ownedBinaryPath(path string) bool {
 	if name == ".rovunet-update-state.json" || name == ".rovunet-update.lock" || name == ".rovunet-install-state.json" {
 		return true
 	}
-	for _, base := range []string{"rovunet", "xray", "rovunet-xray", "rovunet-amneziawg-go", "rovunet-awg", "rovunet-sing-box", "rovunet-mita", "rovunet-awg-provenance.json", "dnstt-server", "slipstream-server", "slipstream-client", "vaydns-server", "caddy-naive", "microsocks"} {
+	for _, base := range []string{"rovunet", "xray", "rovunet-xray", "rovunet-xray-managed", "rovunet-amneziawg-go", "rovunet-awg", "rovunet-sing-box", "rovunet-mita", "rovunet-awg-provenance.json", "dnstt-server", "slipstream-server", "slipstream-client", "vaydns-server", "caddy-naive", "microsocks"} {
 		if name == base || name == base+".bak" || name == base+".provenance.json" {
 			return true
 		}
