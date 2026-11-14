@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,6 +45,11 @@ func TestUninstallArchivesWALAndKeysWithoutFollowingSymlinks(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(data, "link")); err != nil {
 		t.Fatal(err)
 	}
+	listener, err := net.Listen("unix", filepath.Join(data, "runtime.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
 	dir, err := archiveUninstallData(root, []string{data})
 	if err != nil {
 		t.Fatal(err)
@@ -89,6 +95,9 @@ func TestUninstallArchivesWALAndKeysWithoutFollowingSymlinks(t *testing.T) {
 		if !seen[name] {
 			t.Errorf("missing archived %s", name)
 		}
+	}
+	if seen["runtime.sock"] {
+		t.Fatal("ephemeral runtime socket was archived")
 	}
 	if _, err := os.Stat(filepath.Join(data, "ledger.sqlite")); err != nil {
 		t.Fatal("archiving deleted live data")

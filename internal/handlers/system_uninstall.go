@@ -34,7 +34,8 @@ func archiveUninstallData(root string, paths []string) (string, error) {
 	if err = os.Chmod(dir, 0700); err != nil {
 		return "", err
 	}
-	f, err := os.OpenFile(filepath.Join(dir, "private-data.tar.gz"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	archivePath := filepath.Join(dir, "private-data.tar.gz")
+	f, err := os.OpenFile(archivePath+".partial", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return "", err
 	}
@@ -47,6 +48,12 @@ func archiveUninstallData(root string, paths []string) (string, error) {
 		err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
+			}
+			// Stopped runtimes can leave Unix-domain socket entries behind.
+			// They contain no restorable state and archive/tar rejects them;
+			// durable configuration, SQLite/WAL, keys and symlinks remain covered.
+			if info.Mode()&os.ModeSocket != 0 {
+				return nil
 			}
 			link := ""
 			if info.Mode()&os.ModeSymlink != 0 {
@@ -81,6 +88,9 @@ func archiveUninstallData(root string, paths []string) (string, error) {
 		}
 	}
 	if err = errors.Join(tw.Close(), gz.Close(), f.Sync(), f.Close()); err != nil {
+		return "", err
+	}
+	if err := os.Rename(archivePath+".partial", archivePath); err != nil {
 		return "", err
 	}
 	if err = errors.Join(safefile.SyncDir(dir), safefile.SyncDir(root)); err != nil {
