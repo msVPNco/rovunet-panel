@@ -274,7 +274,7 @@ func renderCurrentInto(cfg *config.Config, out actions.OutputWriter, dir string)
 		}
 		name := u.SubToken + suffix + statusSuffix
 		st := buildStatus(in, u, reason)
-		if u.SQLiteMeter != nil && st.UsedBytes == nil {
+		if u.SQLiteMeter != nil && st.UsedBytes == nil && st.Metering != meteringNone {
 			return
 		}
 		keep[name] = true

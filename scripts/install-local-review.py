@@ -11,7 +11,7 @@ import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent
-TAG = 'v2.0.0'
+TAG = 'v2.0.1'
 PUBLIC_DER = bytes.fromhex('302a300506032b6570032100')  # prefix checked below
 SPKI = 'MCowBQYDK2VwAyEAMfWBf2jAnb20LJvMoOfN1R/4OP0tSjPec+GWU+QXdqs='
 
@@ -69,7 +69,7 @@ def main():
         shim = stage/'curl'
         shim.write_text("""#!/usr/bin/python3
 import pathlib,sys,shutil
-a=sys.argv[1:];url=a[-1];prefix='https://github.com/msVPNco/rovunet-panel/releases/download/v2.0.0/'
+a=sys.argv[1:];url=a[-1];prefix='https://github.com/msVPNco/rovunet-panel/releases/download/v2.0.1/'
 if not url.startswith(prefix):sys.exit(1)
 name=url[len(prefix):]
 if name not in ['RELEASE-MANIFEST.json','RELEASE-MANIFEST.sig','rovunet-linux-amd64','rovunet-linux-arm64']:sys.exit(1)

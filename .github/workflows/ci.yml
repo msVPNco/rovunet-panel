@@ -4,12 +4,16 @@ on:
   push:
     branches: [main]
   pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   test:
+    if: github.event_name != 'release'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -38,7 +42,7 @@ jobs:
       - name: Build pinned validation core
         run: |
           git clone https://github.com/XTLS/Xray-core.git "$RUNNER_TEMP/xray-src"
-          git -C "$RUNNER_TEMP/xray-src" checkout 63ca2e0c1d31b89f67700c33842431f541fedd25
+          git -C "$RUNNER_TEMP/xray-src" checkout 676eaf66f8f05d4d558ee7a74b4736623d3feeb9
           cd "$RUNNER_TEMP/xray-src"
           go build -ldflags='-checklinkname=0' -o "$RUNNER_TEMP/xray" ./main
           echo "XRAY=$RUNNER_TEMP/xray" >> "$GITHUB_ENV"
@@ -50,16 +54,6 @@ jobs:
           python3 scripts/test-preview-rollback-usage.py
           python3 scripts/test-managed-preview-upgrade.py
           python3 scripts/test-release-tag.py
-      - name: Build and exercise pinned userspace AmneziaWG
-        run: |
-          bash scripts/build-managed-awg.sh "$RUNNER_TEMP/awg-assets"
-          go build -o "$RUNNER_TEMP/rovunet-awg-test" .
-          go build -o "$RUNNER_TEMP/awg-helper" ./internal/coreinstall/testdata/awg-helper
-          mkdir -p "$RUNNER_TEMP/awg-network-test"
-          sudo python3 -u scripts/test-managed-awg.py \
-            --panel "$RUNNER_TEMP/rovunet-awg-test" --helper "$RUNNER_TEMP/awg-helper" \
-            --engine "$RUNNER_TEMP/awg-assets/amneziawg-go-linux-amd64" \
-            --tool "$RUNNER_TEMP/awg-assets/awg-linux-amd64" --work "$RUNNER_TEMP/awg-network-test"
       - name: Test
         run: go test ./...
       - name: Race
@@ -75,12 +69,50 @@ jobs:
           sudo python3 scripts/test-encrypted-backup-cli.py --panel "$RUNNER_TEMP/review-panel" --work "$RUNNER_TEMP/encrypted-backup"
           sudo python3 scripts/test-router-systemd.py --panel "$RUNNER_TEMP/review-panel" --work "$RUNNER_TEMP/router-systemd"
 
-      - name: Exercise automatic 20-to-24 setup with actual engines
+
+  published-runtime-acceptance:
+    # Pre-publication exact-byte VM acceptance is performed by the local signer.
+    # This read-only job replays runtime integration against the published bytes;
+    # source CI never rebuilds different legacy engines or requires a CI key.
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.4'
+      - name: Authenticate the published runtime fixture
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          go build -o "$RUNNER_TEMP/complete-panel" .
+          tag="${RELEASE_TAG:-v$(make -s print-version)}"
+          test "$tag" = "v$(make -s print-version)"
+          assets="$RUNNER_TEMP/authenticated-release"
+          mkdir -p "$assets"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "$assets"
+          commit=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["source_commit"])' "$assets/RELEASE-MANIFEST.json")
+          if test "$GITHUB_EVENT_NAME" = release; then test "$commit" = "$GITHUB_SHA"; fi
+          python3 scripts/verify-release.py --assets "$assets" --tag "$tag" --commit "$commit"
+          chmod +x "$assets/"*-linux-amd64 "$assets/"*-linux-arm64
+          echo "REVIEWED_ASSETS=$assets" >> "$GITHUB_ENV"
+      - name: Exercise the shipped userspace AmneziaWG engine and tools
+        run: |
+          go build -o "$RUNNER_TEMP/awg-helper" ./internal/coreinstall/testdata/awg-helper
+          mkdir -p "$RUNNER_TEMP/awg-network-test"
+          sudo python3 -u scripts/test-managed-awg.py \
+            --panel "$REVIEWED_ASSETS/rovunet-linux-amd64" --helper "$RUNNER_TEMP/awg-helper" \
+            --engine "$REVIEWED_ASSETS/amneziawg-go-linux-amd64" \
+            --tool "$REVIEWED_ASSETS/awg-linux-amd64" --work "$RUNNER_TEMP/awg-network-test"
+      - name: Exercise automatic complete 30-profile setup with shipped engines
+        run: |
           sudo env "PATH=$PATH" "GOPATH=$(go env GOPATH)" "GOCACHE=$(go env GOCACHE)" \
             GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory "GIT_CONFIG_VALUE_0=$PWD" \
             python3 scripts/test-complete-setup.py \
-            --panel "$RUNNER_TEMP/complete-panel" --xray "$XRAY" \
-            --engine "$RUNNER_TEMP/awg-assets/amneziawg-go-linux-amd64" \
-            --tool "$RUNNER_TEMP/awg-assets/awg-linux-amd64" --work "$RUNNER_TEMP/complete-setup-test"
+            --panel "$REVIEWED_ASSETS/rovunet-linux-amd64" --xray "$REVIEWED_ASSETS/xray-linux-amd64" \
+            --engine "$REVIEWED_ASSETS/amneziawg-go-linux-amd64" \
+            --tool "$REVIEWED_ASSETS/awg-linux-amd64" \
+            --sing-box "$REVIEWED_ASSETS/sing-box-linux-amd64" --mita "$REVIEWED_ASSETS/mita-linux-amd64" \
+            --work "$RUNNER_TEMP/complete-setup-test"

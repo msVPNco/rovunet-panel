@@ -186,10 +186,37 @@ func refreshCoherentTransports(ctx *actions.Context) error {
 			return e
 		}
 	}
+	if e := refreshInstalledSOCKSWorker(); e != nil {
+		return e
+	}
 	if service.Exists("rovunet-dnsrouter") {
 		return dnsrouter.RegenerateRouterService()
 	}
 	return nil
+}
+
+// A credential reload cannot replace the executing panel image after an atomic
+// binary update. Restart running SOCKS workers without enabling stopped units.
+func refreshInstalledSOCKSWorker() error {
+	const name = "rovunet-socks5"
+	if !service.Exists(name) {
+		return nil
+	}
+	state, err := service.Status(name)
+	switch state {
+	case "active", "reloading", "activating":
+		if err := service.Restart(name); err != nil {
+			return fmt.Errorf("refresh installed SOCKS worker: %w", err)
+		}
+		return nil
+	case "inactive", "failed", "deactivating", "unknown":
+		return nil
+	default:
+		if err != nil {
+			return fmt.Errorf("cannot determine installed SOCKS worker state %q: %w", state, err)
+		}
+		return fmt.Errorf("unexpected installed SOCKS worker state %q", state)
+	}
 }
 
 func runPostUpdate(ctx *actions.Context) error {
@@ -315,6 +342,8 @@ func runPostUpdate(ctx *actions.Context) error {
 		}
 		if setupErr := setupSOCKS(cfg); setupErr != nil {
 			warn("Failed to regenerate SOCKS5 proxy: " + setupErr.Error())
+		} else if e := refreshInstalledSOCKSWorker(); e != nil {
+			warn("Failed to refresh SOCKS5 executable: " + e.Error())
 		} else {
 			out.Success("  rovunet-socks5 regenerated and restarted")
 		}

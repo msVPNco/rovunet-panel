@@ -1,15 +1,15 @@
 # Rovunet Panel 2
 
-[English — complete reference](README.md) · [فارسی](README.fa.md) · [Release notes](docs/releases/v2.0.0.md)
+[English — complete reference](README.md) · [فارسی](README.fa.md) · [Release notes](docs/releases/v2.0.1.md)
 
 Полная установка создаёт 15 ядер и базовые службы. Безлимитный аккаунт получает 30 профилей, аккаунт только со сроком — 29, с лимитом трафика — 6. Основные протоколы идут первыми, десять DNS-профилей — последними. Это порядок отображения, а не измерение скорости. 25 GB = 25 600 MB = 26 843 545 600 байт. Обновление сохраняет адрес подписки и записанный расход; обновите существующую подписку в приложении. Неизвестный расход не заменяется нулём. Проверьте домены, делегирование DNS и облачный межсетевой экран. Компоненты имеют отдельные лицензии. Тесты панели не гарантируют работу каждого приложения и провайдера.
 
 ## Install / Ubuntu 24.04, systemd, root
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.0/install.sh -o rovunet-install.sh
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.1/install.sh -o rovunet-install.sh
 python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="897108ce22f619bad23aecc6792283e4af01df0172b917b28e03082675fe76a6", "Installer checksum mismatch"'
-sudo env ROVUNET_RELEASE_TAG=v2.0.0 bash rovunet-install.sh
+sudo env ROVUNET_RELEASE_TAG=v2.0.1 bash rovunet-install.sh
 ```
 
 ## Profiles
@@ -41,3 +41,5 @@ sudo rovunet backup --file /root/rovunet-backup.age --recipient age1YOUR_PUBLIC_
 ```
 
 See the English reference for encrypted backup identities, certificate recovery, authenticated Slipstream certificate pins, update journals, compatibility limitations and security qualification scope.
+
+[Panel2 status, certificate and session contract](docs/contracts/panel-v2-addendum.md) — strict feed1; opt-in status2; no device-session API.

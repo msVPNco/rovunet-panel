@@ -129,6 +129,13 @@ func buildStatus(in statusInput, u config.UserConfig, reason string) accountStat
 			st.Metering = meteringUnavailable
 			return st
 		}
+		// Released status1 readers require the original unlimited shape.
+		// Keep the durable lower bound in SQLite/status2; do not expose it as
+		// a partial metered status with a null limit in the legacy schema.
+		if u.QuotaGB == 0 {
+			st.Metering = meteringNone
+			return st
+		}
 		st.UsedBytes = &a.Confirmed
 		st.Metering = meteringPartial
 		if u.QuotaGB > 0 && a.Confirmed >= lim && st.Status == statusActive {

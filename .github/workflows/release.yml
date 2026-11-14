@@ -55,7 +55,7 @@ jobs:
         run: |
           case "$REVIEWED_TAG" in
             v1.*) ;;
-            *) echo 'This workflow is the v1 runtime builder. Version two uses the exact reviewed source/runtime bundle, final VM acceptance and Windows-local production signature described in docs/releases/v2.0.0.md. Refusing to rebuild different legacy bytes.' >&2; exit 1 ;;
+            *) echo 'This workflow is the v1 runtime builder. Version two uses the exact reviewed source/runtime bundle, final VM acceptance and Windows-local production signature described in docs/releases/v2.0.1.md. Refusing to rebuild different legacy bytes.' >&2; exit 1 ;;
           esac
 
       - name: Report full qualification and validate the owner-authorized functional draft

@@ -13,24 +13,24 @@
       "id": "P0-UPSTREAM-PROVENANCE",
       "status": "open",
       "reason": "The version-two catalog uses reviewed exact source/dependency pins, corresponding module/crate/native source archives and component notices. Current Go/Rust advisory snapshots and scoped native security regressions are recorded. Independent byte-identical toolchain rebuild, every distribution/physical architecture and external audit are not certified. Historical runtime qualification records remain dated evidence.",
-      "evidence": "docs/releases/v2.0.0.md"
+      "evidence": "docs/releases/v2.0.1.md"
     },
     {
       "id": "P0-RECOVERY-ACCEPTANCE",
       "status": "open",
       "reason": "Version-two server acceptance covers signed clean systemd installation, four account modes, native finite held-stream/accounting boundaries, encrypted same-identity forward reconciliation and reboot. Complete fresh-target recovery of all runtimes, Caddy storage, firewall and provider registration remains outside that online recovery lane and unqualified; it cannot bypass SQLite authority.",
-      "evidence": "docs/releases/v2.0.0.md"
+      "evidence": "docs/releases/v2.0.1.md"
     },
     {
       "id": "P0-CLIENT-CONTRACT",
       "status": "open",
       "reason": "Version-two strict feeds contain30/29/6 configurations by eligibility, preserve saved URLs and use safe standard supplemental URIs. Controlled native/emulated payload tests do not certify final physical Android/macOS/Windows builds, all carriers, Doze or physical ARM64. External WireGuard/TUIC handshake loss is scoped evidence and not a proven app defect or universal connectivity guarantee.",
-      "evidence": "docs/releases/v2.0.0.md"
+      "evidence": "docs/releases/v2.0.1.md"
     }
   ],
   "bounded_functional_release": {
-    "tag": "v2.0.0",
-    "scope": "docs/releases/v2.0.0-scope.json",
+    "tag": "v2.0.1",
+    "scope": "docs/releases/v2.0.1-scope.json",
     "publication_requires": "Final signed exact-byte server acceptance; this is not full physical-client/off-site/provider certification."
   }
 }

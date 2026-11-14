@@ -2,7 +2,7 @@
 
 Self-hosted Linux access server with account management, signed updates, encrypted backups and multi-protocol subscriptions.
 
-[فارسی](README.fa.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md) · [Releases](https://github.com/msVPNco/rovunet-panel/releases) · [Release notes](docs/releases/v2.0.0.md) · [License](LICENSE)
+[فارسی](README.fa.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md) · [Releases](https://github.com/msVPNco/rovunet-panel/releases) · [Release notes](docs/releases/v2.0.1.md) · [License](LICENSE)
 
 ## Complete installation
 
@@ -11,9 +11,9 @@ A normal installation provisions **15 managed cores** and the base HTTPS, SSH an
 Use a fresh Ubuntu 24.04 LTS server with root access and systemd. AMD64 and ARM64 binaries are supplied. ARM64 emulation and native AMD64 evidence are distinguished in the acceptance report. Other distributions need runtime qualification. Point the HTTPS hostname to the server and delegate DNS tunnel subdomains to its authoritative DNS listener. Cloud proxying must be disabled for UDP/raw protocol endpoints. Permit the required cloud-firewall ports.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.0/install.sh -o rovunet-install.sh
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.1/install.sh -o rovunet-install.sh
 python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="897108ce22f619bad23aecc6792283e4af01df0172b917b28e03082675fe76a6", "Installer checksum mismatch"'
-sudo env ROVUNET_RELEASE_TAG=v2.0.0 bash rovunet-install.sh
+sudo env ROVUNET_RELEASE_TAG=v2.0.1 bash rovunet-install.sh
 ```
 
 
@@ -75,3 +75,5 @@ Public HTTPS certificates renew through Caddy. `certificates --mode check` repor
 Runtime source revisions, dependency locks, patches, notices and vulnerability-scan receipts accompany the release. A clean scan is bounded by its database snapshot and does not prove the absence of all vulnerabilities. Native TLS/QUIC security backports have separate sanitizer and regression evidence. Runtime licenses are component-specific: the panel is AGPL-3.0; Mieru and sing-box are GPL components; Naive/Caddy's dependency combination includes GPL components. Read the distributed notices and corresponding sources.
 
 WireGuard and TUIC pass controlled runtime payload tests; this does not guarantee reachability through a provider or filtered mobile network. Native WireGuard remains WireGuard; AmneziaWG is a separate option. No WAN speed ranking or universal Android/macOS/Windows compatibility is claimed. The [client contract](docs/contracts/panel-integration-v1.md) defines required capabilities rather than freezing app version numbers. [Broader production qualification gates](docs/release-gates.json) remain separately tracked; server functionality does not certify app behavior, independent/off-site key custody or every ISP.
+
+[Panel2 status, certificate and session contract](docs/contracts/panel-v2-addendum.md) — strict feed1; opt-in status2; no device-session API.

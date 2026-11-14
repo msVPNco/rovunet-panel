@@ -2,7 +2,7 @@
 
 پنل لینوکسی مدیریت حساب، اشتراک چندپروتکلی، به‌روزرسانی امضاشده و پشتیبان رمزگذاری‌شده.
 
-[English](README.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md) · [دانلود](https://github.com/msVPNco/rovunet-panel/releases) · [یادداشت نسخه](docs/releases/v2.0.0.md)
+[English](README.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md) · [دانلود](https://github.com/msVPNco/rovunet-panel/releases) · [یادداشت نسخه](docs/releases/v2.0.1.md)
 
 ## نصب کامل و تعداد کانفیگ‌ها
 
@@ -11,9 +11,9 @@
 سرور تازهٔ Ubuntu 24.04، دسترسی root و systemd لازم است. فایل‌های amd64 و arm64 جدا هستند؛ آزمون شبیه‌سازی ARM با سخت‌افزار واقعی یکی نیست. دامنهٔ HTTPS باید به سرور اشاره کند و زیردامنه‌های DNS به شنوندهٔ authoritative سرور واگذار شوند. برای UDP و پروتکل‌های مستقیم، پروکسی ابری را خاموش و پورت لازم را در فایروال ابری باز کنید.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.0/install.sh -o rovunet-install.sh
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.1/install.sh -o rovunet-install.sh
 python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="897108ce22f619bad23aecc6792283e4af01df0172b917b28e03082675fe76a6", "Installer checksum mismatch"'
-sudo env ROVUNET_RELEASE_TAG=v2.0.0 bash rovunet-install.sh
+sudo env ROVUNET_RELEASE_TAG=v2.0.1 bash rovunet-install.sh
 ```
 
 
@@ -73,3 +73,5 @@ Caddy گواهی عمومی HTTPS را خودکار تمدید می‌کند. م
 منشأ runtimeها، نسخهٔ دقیق منابع و وابستگی‌ها، وصله‌ها، مجوزها و گزارش بررسی advisory همراه بسته‌اند. نبودِ یافتهٔ شناخته‌شده در snapshot پایگاه آسیب‌پذیری، تضمین امنیت مطلق نیست. مجوز پنل AGPL-3.0 است؛ runtimeها و وابستگی‌هایشان مجوز مستقل دارند، از جمله اجزای GPL در Mieru، sing-box و ترکیب Caddy/Naive.
 
 آزمون کنترل‌شدهٔ انتقال دادهٔ WireGuard و TUIC، عبور آن‌ها در تمام اپراتورها را تضمین نمی‌کند. WireGuard استاندارد و AmneziaWG دو گزینهٔ جدا هستند. نتیجهٔ پنل به‌معنای تأیید همهٔ اپ‌ها، نگهداری فیزیکی کلید در محل مستقل یا همهٔ شبکه‌ها نیست. [قرارداد اپ‌ها](docs/contracts/panel-integration-v1.md) قابلیت‌ها را مشخص می‌کند؛ [دروازه‌های ارزیابی گسترده](docs/release-gates.json) جداگانه دنبال می‌شوند.
+
+[Panel2 status, certificate and session contract](docs/contracts/panel-v2-addendum.md) — strict feed1; opt-in status2; no device-session API.

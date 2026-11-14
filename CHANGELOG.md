@@ -2,16 +2,19 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
-## v2.0.0
+## v2.0.1
 
 - Complete setup targets30 unrestricted profiles,29 time-only profiles and six shared-budget finite paths. Add TLS Vision, XHTTP REALITY, AnyTLS, TUIC and separate Mieru TCP/UDP.
 - Order main protocols first and all ten DNS paths last; keep protocol display labels, stable profile IDs and saved subscription URLs.
+- Restore the original status1 unlimited shape for SQLite-bound accounts (null limit/used, not_metered). Keep recorded consumption intact and expose its lower bound through opt-in status2.
+- Use2.0.1 for the first public version-two release so private2.0.0 builds receive an actual versioned update.
 - Share native finite quotas in durable SQLite; preserve known consumption, periods and credentials. Format2 encrypted checkpoints support same-identity forward reconciliation, without stale database/config rollback or a fresh-target recovery bypass.
 - Keep committed SQLite policy/metadata reads independent of the sole writer through a bounded read-only WAL pool. Slow writes no longer consume the policy read's deadline merely while waiting for that same connection; reservations still require a serialized, validated durable commit.
+- Restart the running built-in SOCKS5 worker after an authenticated panel swap; credential reload alone cannot load new code. Preserve stopped workers and their enable state.
 - Authenticate and validate runtime upgrades with durable resume and retained old hashes. Refresh installed DNS/TLS transports and use exact reviewed source/dependency pins.
 - Close held compatibility-core streams on revocation; retain per-account finite cutoff and the healthy user's session. Fix service and resolver permissions under strict umask and retain administrator resolver choices.
 - Add certificate health/recovery and public Slipstream certificate companions. Refresh the runtime corresponding sources, native security backports and component notices.
-- See [server acceptance and explicit qualification boundaries](docs/releases/v2.0.0.md). Artifact publication requires final signed exact-byte acceptance; broader physical-client/off-site/fresh-target qualification is separately tracked.
+- See [server acceptance and explicit qualification boundaries](docs/releases/v2.0.1.md). Artifact publication requires final signed exact-byte acceptance; broader physical-client/off-site/fresh-target qualification is separately tracked.
 
 ## v1.21.2
 
