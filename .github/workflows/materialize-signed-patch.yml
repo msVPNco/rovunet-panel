@@ -38,6 +38,7 @@ jobs:
           assets="$RUNNER_TEMP/approved-patch"
           chmod +x "$assets/"*-linux-amd64 "$assets/"*-linux-arm64
           go build -o "$RUNNER_TEMP/awg-helper" ./internal/coreinstall/testdata/awg-helper
+          mkdir -p "$RUNNER_TEMP/awg-patch-test"
           sudo python3 -u scripts/test-managed-awg.py --panel "$assets/rovunet-linux-amd64" --helper "$RUNNER_TEMP/awg-helper" --engine "$assets/amneziawg-go-linux-amd64" --tool "$assets/awg-linux-amd64" --work "$RUNNER_TEMP/awg-patch-test"
           sudo env "PATH=$PATH" "GOPATH=$(go env GOPATH)" "GOCACHE=$(go env GOCACHE)" GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory "GIT_CONFIG_VALUE_0=$PWD" python3 scripts/test-complete-setup.py --panel "$assets/rovunet-linux-amd64" --xray "$assets/xray-linux-amd64" --engine "$assets/amneziawg-go-linux-amd64" --tool "$assets/awg-linux-amd64" --sing-box "$assets/sing-box-linux-amd64" --mita "$assets/mita-linux-amd64" --work "$RUNNER_TEMP/complete-patch-test"
       - name: Upload authenticated assets and publish Latest
