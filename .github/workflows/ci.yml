@@ -39,13 +39,6 @@ jobs:
           python3 scripts/test-release-auth.py
           python3 scripts/check-release-gates.py --report-only
           govulncheck ./...
-      - name: Build pinned validation core
-        run: |
-          git clone https://github.com/XTLS/Xray-core.git "$RUNNER_TEMP/xray-src"
-          git -C "$RUNNER_TEMP/xray-src" checkout 676eaf66f8f05d4d558ee7a74b4736623d3feeb9
-          cd "$RUNNER_TEMP/xray-src"
-          go build -ldflags='-checklinkname=0' -o "$RUNNER_TEMP/xray" ./main
-          echo "XRAY=$RUNNER_TEMP/xray" >> "$GITHUB_ENV"
       - name: Vet
         run: go vet ./...
       - name: Check preview scripts and rollback accounting
@@ -54,10 +47,31 @@ jobs:
           python3 scripts/test-preview-rollback-usage.py
           python3 scripts/test-managed-preview-upgrade.py
           python3 scripts/test-release-tag.py
-      - name: Test
-        run: go test ./...
-      - name: Race
-        run: go test -race ./...
+      - name: Isolated source unit and race suites
+        # Exact-runtime suites run before publication in the signer VM and again
+        # below against authenticated published assets. A fresh upstream rebuild
+        # deliberately cannot substitute for a reviewed exact-hash runtime.
+        run: |
+          go_bin=$(command -v go)
+          modcache=$(go env GOMODCACHE)
+          cache="$RUNNER_TEMP/isolated-go-cache"
+          sudo unshare --mount --net --pid --fork --mount-proc --kill-child \
+            env "PATH=$PATH" ROVUNET_REVIEW25_ISOLATED=github-ci \
+            GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory "GIT_CONFIG_VALUE_0=$PWD" \
+            bash -euc '
+              test "$$" -eq 1
+              mount --make-rprivate /
+              ip link set lo up
+              for d in /etc /var/lib /tmp /root /run /usr/local/bin; do mount -t tmpfs tmpfs "$d"; done
+              mkdir -p /etc/ssl /etc/systemd/system
+              printf "%s\n" "[req]" "distinguished_name=dn" "[dn]" "CN=localhost" >/tmp/openssl.cnf
+              export OPENSSL_CONF=/tmp/openssl.cnf TMPDIR=/tmp
+              export GOCACHE="$3" GOMODCACHE="$2" GOPROXY=off GOTOOLCHAIN=local GOENV=off
+              export GOMAXPROCS=4 GOFLAGS=-p=4
+              unset XRAY ROVUNET_REVIEWED_XRAY
+              "$1" test ./...
+              "$1" test -race ./...
+            ' ci-isolated "$go_bin" "$modcache" "$cache"
       - name: Build
         run: make build-linux
 
