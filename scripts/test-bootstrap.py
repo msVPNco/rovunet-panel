@@ -28,6 +28,10 @@ def inside(work):
         if not parent or os.readlink('/proc/self/ns/'+name)==parent:
             raise RuntimeError('Private mount, network and PID namespaces are required')
     run('mount', '--make-rprivate', '/')
+    # Hide host installation state as well as its binary.
+    for path in ('/etc/rovunet','/var/lib/rovunet'):
+        if pathlib.Path(path).is_dir():
+            run('mount','-t','tmpfs','tmpfs',path)
     target = work/'target'
     target.mkdir()
     run('mount', '--bind', target, '/usr/local/bin')

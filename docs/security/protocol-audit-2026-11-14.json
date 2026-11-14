@@ -1,0 +1,254 @@
+{
+  "checked_at_utc": "2026-11-14T13:30:14.048543+00:00",
+  "meaning_of_rules": "Technical protocol compatibility, upstream support/deprecation and security advisories; no claim of jurisdictional legal compliance.",
+  "scope": "All 30 emitted profile types. Candidate builds are not a claim that the owner server or published release has already changed.",
+  "profiles": [
+    {
+      "profile": "VLESS XHTTP TLS",
+      "engine": "Xray",
+      "candidate_version": "26.11.9",
+      "source": "https://github.com/XTLS/Xray-core/releases/tag/v26.11.9",
+      "status": "review-in-progress",
+      "finding": "Reviewed source candidate matches latest stable. Exact final configuration/data/quota/WAN acceptance remains required. Trojan and Shadowsocks have upstream compatibility/deprecation caveats; old subscriptions retained."
+    },
+    {
+      "profile": "REALITY 1",
+      "engine": "Xray",
+      "candidate_version": "26.11.9",
+      "source": "https://github.com/XTLS/Xray-core/releases/tag/v26.11.9",
+      "status": "review-in-progress",
+      "finding": "Reviewed source candidate matches latest stable. Exact final configuration/data/quota/WAN acceptance remains required. Trojan and Shadowsocks have upstream compatibility/deprecation caveats; old subscriptions retained."
+    },
+    {
+      "profile": "REALITY 2",
+      "engine": "Xray",
+      "candidate_version": "26.11.9",
+      "source": "https://github.com/XTLS/Xray-core/releases/tag/v26.11.9",
+      "status": "review-in-progress",
+      "finding": "Reviewed source candidate matches latest stable. Exact final configuration/data/quota/WAN acceptance remains required. Trojan and Shadowsocks have upstream compatibility/deprecation caveats; old subscriptions retained."
+    },
+    {
+      "profile": "Hysteria 2",
+      "engine": "Xray",
+      "candidate_version": "26.11.9",
+      "source": "https://github.com/XTLS/Xray-core/releases/tag/v26.11.9",
+      "status": "review-in-progress",
+      "finding": "Reviewed source candidate matches latest stable. Exact final configuration/data/quota/WAN acceptance remains required. Trojan and Shadowsocks have upstream compatibility/deprecation caveats; old subscriptions retained."
+    },
+    {
+      "profile": "WireGuard",
+      "engine": "Xray",
+      "candidate_version": "26.11.9",
+      "source": "https://github.com/XTLS/Xray-core/releases/tag/v26.11.9",
+      "status": "review-in-progress",
+      "finding": "Reviewed source candidate matches latest stable. Exact final configuration/data/quota/WAN acceptance remains required. Trojan and Shadowsocks have upstream compatibility/deprecation caveats; old subscriptions retained."
+    },
+    {
+      "profile": "Shadowsocks 2022",
+      "engine": "Xray",
+      "candidate_version": "26.11.9",
+      "source": "https://github.com/XTLS/Xray-core/releases/tag/v26.11.9",
+      "status": "review-in-progress",
+      "finding": "Reviewed source candidate matches latest stable. Exact final configuration/data/quota/WAN acceptance remains required. Trojan and Shadowsocks have upstream compatibility/deprecation caveats; old subscriptions retained."
+    },
+    {
+      "profile": "Trojan TLS",
+      "engine": "Xray",
+      "candidate_version": "26.11.9",
+      "source": "https://github.com/XTLS/Xray-core/releases/tag/v26.11.9",
+      "status": "review-in-progress",
+      "finding": "Reviewed source candidate matches latest stable. Exact final configuration/data/quota/WAN acceptance remains required. Trojan and Shadowsocks have upstream compatibility/deprecation caveats; old subscriptions retained."
+    },
+    {
+      "profile": "VLESS Encryption",
+      "engine": "Xray",
+      "candidate_version": "26.11.9",
+      "source": "https://github.com/XTLS/Xray-core/releases/tag/v26.11.9",
+      "status": "review-in-progress",
+      "finding": "Reviewed source candidate matches latest stable. Exact final configuration/data/quota/WAN acceptance remains required. Trojan and Shadowsocks have upstream compatibility/deprecation caveats; old subscriptions retained."
+    },
+    {
+      "profile": "VLESS TLS Vision",
+      "engine": "Xray",
+      "candidate_version": "26.11.9",
+      "source": "https://github.com/XTLS/Xray-core/releases/tag/v26.11.9",
+      "status": "review-in-progress",
+      "finding": "Reviewed source candidate matches latest stable. Exact final configuration/data/quota/WAN acceptance remains required. Trojan and Shadowsocks have upstream compatibility/deprecation caveats; old subscriptions retained."
+    },
+    {
+      "profile": "VLESS XHTTP REALITY",
+      "engine": "Xray",
+      "candidate_version": "26.11.9",
+      "source": "https://github.com/XTLS/Xray-core/releases/tag/v26.11.9",
+      "status": "review-in-progress",
+      "finding": "Reviewed source candidate matches latest stable. Exact final configuration/data/quota/WAN acceptance remains required. Trojan and Shadowsocks have upstream compatibility/deprecation caveats; old subscriptions retained."
+    },
+    {
+      "profile": "VLESS WS TLS",
+      "engine": "Panel native",
+      "candidate_version": "Go 1.27.4",
+      "source": "https://github.com/msVPNco/rovunet-panel",
+      "status": "review-in-progress",
+      "finding": "Native TLS permits TLS 1.2 minimum and negotiates TLS 1.3; no production InsecureSkipVerify found in these listeners. SSH uses OS OpenSSH policy; panel preserves administrator restrictions. New full source acceptance pending."
+    },
+    {
+      "profile": "StunTLS · SSH",
+      "engine": "Panel native",
+      "candidate_version": "Go 1.27.4",
+      "source": "https://github.com/msVPNco/rovunet-panel",
+      "status": "review-in-progress",
+      "finding": "Native TLS permits TLS 1.2 minimum and negotiates TLS 1.3; no production InsecureSkipVerify found in these listeners. SSH uses OS OpenSSH policy; panel preserves administrator restrictions. New full source acceptance pending."
+    },
+    {
+      "profile": "SSH · Direct",
+      "engine": "Panel native",
+      "candidate_version": "Go 1.27.4",
+      "source": "https://github.com/msVPNco/rovunet-panel",
+      "status": "review-in-progress",
+      "finding": "Native TLS permits TLS 1.2 minimum and negotiates TLS 1.3; no production InsecureSkipVerify found in these listeners. SSH uses OS OpenSSH policy; panel preserves administrator restrictions. New full source acceptance pending."
+    },
+    {
+      "profile": "NaiveProxy · SOCKS5",
+      "engine": "Caddy / forwardproxy",
+      "candidate_version": "2.11.9 / 2.11.7-naive2",
+      "source": "https://github.com/caddyserver/caddy/releases/tag/v2.11.9",
+      "status": "review-in-progress",
+      "finding": "Both architecture candidates rebuilt, go-jose 4.1.6 and current QUIC dependency; actual H2/H3 and ACME acceptance pending."
+    },
+    {
+      "profile": "NaiveProxy · SSH",
+      "engine": "Caddy / forwardproxy",
+      "candidate_version": "2.11.9 / 2.11.7-naive2",
+      "source": "https://github.com/caddyserver/caddy/releases/tag/v2.11.9",
+      "status": "review-in-progress",
+      "finding": "Both architecture candidates rebuilt, go-jose 4.1.6 and current QUIC dependency; actual H2/H3 and ACME acceptance pending."
+    },
+    {
+      "profile": "AmneziaWG",
+      "engine": "AmneziaWG Go",
+      "candidate_version": "3.1.20260828",
+      "source": "https://github.com/amnezia-vpn/amneziawg-go/tags",
+      "status": "review-in-progress",
+      "finding": "Latest official tag matches reviewed candidate. Legacy profiles and peer identities preserved; final exact-byte data/reboot acceptance pending."
+    },
+    {
+      "profile": "Soar · Direct",
+      "engine": "Soar",
+      "candidate_version": "0.2.5",
+      "source": "https://github.com/getlantern/soar/releases/tag/v0.2.5",
+      "status": "review-in-progress",
+      "finding": "Panel module upgraded. Upstream states wire compatibility retained. Final build and actual data tests pending."
+    },
+    {
+      "profile": "Soar · SSH",
+      "engine": "Soar",
+      "candidate_version": "0.2.5",
+      "source": "https://github.com/getlantern/soar/releases/tag/v0.2.5",
+      "status": "review-in-progress",
+      "finding": "Panel module upgraded. Upstream states wire compatibility retained. Final build and actual data tests pending."
+    },
+    {
+      "profile": "DNSTT · SOCKS5",
+      "engine": "DNSTT",
+      "candidate_version": "1.20260501.0",
+      "source": "https://www.bamsoftware.com/software/dnstt/",
+      "status": "review-in-progress",
+      "finding": "Go proxy latest resolves official source commit 0c5c52a57d899c05428c116898941761a2ed83c2. NoizDNS is a transport variant using this server. Final DNS data acceptance pending."
+    },
+    {
+      "profile": "DNSTT · SSH",
+      "engine": "DNSTT",
+      "candidate_version": "1.20260501.0",
+      "source": "https://www.bamsoftware.com/software/dnstt/",
+      "status": "review-in-progress",
+      "finding": "Go proxy latest resolves official source commit 0c5c52a57d899c05428c116898941761a2ed83c2. NoizDNS is a transport variant using this server. Final DNS data acceptance pending."
+    },
+    {
+      "profile": "NoizDNS · SOCKS5",
+      "engine": "DNSTT",
+      "candidate_version": "1.20260501.0",
+      "source": "https://www.bamsoftware.com/software/dnstt/",
+      "status": "review-in-progress",
+      "finding": "Go proxy latest resolves official source commit 0c5c52a57d899c05428c116898941761a2ed83c2. NoizDNS is a transport variant using this server. Final DNS data acceptance pending."
+    },
+    {
+      "profile": "NoizDNS · SSH",
+      "engine": "DNSTT",
+      "candidate_version": "1.20260501.0",
+      "source": "https://www.bamsoftware.com/software/dnstt/",
+      "status": "review-in-progress",
+      "finding": "Go proxy latest resolves official source commit 0c5c52a57d899c05428c116898941761a2ed83c2. NoizDNS is a transport variant using this server. Final DNS data acceptance pending."
+    },
+    {
+      "profile": "VayDNS · SOCKS5",
+      "engine": "VayDNS",
+      "candidate_version": "0.2.8",
+      "source": "https://github.com/net2share/vaydns/releases/tag/v0.2.8",
+      "status": "review-in-progress",
+      "finding": "Latest official stable matches reviewed source candidate; final DNS data acceptance pending."
+    },
+    {
+      "profile": "VayDNS · SSH",
+      "engine": "VayDNS",
+      "candidate_version": "0.2.8",
+      "source": "https://github.com/net2share/vaydns/releases/tag/v0.2.8",
+      "status": "review-in-progress",
+      "finding": "Latest official stable matches reviewed source candidate; final DNS data acceptance pending."
+    },
+    {
+      "profile": "Slipstream · SOCKS5",
+      "engine": "Slipstream",
+      "candidate_version": "0.1.1 plus reviewed source/security backports",
+      "source": "https://github.com/Mygod/slipstream-rust",
+      "status": "review-in-progress",
+      "finding": "Old picotls was missing three official fixes: backported. Added picoquic fixes and OpenSSL 3.5.9 plus five official security fixes; Tokio 1.53.3. AMD64 static build and active SSH/certificate/reboot acceptance passed. ARM64 and remaining native regression classification pending."
+    },
+    {
+      "profile": "Slipstream · SSH",
+      "engine": "Slipstream",
+      "candidate_version": "0.1.1 plus reviewed source/security backports",
+      "source": "https://github.com/Mygod/slipstream-rust",
+      "status": "review-in-progress",
+      "finding": "Old picotls was missing three official fixes: backported. Added picoquic fixes and OpenSSL 3.5.9 plus five official security fixes; Tokio 1.53.3. AMD64 static build and active SSH/certificate/reboot acceptance passed. ARM64 and remaining native regression classification pending."
+    },
+    {
+      "profile": "AnyTLS",
+      "engine": "sing-box",
+      "candidate_version": "1.14.4-rovunet.2",
+      "source": "https://github.com/SagerNet/sing-box/releases/tag/v1.14.4",
+      "status": "review-in-progress",
+      "finding": "Latest stable base; both architectures rebuilt with go-jose 4.1.6, quic-go mod.14, x/crypto 0.59.0. Final dependency scan and actual data/interop acceptance pending."
+    },
+    {
+      "profile": "TUIC",
+      "engine": "sing-box",
+      "candidate_version": "1.14.4-rovunet.2",
+      "source": "https://github.com/SagerNet/sing-box/releases/tag/v1.14.4",
+      "status": "review-in-progress",
+      "finding": "Latest stable base; both architectures rebuilt with go-jose 4.1.6, quic-go mod.14, x/crypto 0.59.0. Final dependency scan and actual data/interop acceptance pending."
+    },
+    {
+      "profile": "Mieru TCP",
+      "engine": "Mieru",
+      "candidate_version": "3.39.0",
+      "source": "https://github.com/enfein/mieru/releases/tag/v3.39.0",
+      "status": "review-in-progress",
+      "finding": "Latest stable base already rebuilt with prior dependency remediation. Recheck current vulnerability database and exact final data acceptance required."
+    },
+    {
+      "profile": "Mieru UDP",
+      "engine": "Mieru",
+      "candidate_version": "3.39.0",
+      "source": "https://github.com/enfein/mieru/releases/tag/v3.39.0",
+      "status": "review-in-progress",
+      "finding": "Latest stable base already rebuilt with prior dependency remediation. Recheck current vulnerability database and exact final data acceptance required."
+    }
+  ],
+  "release_ready": false,
+  "unresolved": [
+    "Exact final all-protocol data/interop tests, both architectures",
+    "Current dependency advisories and native multipath regression classification",
+    "Signed full fresh install/menu update/backup restore acceptance",
+    "Public README and release packaging"
+  ]
+}

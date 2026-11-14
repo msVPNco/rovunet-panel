@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -30,6 +31,9 @@ import (
 
 func handleSystemInstall(ctx *actions.Context) error {
 	out := ctx.Output
+	if cfg, ok := ctx.Config.(*config.Config); ok && (cfg.SubscriptionV2 || requiresCoherent(cfg)) {
+		return errors.New("coordinated accounting installation: stop-and-reviewed upgrade or recovery is required before replacing writers")
+	}
 
 	if runtime.GOOS != "linux" {
 		return actions.NewError(actions.SystemInstall, "rovunet only supports Linux servers", nil)
@@ -49,7 +53,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 	transports := completeTransports()
 	var err error
 	if complete {
-		out.Info("Complete setup: both DNS backends and all nine protocol cores (24 Android / 22 Windows profiles for an eligible account)")
+		out.Info("Complete setup: both DNS backends and all 15 protocol cores (30 Android / 30 Windows profiles for an unrestricted account)")
 	} else {
 		transports, err = prompt.MultiSelect("Transports", actions.InstallTransportOptions)
 		if err != nil {
@@ -696,6 +700,14 @@ func handleSystemInstall(ctx *actions.Context) error {
 	// faster than Cloudflare and harder to tell from an ordinary website.
 	frontVLESSWithNaive(cfg, allTunnels, out)
 
+	// The subscription service validates and publishes at ExecStartPre. Persist its
+	// inputs before starting it so that it never has to mint IDs behind the installer.
+	if mintIDs(cfg) {
+		if err := cfg.Save(); err != nil {
+			return err
+		}
+	}
+
 	// Create and start systemd services
 	for i := range allTunnels {
 		// Free the port in case a stale process is holding it
@@ -735,6 +747,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 		}
 	}
 
+	fresh := map[string]bool{}
 	createUser := false
 
 	if needsUser && len(cfg.Users) == 0 {
@@ -750,6 +763,9 @@ func handleSystemInstall(ctx *actions.Context) error {
 	}
 
 	if createUser {
+		if err := cfg.RefreshIfChanged(); err != nil {
+			return err
+		}
 		username, err := prompt.String("Username", "user1")
 		if err != nil {
 			return err
@@ -765,11 +781,19 @@ func handleSystemInstall(ctx *actions.Context) error {
 			return actions.NewError(actions.SystemInstall, err.Error(), nil)
 		}
 
+		if cfg.GetUser(username) != nil {
+			return fmt.Errorf("account %q already exists", username)
+		}
 		if err := system.AddSSHUser(username, password); err != nil {
 			return actions.NewError(actions.SystemInstall, "failed to create user", err)
 		}
 
-		cfg.AddUser(config.UserConfig{Username: username, Password: password})
+		u := newUser(username, password, 0, 0, time.Now())
+		if err := rememberNewPeriod(cfg, u); err != nil {
+			return err
+		}
+		fresh[u.AccountID] = true
+		cfg.AddUser(u)
 		if err := cfg.Save(); err != nil {
 			return actions.NewError(actions.SystemInstall, "failed to save config", err)
 		}
@@ -892,6 +916,10 @@ func handleSystemInstall(ctx *actions.Context) error {
 
 	if completeErr != nil {
 		return actions.NewError(actions.SystemInstall, "Complete setup is pending; existing services and links were retained. Resolve the reported prerequisite and run 'rovunet complete-setup'", completeErr)
+	}
+
+	if err := finishInstallationAccounting(cfg, fresh); err != nil {
+		return err
 	}
 
 	// ── Step 7: Summary ────────────────────────────────────────────

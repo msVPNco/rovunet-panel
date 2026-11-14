@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"net"
@@ -216,6 +217,32 @@ func TestManagedProtocolsRuntime(t *testing.T) {
 			dir := filepath.Join(Root, protocol)
 			server, _ := os.ReadFile(filepath.Join(dir, "server.json"))
 			serverProcess := runtimeProcess(t, filepath.Join(dir, "server.json"), server, cert, o.Port)
+			oldRestart := restartCore
+			t.Cleanup(func() { restartCore = oldRestart })
+			restarts := 0
+			restartCore = func(unit string) error {
+				if unit != ServiceName(protocol) {
+					return fmt.Errorf("unexpected runtime restart %s", unit)
+				}
+				_ = serverProcess.Process.Kill()
+				_ = serverProcess.Wait()
+				_, state, _, err := loadUserCore(protocol)
+				if err != nil {
+					return err
+				}
+				// Match the real unit's ExecCondition cleanup after stopping Xray.
+				if err = prepareAPISocket(protocol, state.APISocket); err != nil {
+					return err
+				}
+				next, err := os.ReadFile(filepath.Join(dir, "server.json"))
+				if err != nil {
+					return err
+				}
+				restarts++
+				epoch = fmt.Sprintf("validated-restart-%s-%d", protocol, restarts)
+				serverProcess = runtimeProcess(t, filepath.Join(dir, "server.json"), next, cert, o.Port)
+				return nil
+			}
 			clients := map[string]*http.Client{}
 			for _, u := range []config.UserConfig{alice, bob} {
 				profiles, err := Profiles(u)
@@ -306,7 +333,7 @@ func TestManagedProtocolsRuntime(t *testing.T) {
 			measurement, _ := json.Marshal(map[string]any{"scenario": "explicit per-account expiry sync; no scheduler delay included", "protocol": protocol, "runtime_case": t.Name(), "new_session_blocked": true, "healthy_account_payload": true, "established_stream_survived": streamAlive, "sync_and_probe_ms": time.Since(revokeStarted).Milliseconds(), "timer_slo_ms": nil, "quota_overshoot_bytes": nil})
 			t.Log("REVOCATION_MEASUREMENT " + string(measurement))
 			if streamAlive {
-				t.Log("LIMITATION OBSERVED: HandlerService removal leaves this established stream alive")
+				t.Fatal("revoked compatibility account retained its established stream")
 			}
 			alice.ExpiresAt = ""
 			if err := syncCore(protocol, []config.UserConfig{alice, bob}); err != nil {
@@ -376,8 +403,8 @@ func TestManagedProtocolsRuntime(t *testing.T) {
 			if err := request(runtimeClient(t, profiles[0].Link, t.TempDir(), cert)); err != nil {
 				t.Fatal("retried timed account did not pass data")
 			}
-			if err := collectCore(protocol); err != nil {
-				t.Fatal(err)
+			if err := collectCore(protocol); !errors.Is(err, usage.ErrUnsampledTraffic) {
+				t.Fatalf("validated restart must retain the explicit unsampled counter interval: %v", err)
 			}
 			savedTotals := usage.Totals()
 			history, err := usage.History()
@@ -425,14 +452,14 @@ func TestManagedProtocolsRuntime(t *testing.T) {
 				t.Fatal("removed credential returned after restore/restart")
 			}
 			epoch = "restarted-" + protocol
-			if err := collectCore(protocol); err == nil {
-				t.Fatal("a process epoch change concealed an unsampled interval")
+			if err := collectCore(protocol); !errors.Is(err, usage.ErrUnsampledTraffic) {
+				t.Fatalf("a process epoch change must retain the explicit unsampled interval: %v", err)
 			}
 			if got := usage.Totals()["bob"]; got < savedTotals["bob"] {
 				t.Fatal("restart erased prior usage")
 			}
 			t.Log("private core/TLS backup restore and process restart passed data; totals survived and the epoch gap remained explicit")
-			t.Log("two distinct accounts, bidirectional data, per-user counters, idempotent sampling and live removal passed")
+			t.Log("two distinct accounts, bidirectional data, per-user counters, idempotent sampling, validated revocation and re-admission passed")
 		})
 	}
 	if got := usage.Totals()["alice"]; got < int64(6*len(payload)) {

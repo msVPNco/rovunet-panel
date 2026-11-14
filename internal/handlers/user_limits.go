@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
+	"github.com/msVPNco/rovunet-panel/internal/quota"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -178,12 +180,25 @@ func EnforceLimits(cfg *config.Config, out actions.OutputWriter, now time.Time) 
 	if err != nil {
 		out.Warning("traffic counting: " + err.Error() + "; the counts may be low")
 	}
+	if e := ObserveUnlimitedAccounts(cfg); e != nil {
+		out.Warning("SQLite observation unavailable; recorded usage retained")
+	}
 	var gone []string
 	for _, u := range append([]config.UserConfig(nil), cfg.Users...) {
 		reason := ""
 		switch {
 		case u.Expired(now):
 			reason = "expired"
+		case u.SQLiteMeter != nil:
+			a, lim, e := boundAmount(cfg.ServerID, u)
+			if e != nil {
+				out.Warning("SQLite usage unavailable for " + u.Username)
+				continue
+			}
+			if u.QuotaGB == 0 || a.Confirmed < lim {
+				continue
+			}
+			reason = "traffic limit"
 		case overQuota(u, totals):
 			reason = "traffic limit"
 		default:
@@ -253,7 +268,7 @@ const ExpiryTimerName = "rovunet-user-expiry.timer"
 // EnsureExpiryTimer installs the 5-minute limits timer when some user has an
 // expiry or a traffic limit. It is idempotent.
 func EnsureExpiryTimer(cfg *config.Config) error {
-	if !HasLimitedUsers(cfg) {
+	if !HasLimitedUsers(cfg) && !hasSQLiteAccounts(cfg) {
 		return nil
 	}
 	self, err := config.SelfPath()
@@ -354,6 +369,25 @@ func renewUser(cfg *config.Config, out actions.OutputWriter, username, daysArg, 
 		return err
 	}
 	u := renewedUser(*arch, days, gb, time.Now())
+	if b := arch.SQLiteMeter; b != nil {
+		if gb <= 0 {
+			return fmt.Errorf("finite SQLite renewal requires a positive limit")
+		}
+		u.SQLiteMeter = b
+		u.UsageBase = 0
+		u.PeriodID = rotationRequest(cfg.ServerID, username, arch.AccountID, arch.PeriodID, "renew-period-v1")[:32]
+		ctx := context.Background()
+		s, e := quota.Open(ctx, b.Directory, cfg.ServerID, b.Store)
+		if e != nil {
+			return e
+		}
+		defer s.Close()
+		// While the account remains archived there is no active configuration to
+		// admit. Lost config saves replay the same DB transition on the next call.
+		if e = s.Renew(ctx, quota.Key{Account: arch.AccountID, Period: arch.PeriodID}, "renew:"+arch.PeriodID, u.PeriodID, u.QuotaBytes()); e != nil {
+			return e
+		}
+	}
 	if err := grantSSH(u); err != nil {
 		return fmt.Errorf("failed to create SSH user: %w", err)
 	}

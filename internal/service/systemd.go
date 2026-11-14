@@ -21,6 +21,7 @@ type Unit struct {
 	Name            string
 	Description     string
 	ExecStart       string
+	ExecStartPre    string
 	ExecReload      string
 	ExecCondition   string
 	ExecStartPost   string
@@ -31,6 +32,9 @@ type Unit struct {
 	WorkingDir      string
 	Environment     []string
 	NoNewPrivileges bool
+	StateDirectory  string
+	UMask           string
+	BindPaths       []string
 }
 
 // Create writes a systemd unit file and reloads the daemon.
@@ -54,7 +58,19 @@ LogRateLimitBurst=100
 	if u.NoNewPrivileges {
 		content += "NoNewPrivileges=yes\n"
 	}
+	if u.UMask != "" {
+		content += "UMask=" + u.UMask + "\n"
+	}
+	if u.StateDirectory != "" {
+		content += "StateDirectory=" + u.StateDirectory + "\nStateDirectoryMode=0700\n"
+	}
+	for _, path := range u.BindPaths {
+		content += "BindPaths=" + path + "\n"
+	}
 
+	if u.ExecStartPre != "" {
+		content += fmt.Sprintf("ExecStartPre=%s\n", u.ExecStartPre)
+	}
 	if u.ExecReload != "" {
 		content += fmt.Sprintf("ExecReload=%s\n", u.ExecReload)
 	}

@@ -1,54 +1,214 @@
 {
   "schema": 1,
-  "source": "Exact go.mod/go.sum module cache verified by Go module checksum; module-root license/notice texts",
+  "source": "Modules linked to the Linux panel executable, exact versions authenticated by Go checksums; module-root copyright/license/notice texts; line endings normalized to LF only",
   "files": [
     {
       "module": "filippo.io/age",
       "version": "v1.3.2",
       "file": "filippo.io_age-LICENSE",
-      "sha256": "c5d65279d02955c0fc2294ae417c3add650d228f4f5c82bd6d531fc26c89cd96"
+      "sha256": "c5d65279d02955c0fc2294ae417c3add650d228f4f5c82bd6d531fc26c89cd96",
+      "upstream_text_sha256": "c5d65279d02955c0fc2294ae417c3add650d228f4f5c82bd6d531fc26c89cd96",
+      "normalization": "CRLF to LF only"
     },
     {
       "module": "filippo.io/hpke",
       "version": "v0.4.0",
       "file": "filippo.io_hpke-LICENSE",
-      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "upstream_text_sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "github.com/dustin/go-humanize",
+      "version": "v1.1.0",
+      "file": "github.com_dustin_go-humanize-LICENSE",
+      "sha256": "a973b4498c13eb74baa2a8e5c351426a6826f2fcdd909916dbe53ee2e755fd71",
+      "upstream_text_sha256": "a973b4498c13eb74baa2a8e5c351426a6826f2fcdd909916dbe53ee2e755fd71",
+      "normalization": "CRLF to LF only"
     },
     {
       "module": "github.com/getlantern/soar",
-      "version": "v0.2.4",
+      "version": "v0.2.5",
       "file": "github.com_getlantern_soar-LICENSE",
-      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "upstream_text_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "github.com/google/uuid",
+      "version": "v1.6.0",
+      "file": "github.com_google_uuid-LICENSE",
+      "sha256": "0a8d61ed3cbfd5312326e8126c31ce9c627a283adc99131b56896d29ada04b2d",
+      "upstream_text_sha256": "0a8d61ed3cbfd5312326e8126c31ce9c627a283adc99131b56896d29ada04b2d",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "github.com/remyoudompheng/bigfft",
+      "version": "v0.0.0-20230129092748-24d4a6f8daec",
+      "file": "github.com_remyoudompheng_bigfft-LICENSE",
+      "sha256": "dd26a7abddd02e2d0aba97805b31f248ef7835d9e10da289b22e3b8ab78b324d",
+      "upstream_text_sha256": "dd26a7abddd02e2d0aba97805b31f248ef7835d9e10da289b22e3b8ab78b324d",
+      "normalization": "CRLF to LF only"
     },
     {
       "module": "github.com/spf13/cobra",
       "version": "v1.9.1",
       "file": "github.com_spf13_cobra-LICENSE.txt",
-      "sha256": "5e3400b93bbb099e83e52bab885e7441750673c21f97988ca3f1240639b63283"
+      "sha256": "5e3400b93bbb099e83e52bab885e7441750673c21f97988ca3f1240639b63283",
+      "upstream_text_sha256": "5e3400b93bbb099e83e52bab885e7441750673c21f97988ca3f1240639b63283",
+      "normalization": "CRLF to LF only"
     },
     {
       "module": "github.com/spf13/pflag",
       "version": "v1.0.6",
       "file": "github.com_spf13_pflag-LICENSE",
-      "sha256": "b8514c577c1c4b46cee454d5a882b15fa411e72c5bd7f801f241591789fce61a"
+      "sha256": "b8514c577c1c4b46cee454d5a882b15fa411e72c5bd7f801f241591789fce61a",
+      "upstream_text_sha256": "b8514c577c1c4b46cee454d5a882b15fa411e72c5bd7f801f241591789fce61a",
+      "normalization": "CRLF to LF only"
     },
     {
       "module": "golang.org/x/crypto",
       "version": "v0.59.0",
       "file": "golang.org_x_crypto-LICENSE",
-      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "upstream_text_sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "normalization": "CRLF to LF only"
     },
     {
       "module": "golang.org/x/sys",
       "version": "v0.50.0",
       "file": "golang.org_x_sys-LICENSE",
-      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "upstream_text_sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "normalization": "CRLF to LF only"
     },
     {
       "module": "golang.org/x/term",
       "version": "v0.48.0",
       "file": "golang.org_x_term-LICENSE",
-      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "upstream_text_sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/libc",
+      "version": "v1.80.1",
+      "file": "modernc.org_libc-AUTHORS",
+      "sha256": "40224528f3c7363534f59521d803a4eb627966b334d732bfc68a788655cb2545",
+      "upstream_text_sha256": "40224528f3c7363534f59521d803a4eb627966b334d732bfc68a788655cb2545",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/libc",
+      "version": "v1.80.1",
+      "file": "modernc.org_libc-LICENSE",
+      "sha256": "95ff867eb55a56935fa7492406cfa953fb7c13ca73f4c0a86ae05756b4605600",
+      "upstream_text_sha256": "95ff867eb55a56935fa7492406cfa953fb7c13ca73f4c0a86ae05756b4605600",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/libc",
+      "version": "v1.80.1",
+      "file": "modernc.org_libc-LICENSE-3RD-PARTY.md",
+      "sha256": "f597097efe3d97021f89170746bd3a0fb9a8b6fb26b82043ed68a4e0283bee6c",
+      "upstream_text_sha256": "f597097efe3d97021f89170746bd3a0fb9a8b6fb26b82043ed68a4e0283bee6c",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/mathutil",
+      "version": "v1.7.1",
+      "file": "modernc.org_mathutil-AUTHORS",
+      "sha256": "51fcdd68bb605f080283bb6eabb72452591289650599d3d67603381834e536af",
+      "upstream_text_sha256": "51fcdd68bb605f080283bb6eabb72452591289650599d3d67603381834e536af",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/mathutil",
+      "version": "v1.7.1",
+      "file": "modernc.org_mathutil-LICENSE",
+      "sha256": "bfa9bf72a72ca009fd62a8f84fca3dca67e51d93af96352723646599898b6cf5",
+      "upstream_text_sha256": "bfa9bf72a72ca009fd62a8f84fca3dca67e51d93af96352723646599898b6cf5",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/memory",
+      "version": "v1.12.1",
+      "file": "modernc.org_memory-AUTHORS",
+      "sha256": "df1f424436f279309de85b82e494d548297a2570e9b5794630d7e72c9eb50b6a",
+      "upstream_text_sha256": "df1f424436f279309de85b82e494d548297a2570e9b5794630d7e72c9eb50b6a",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/memory",
+      "version": "v1.12.1",
+      "file": "modernc.org_memory-LICENSE",
+      "sha256": "59895e669f48f168b6b858358f6005779cdf40a265f7828813061b56af67b496",
+      "upstream_text_sha256": "59895e669f48f168b6b858358f6005779cdf40a265f7828813061b56af67b496",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/memory",
+      "version": "v1.12.1",
+      "file": "modernc.org_memory-LICENSE-GO",
+      "sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067",
+      "upstream_text_sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/memory",
+      "version": "v1.12.1",
+      "file": "modernc.org_memory-LICENSE-LOGO",
+      "sha256": "5ae5bee3072a841376451b48d8cfcec7188e10543926d5870828d36c8a750dc5",
+      "upstream_text_sha256": "5ae5bee3072a841376451b48d8cfcec7188e10543926d5870828d36c8a750dc5",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/memory",
+      "version": "v1.12.1",
+      "file": "modernc.org_memory-LICENSE-MMAP-GO",
+      "sha256": "c2eba69f20d05414538c3a5df7694dde392e065ff70882e1625e90f5d6659fff",
+      "upstream_text_sha256": "c2eba69f20d05414538c3a5df7694dde392e065ff70882e1625e90f5d6659fff",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/sqlite",
+      "version": "v1.62.0",
+      "file": "modernc.org_sqlite-AUTHORS",
+      "sha256": "86555660d038cc73180fbc221e83ce43ac6624c5b4ce629172e0011df06b321d",
+      "upstream_text_sha256": "86555660d038cc73180fbc221e83ce43ac6624c5b4ce629172e0011df06b321d",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/sqlite",
+      "version": "v1.62.0",
+      "file": "modernc.org_sqlite-LICENSE",
+      "sha256": "c6fe05491a60ae13bcd223088d2705e36dede24e5587226231d2459ada5c4822",
+      "upstream_text_sha256": "c6fe05491a60ae13bcd223088d2705e36dede24e5587226231d2459ada5c4822",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/sqlite",
+      "version": "v1.62.0",
+      "file": "modernc.org_sqlite-LICENSE-3RD-PARTY.md",
+      "sha256": "f4a00ade8f4057ab0ea49097d9c459df8559fcf10ca78da0c950343fb7428d37",
+      "upstream_text_sha256": "f4a00ade8f4057ab0ea49097d9c459df8559fcf10ca78da0c950343fb7428d37",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/sqlite",
+      "version": "v1.62.0",
+      "file": "modernc.org_sqlite-LICENSE-SQLITE",
+      "sha256": "8438c9c89b849131ead81d5435cb97fcf052df5b0b286dda8a2d4c29e6cb3fd0",
+      "upstream_text_sha256": "8438c9c89b849131ead81d5435cb97fcf052df5b0b286dda8a2d4c29e6cb3fd0",
+      "normalization": "CRLF to LF only"
+    },
+    {
+      "module": "modernc.org/sqlite",
+      "version": "v1.62.0",
+      "file": "modernc.org_sqlite-LICENSE-SQLITE_VEC",
+      "sha256": "6ce72bbe12d975bd5286e5ab0a064c069693300c47bccbc57bec18485f1621ea",
+      "upstream_text_sha256": "6ce72bbe12d975bd5286e5ab0a064c069693300c47bccbc57bec18485f1621ea",
+      "normalization": "CRLF to LF only"
     },
     {
       "module": "Go standard library",

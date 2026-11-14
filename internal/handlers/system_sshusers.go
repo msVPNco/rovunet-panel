@@ -30,6 +30,7 @@ func handleSystemUsers(ctx *actions.Context) error {
 	action := ctx.GetArg("action")
 	username := ctx.GetArg("username")
 
+	menuSelected := action == ""
 	if action == "" {
 		var err error
 		action, err = prompt.Select("Action", []actions.SelectOption{
@@ -65,7 +66,14 @@ func handleSystemUsers(ctx *actions.Context) error {
 		totals := usage.Totals()
 		for _, u := range cfg.Users {
 			line := limitSummary(u)
-			if u.QuotaGB > 0 {
+			if u.SQLiteMeter != nil {
+				a, _, e := boundAmount(cfg.ServerID, u)
+				if e != nil {
+					line += " (usage unavailable)"
+				} else {
+					line += fmt.Sprintf(" (used %s)", formatGB(a.Confirmed))
+				}
+			} else if u.QuotaGB > 0 {
 				line += fmt.Sprintf(" (used %s)", formatGB(UsedBytes(u, totals)))
 			}
 			out.Print(fmt.Sprintf("  %-20s %s", u.Username, line))
@@ -157,6 +165,9 @@ func handleSystemUsers(ctx *actions.Context) error {
 			password := system.GeneratePassword(16)
 
 			nu := newUser(uname, password, days, gb, time.Now())
+			if err := rememberNewPeriod(cfg, nu); err != nil {
+				return err
+			}
 			if err := grantSSH(nu); err != nil {
 				out.Warning(fmt.Sprintf("failed to create %s: %v (skipping)", uname, err))
 				continue
@@ -174,6 +185,14 @@ func handleSystemUsers(ctx *actions.Context) error {
 		// the same state instead of leaving derived state ahead of disk.
 		if err := cfg.Save(); err != nil {
 			return actions.NewError(actions.SystemUsers, "failed to save config", err)
+		}
+
+		fresh := map[string]bool{}
+		for _, row := range created {
+			fresh[cfg.GetUser(row.Username).AccountID] = true
+		}
+		if err := finishInstallationAccounting(cfg, fresh); err != nil {
+			return err
 		}
 
 		// One SOCKS reload for the whole batch. With the hot-reload path this
@@ -228,7 +247,26 @@ func handleSystemUsers(ctx *actions.Context) error {
 				return err
 			}
 		}
-		if err := RotateSubscriptionLink(cfg, strings.TrimSpace(username), out); err != nil {
+		id := ctx.GetArg("operation-id")
+		if menuSelected && id == "" {
+			choice, e := prompt.Select("Replacement request", []actions.SelectOption{{Value: "retry", Label: "Repeat default request (returns the same link)"}, {Value: "new", Label: "Start a new replacement"}, {Value: "id", Label: "Retry a saved request ID"}})
+			if e != nil {
+				return e
+			}
+			if choice == "new" {
+				id = config.NewID()
+				out.Info("Save this request ID to retry: " + id)
+			} else if choice == "id" {
+				id, e = prompt.String("Saved request ID", "")
+				if e != nil {
+					return e
+				}
+				if !tokenOK(id) {
+					return fmt.Errorf("invalid saved request ID")
+				}
+			}
+		}
+		if err := RotateSubscriptionOperation(cfg, strings.TrimSpace(username), id); err != nil {
 			return actions.NewError(actions.SystemUsers, "subscription link replacement did not complete", err)
 		}
 		u := cfg.GetUser(strings.TrimSpace(username))
@@ -390,6 +428,9 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 	}
 
 	nu := newUser(username, password, days, gb, time.Now())
+	if err := rememberNewPeriod(cfg, nu); err != nil {
+		return err
+	}
 	if err := grantSSH(nu); err != nil {
 		return fmt.Errorf("failed to create SSH user: %w", err)
 	}
@@ -402,6 +443,9 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
+	if err := finishInstallationAccounting(cfg, map[string]bool{nu.AccountID: true}); err != nil {
+		return err
+	}
 	if cfg.Warp.Enabled {
 		proxy.RunAsUser = warp.SocksUser
 	}
@@ -409,7 +453,12 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 		out.Warning("Failed to update SOCKS proxy auth: " + err.Error())
 	}
 	syncNaive(cfg, out)
-	syncCores(cfg, out)
+	if err := coreinstall.Sync(cfg.Users); err != nil {
+		return fmt.Errorf("account saved; core synchronization pending (run core-sync-users): %w", err)
+	}
+	if err := WriteSubscriptions(cfg, out); err != nil {
+		return fmt.Errorf("account saved; subscription publication pending (run subscriptions-refresh): %w", err)
+	}
 
 	if cfg.Warp.Enabled {
 		if err := warp.RefreshRouting(cfg); err != nil {

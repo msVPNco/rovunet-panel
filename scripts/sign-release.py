@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-XRAY = '63ca2e0c1d31b89f67700c33842431f541fedd25'
+XRAY = '676eaf66f8f05d4d558ee7a74b4736623d3feeb9'
 AWG_GO = 'b5928efb6ca19f0153958460c3d141f04abc5c2e'
 AWG_TOOLS = 'ee0f0a9aa34ff0a0da4b3433b9512781cfe02843'
 
@@ -47,8 +47,22 @@ def metadata(name, commit):
         source, revision, license = 'https://github.com/amnezia-vpn/amneziawg-go', AWG_GO, 'MIT'
     if name.startswith(('awg-linux-', 'amneziawg-tools-', 'LICENSE-amneziawg-tools')):
         source, revision, license = 'https://github.com/amnezia-vpn/amneziawg-tools', AWG_TOOLS, 'GPL-2.0'
-    if name in ('PANEL-THIRD-PARTY-LICENSES.tar.gz', 'REVIEW-MATERIALS.tar.gz') or \
-            (name.startswith('RUNTIME-CANDIDATES-') and name.endswith('.tar.gz')):
+    if name.startswith(('sing-box-', 'LICENSE-sing-box')):
+        source, revision, license = 'https://github.com/SagerNet/sing-box', 'c005f35300ce76427dc285481ec5695f5b179cd2', 'GPL-3.0-or-later'
+    if name.startswith(('mita-', 'LICENSE-mita')):
+        source, revision, license = 'https://github.com/enfein/mieru', 'bcd14b88d0fb7e7707bb80e5d7f6c33675d26c06', 'GPL-3.0'
+    for prefix, origin, exact, terms in (
+        ('caddy-naive-', 'https://github.com/caddyserver/caddy', '0d98caea58f794f88e709b1bef2880996a471bca', 'Apache-2.0 AND GPL-3.0-or-later; see component notices'),
+        ('dnstt-server-', 'https://www.bamsoftware.com/git/dnstt', '0c5c52a57d899c05428c116898941761a2ed83c2', 'CC0-1.0'),
+        ('vaydns-server-', 'https://github.com/net2share/vaydns', 'a0ff70110d5e96686ab8f4c8e1c44cd09be07a75', 'CC0-1.0'),
+        ('slipstream-server-', 'https://github.com/Mygod/slipstream-rust', '7de506b222c83ae97a19a618e33fe26899af1bd5', 'Apache-2.0 AND MIT; see component notices'),
+        ('slipstream-client-', 'https://github.com/Mygod/slipstream-rust', '7de506b222c83ae97a19a618e33fe26899af1bd5', 'Apache-2.0 AND MIT; see component notices'),
+    ):
+        if name.startswith(prefix):
+            source, revision, license = origin, exact, terms
+    if name.startswith('SUPPLEMENTAL-') or name in ('PANEL-THIRD-PARTY-LICENSES.tar.gz', 'REVIEW-MATERIALS.tar.gz') or \
+            (name.startswith('RUNTIME-CANDIDATES-') and name.endswith('.tar.gz')) or \
+            name.startswith(('GO-MODULE-SOURCES', 'RUNTIME-CORRESPONDING-SOURCES', 'RUST-CRATE-SOURCES', 'THIRD-PARTY-NOTICES')):
         # Aggregate data archives retain component origins/terms inside them;
         # they are not flat engine assets using the shipping engine pins.
         license = 'Multiple; see included license texts'

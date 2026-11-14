@@ -43,6 +43,7 @@ func init() {
 	register(actions.SystemUsers, handleSystemUsers)
 	register(actions.SystemStats, handleSystemStats)
 	register(actions.SystemDiag, handleSystemDiag)
+	register(actions.SystemCertificates, handleSystemCertificates)
 	register(actions.SystemMTU, handleSystemMTU)
 	register(actions.SystemBackup, handleSystemBackup)
 	register(actions.SystemRestore, handleSystemRestore)

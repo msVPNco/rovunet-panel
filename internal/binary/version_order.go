@@ -47,3 +47,8 @@ func rejectOlderRelease(current, candidate string) error {
 	}
 	return nil
 }
+
+// CheckUpgradeOrder applies the menu downgrade policy to an installer handoff.
+func CheckUpgradeOrder(current, candidate string) error {
+	return rejectOlderRelease(current, candidate)
+}

@@ -2,6 +2,7 @@ package clientexport
 
 import (
 	"encoding/json"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +33,39 @@ func TestAccountPolicyAndEnabledStateApplyToEveryExportFormat(t *testing.T) {
 			if err != nil || len(got) != tc.want {
 				t.Fatalf("format %s: profiles=%d want=%d err=%v", format, len(got), tc.want, err)
 			}
+		}
+	}
+}
+
+func TestSupplementalDisplayNamesPreserveConnectionAndIdentity(t *testing.T) {
+	old := coreinstall.Root
+	coreinstall.Root = t.TempDir()
+	t.Cleanup(func() { coreinstall.Root = old })
+	u := config.UserConfig{Username: "private-owner", Password: "fixture"}
+	wants := map[string]string{"anytls": "AnyTLS", "tuic": "TUIC", "mieru-tcp": "Mieru TCP", "mieru-udp": "Mieru UDP"}
+	for protocol := range wants {
+		o := coreplan.Options{Protocol: protocol, Host: "192.0.2.1", SNI: "example.test", Port: 33444, Cert: "cert", Key: "key"}
+		st, err := coreplan.NewState()
+		if err != nil { t.Fatal(err) }
+		b, err := coreplan.GenerateFor(o, &st, []coreplan.Client{{Name: u.Username, Secret: u.Password}})
+		if err != nil { t.Fatal(err) }
+		dir := filepath.Join(coreinstall.Root, "managed-"+protocol)
+		if err := coreinstall.WriteBundle(dir, o, b); err != nil { t.Fatal(err) }
+		for file, value := range map[string]any{"options.json": o, "state.json": st} {
+			data, _ := json.Marshal(value)
+			if err := os.WriteFile(filepath.Join(dir, file), data, 0600); err != nil { t.Fatal(err) }
+		}
+		if err := os.Rename(filepath.Join(dir, "clients", "device-001."+b.Extension), filepath.Join(dir, "clients", u.Username+"."+b.Extension)); err != nil { t.Fatal(err) }
+	}
+	for _, platform := range []string{"android", "windows"} {
+		feed, err := Build(&config.Config{PublicAddress: "192.0.2.1"}, u, nil, Options{Client: platform, CompatibleSubscription: true})
+		if err != nil || len(feed) != 4 { t.Fatalf("feed count=%d err=%v", len(feed), err) }
+		for _, p := range feed {
+			a, err := url.Parse(p.Link); if err != nil { t.Fatal(err) }
+			b, err := url.Parse(p.Standard); if err != nil { t.Fatal(err) }
+			if p.ID != "managed-"+p.Protocol || a.Fragment != wants[p.Protocol] { t.Fatalf("identity/display mismatch: %s %s", p.ID, a.Fragment) }
+			a.Fragment, b.Fragment = "", ""
+			if a.String() != b.String() { t.Fatal("display rename changed connection parameters") }
 		}
 	}
 }

@@ -48,6 +48,16 @@ jobs:
         with:
           go-version: '1.27.4'
 
+      - name: Refuse legacy runtime rebuilding for version two
+        if: steps.tag.outputs.skip != 'true'
+        env:
+          REVIEWED_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          case "$REVIEWED_TAG" in
+            v1.*) ;;
+            *) echo 'This workflow is the v1 runtime builder. Version two uses the exact reviewed source/runtime bundle, final VM acceptance and Windows-local production signature described in docs/releases/v2.0.0.md. Refusing to rebuild different legacy bytes.' >&2; exit 1 ;;
+          esac
+
       - name: Report full qualification and validate the owner-authorized functional draft
         if: steps.tag.outputs.skip != 'true'
         run: |
@@ -129,6 +139,13 @@ jobs:
           GOARCH=amd64 CC=gcc bash scripts/build-managed-awg.sh "$RELEASE_ASSETS"
           GOARCH=arm64 CC="$ARM64_CC" bash scripts/build-managed-awg.sh "$RELEASE_ASSETS"
 
+      - name: Build locked supplemental runtimes and corresponding sources
+        if: steps.tag.outputs.skip != 'true'
+        run: |
+          python3 scripts/build-supplemental.py "$RELEASE_ASSETS"
+          govulncheck -mode binary "$RELEASE_ASSETS/sing-box-linux-amd64"
+          govulncheck -mode binary "$RELEASE_ASSETS/mita-linux-amd64"
+
       - name: Build panel and exercise actual AmneziaWG data path
         if: steps.tag.outputs.skip != 'true'
         run: |
@@ -157,7 +174,9 @@ jobs:
             python3 scripts/test-complete-setup.py \
             --panel "$RELEASE_ASSETS/rovunet-linux-amd64" --xray "$RELEASE_ASSETS/xray-linux-amd64" \
             --engine "$RELEASE_ASSETS/amneziawg-go-linux-amd64" \
-            --tool "$RELEASE_ASSETS/awg-linux-amd64" --work "$RUNNER_TEMP/complete-setup-test"
+            --tool "$RELEASE_ASSETS/awg-linux-amd64" \
+            --sing-box "$RELEASE_ASSETS/sing-box-linux-amd64" --mita "$RELEASE_ASSETS/mita-linux-amd64" \
+            --work "$RUNNER_TEMP/complete-setup-test"
 
       - name: Isolated bootstrap, subscription containment and service restart
         if: steps.tag.outputs.skip != 'true'

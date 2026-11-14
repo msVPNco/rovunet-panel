@@ -4,7 +4,7 @@
 Only synthetic accounts/certificates are used. No host services, routes or
 firewall rules are changed. Run as root on a disposable Linux build host.
 """
-import argparse, hashlib, json, os, pathlib, shlex, shutil, signal, subprocess, sys, tempfile, time
+import argparse, hashlib, json, os, pathlib, shlex, shutil, signal, socket, ssl, subprocess, sys, tempfile, threading, time
 
 SYSTEMCTL = r'''#!/usr/bin/python3
 import json,os,pathlib,shlex,signal,subprocess,sys,time
@@ -32,13 +32,22 @@ if action in ('daemon-reload','enable','disable','reset-failed'):sys.exit(0)
 if action=='start':
     if name.endswith('.timer') or active():sys.exit(0)
     unit=pathlib.Path('/etc/systemd/system')/name
-    settings={}
+    settings={};environment=dict(os.environ)
     for line in unit.read_text().splitlines():
         k,sep,v=line.partition('=')
-        if sep:settings[k]=v
+        if sep:
+            settings[k]=v
+            if k=='Environment':
+                for entry in shlex.split(v):
+                    key,_,value=entry.partition('=');environment[key]=value
     if settings.get('ExecCondition'):subprocess.run(shlex.split(settings['ExecCondition']),check=True)
     log=(root/(name+'.log')).open('ab')
-    child=subprocess.Popen(shlex.split(settings['ExecStart']),stdout=log,stderr=log,start_new_session=True)
+    command=shlex.split(settings['ExecStart'])
+    if settings.get('StateDirectory'):
+        directory=pathlib.Path('/var/lib')/settings['StateDirectory'];directory.mkdir(mode=0o700,exist_ok=True)
+        pathlib.Path('/var/lib/mita').mkdir(exist_ok=True)
+        command=['unshare','--mount','sh','-c','mount --make-rprivate /; mount --bind "$1" /var/lib/mita; shift; exec "$@"','mita-test',str(directory)]+command
+    child=subprocess.Popen(command,env=environment,stdout=log,stderr=log,start_new_session=True)
     pidfile.write_text(str(child.pid));log.close()
     if settings.get('ExecStartPost'):subprocess.run(shlex.split(settings['ExecStartPost']),check=True)
     sys.exit(0)
@@ -62,7 +71,7 @@ def feeds():
     result={}
     for path in root.glob('*.json'):
         data=json.loads(path.read_text())
-        if isinstance(data.get('items'),list):result['windows' if path.name.endswith('.windows.json') else 'android']=(path.name,data)
+        if isinstance(data.get('items'),list) and not path.name.endswith('.trust.json'):result['windows' if path.name.endswith('.windows.json') else 'android']=(path.name,data)
     return result
 
 def snapshot(root):
@@ -91,7 +100,7 @@ def child(a):
     pathlib.Path('/etc/rovunet').mkdir()
     shutil.copytree(work/'fixture/core','/etc/rovunet/core')
     shutil.copyfile(work/'fixture/config.json','/etc/rovunet/config.json')
-    for source,target in [(a.panel,'rovunet'),(a.xray,'rovunet-xray-managed'),(a.engine,'rovunet-amneziawg-go'),(a.tool,'rovunet-awg')]:
+    for source,target in [(a.panel,'rovunet'),(a.xray,'rovunet-xray-managed'),(a.engine,'rovunet-amneziawg-go'),(a.tool,'rovunet-awg'),(a.sing_box,'rovunet-sing-box'),(a.mita,'rovunet-mita')]:
         shutil.copyfile(source,'/usr/local/bin/'+target);os.chmod('/usr/local/bin/'+target,0o755)
     # A deliberately incompatible legacy runtime must remain untouched.
     legacy=b'#!/bin/sh\necho legacy-fixture-runtime\nexit 0\n'
@@ -105,6 +114,20 @@ def child(a):
     certdir=pathlib.Path('/root/.local/share/caddy/certificates/fixture/n.example.com');certdir.mkdir(parents=True)
     shutil.copyfile(work/'leaf.crt',certdir/'n.example.com.crt');shutil.copyfile(work/'leaf.key',certdir/'n.example.com.key')
     run('ip','link','set','lo','up')
+    # Real TLS 1.3 + h2 target inside this private namespace; no WAN exception.
+    pathlib.Path('/etc/hosts').write_text('127.0.0.1 localhost www.cloudflare.com\n')
+    tls=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);tls.minimum_version=ssl.TLSVersion.TLSv1_3
+    tls.load_cert_chain(str(work/'leaf.crt'),str(work/'leaf.key'));tls.set_alpn_protocols(['h2'])
+    target=socket.socket();target.bind(('127.0.0.1',443));target.listen()
+    def target_loop():
+        while True:
+            try:
+                conn,_=target.accept()
+                try:
+                    with tls.wrap_socket(conn,server_side=True):pass
+                except (ssl.SSLError,OSError):conn.close()
+            except OSError:return
+    threading.Thread(target=target_loop,daemon=True).start()
     run('ip','link','add','complete0','type','dummy')
     run('ip','addr','add','198.51.100.1/24','dev','complete0')
     run('ip','link','set','complete0','up')
@@ -123,7 +146,7 @@ def child(a):
         output=run('/usr/local/bin/rovunet','complete-setup').stdout.decode()
         (work/'first-setup.log').write_text(output)
         after=feeds()
-        assert len(after['android'][1]['items'])==24 and len(after['windows'][1]['items'])==24
+        assert len(after['android'][1]['items'])==30 and len(after['windows'][1]['items'])==30
         for platform in before:assert before[platform][0]==after[platform][0]
         links={item['id']:item['link'] for item in after['android'][1]['items']}
         for item in before['android'][1]['items']:assert links[item['id']]==item['link']
@@ -143,7 +166,7 @@ def child(a):
             assert 'stop rovunet-core-'+name+'.service' not in calls
             assert 'restart rovunet-core-'+name+'.service' not in calls
         print(json.dumps({'actual_panel_cli':True,'actual_xray_and_awg_processes':True,'systemd':'simulated','host_modified':False,
-            'android_profiles':24,'windows_profiles':24,'old_urls_profiles_credentials_core_files':'preserved',
+            'android_profiles':30,'windows_profiles':30,'old_urls_profiles_credentials_core_files':'preserved',
             'legacy_runtime_and_processes':'preserved','private_backup_validation':'PASS','idempotent_retry':'PASS'},indent=2))
     finally:
         pids=[p.pid for p in processes]
@@ -158,10 +181,11 @@ def child(a):
 
 def main():
     p=argparse.ArgumentParser()
-    for name in ('panel','xray','engine','tool','work'):p.add_argument('--'+name,required=True)
+    for name in ('panel','xray','engine','tool','sing-box','mita','work'):p.add_argument('--'+name,required=True)
+    p.add_argument('--fixture-test-binary')
     p.add_argument('--child',action='store_true');a=p.parse_args()
-    for name in ('panel','xray','engine','tool','work'):setattr(a,name,str(pathlib.Path(getattr(a,name)).resolve()))
-    for name in ('panel','xray','engine','tool'):
+    for name in ('panel','xray','engine','tool','sing_box','mita','work'):setattr(a,name,str(pathlib.Path(getattr(a,name)).resolve()))
+    for name in ('panel','xray','engine','tool','sing_box','mita'):
         if not pathlib.Path(getattr(a,name)).is_file():raise SystemExit('Missing input binary: '+name)
     if os.geteuid()!=0:raise SystemExit('This test needs root for isolated namespaces')
     if a.child:return child(a)
@@ -170,12 +194,14 @@ def main():
         work=pathlib.Path(directory);fixture=work/'fixture';fixture.mkdir()
         run('openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(work/'ca.key'),'-out',str(work/'ca.crt'),'-subj','/CN=Rovunet-test-only-CA','-days','2')
         run('openssl','req','-newkey','rsa:2048','-nodes','-keyout',str(work/'leaf.key'),'-out',str(work/'leaf.csr'),'-subj','/CN=n.example.com')
-        (work/'ext').write_text('subjectAltName=DNS:n.example.com\nextendedKeyUsage=serverAuth\nbasicConstraints=CA:FALSE\n')
+        (work/'ext').write_text('subjectAltName=DNS:n.example.com,DNS:www.cloudflare.com\nextendedKeyUsage=serverAuth\nbasicConstraints=CA:FALSE\n')
         run('openssl','x509','-req','-in',str(work/'leaf.csr'),'-CA',str(work/'ca.crt'),'-CAkey',str(work/'ca.key'),'-CAcreateserial','-out',str(work/'leaf.crt'),'-days','1','-extfile',str(work/'ext'))
         env=dict(os.environ,ROVUNET_TEST_COMPLETE_FIXTURE=str(fixture),ROVUNET_TEST_COMPLETE_CERT=str(work/'leaf.crt'),ROVUNET_TEST_COMPLETE_KEY=str(work/'leaf.key'))
-        run('go','test','-count=1','-run','^TestExportCompleteCLIFixture$','./internal/handlers',env=env)
+        if a.fixture_test_binary:
+            run(str(pathlib.Path(a.fixture_test_binary).resolve()),'-test.run','^TestExportCompleteCLIFixture$',env=env)
+        else:run('go','test','-count=1','-run','^TestExportCompleteCLIFixture$','./internal/handlers',env=env)
         argv=[sys.executable,str(pathlib.Path(__file__).resolve()),'--child','--work',str(work)]
-        for name in ('panel','xray','engine','tool'):argv+=['--'+name,getattr(a,name)]
+        for name in ('panel','xray','engine','tool','sing_box','mita'):argv+=['--'+name.replace('_','-'),getattr(a,name)]
         env=dict(os.environ,**{'ROVUNET_COMPLETE_PARENT_'+n.upper():os.readlink('/proc/self/ns/'+n) for n in ('mnt','net','pid')})
         result=subprocess.run(['unshare','--mount','--net','--pid','--mount-proc','--kill-child','--fork']+argv,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,env=env)
         (root/'complete-setup-integration.log').write_bytes(result.stdout)

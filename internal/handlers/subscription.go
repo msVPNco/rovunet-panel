@@ -92,6 +92,9 @@ func buildFeed(cfg *config.Config, u config.UserConfig) ([]byte, error) {
 }
 
 func buildFeedForClient(cfg *config.Config, u config.UserConfig, client string) ([]byte, error) {
+	if e := cfg.ValidateAddressIdentities(); e != nil {
+		return nil, e
+	}
 	items, err := subscriptionItemsForClient(cfg, u, client)
 	if err != nil {
 		return nil, err
@@ -122,6 +125,21 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 	if subscriptionHost(cfg) == "" {
 		return nil
 	}
+	return withPublicationLock(func() error {
+		if err := cfg.RefreshIfChanged(); err != nil {
+			return err
+		}
+		if err := resumeCarry(cfg); err != nil {
+			return err
+		}
+		if _, err := resumeRotation(cfg); err != nil && !errors.Is(err, errSuperseded) {
+			return err
+		}
+		return writeCurrentSubscriptions(cfg, out)
+	})
+}
+
+func withPublicationLock(work func() error) error {
 	// The limits timer and administrative commands can refresh concurrently.
 	// Readers keep seeing the previous atomic files while a writer works.
 	subscriptionWriteMu.Lock()
@@ -137,7 +155,7 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 		}
 		_ = os.Chmod(d, 0711)
 	}
-	lock, err := os.OpenFile(filepath.Join(root, ".write.lock"), os.O_CREATE|os.O_RDWR, 0600)
+	lock, err := os.OpenFile(filepath.Join(root, ".write.lock"), os.O_CREATE|os.O_RDWR|syscall.O_NOFOLLOW, 0600)
 	if err != nil {
 		return err
 	}
@@ -146,17 +164,95 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 		return err
 	}
 	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+	return work()
+}
+
+func writeCurrentSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 	if err := cfg.RefreshIfChanged(); err != nil {
 		return fmt.Errorf("could not refresh current account state; previous subscription files retained: %w", err)
 	}
 	if err := cfg.ValidateSubscriptionTokens(); err != nil {
 		return err
 	}
+	if e := cfg.ValidateAddressIdentities(); e != nil {
+		return e
+	}
 	if mintIDs(cfg) {
 		if err := cfg.Save(); err != nil {
 			return fmt.Errorf("save subscription tokens: %w", err)
 		}
 	}
+	// Stage a complete copy; status revisions are continued from that copy.
+	root := transport.SubscriptionDir
+	stage, err := os.MkdirTemp(root, ".refresh-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(stage)
+	dir := filepath.Join(stage, "next")
+	if err = copyGeneration(publicDir(), dir); err != nil {
+		return err
+	}
+	renderErr := renderCurrentInto(cfg, out, dir)
+	if renderErr != nil {
+		// Discard partial renders, retain usable prior feeds for authorized users,
+		// and still remove revoked capabilities in one generation.
+		dir = filepath.Join(stage, "safe")
+		if err = copyGeneration(publicDir(), dir); err != nil {
+			return errors.Join(renderErr, err)
+		}
+		allowed := map[string]bool{}
+		for _, u := range cfg.Users {
+			for i, ext := range aliasSuffixes {
+				if (i >= 2 && ext != trustSuffix) || rotationEligible(cfg, u) {
+					allowed[u.SubToken+ext] = true
+				}
+			}
+		}
+		for _, v := range cfg.Archived {
+			if cfg.GetUser(v.Username) == nil {
+				for _, ext := range aliasSuffixes[2:] {
+					if ext != trustSuffix {
+						allowed[v.SubToken+ext] = true
+					}
+				}
+			}
+		}
+		entries, e := os.ReadDir(dir)
+		if e != nil {
+			return e
+		}
+		for _, f := range entries {
+			if !allowed[f.Name()] {
+				if e = os.Remove(filepath.Join(dir, f.Name())); e != nil {
+					return e
+				}
+			}
+		}
+	}
+	apply := func() error {
+		old, e := treeDigest(publicDir())
+		if e != nil {
+			return e
+		}
+		next, e := treeDigest(dir)
+		if e != nil {
+			return e
+		}
+		if e = safefile.SyncDir(dir); e != nil {
+			return e
+		}
+		if e = safefile.SyncDir(stage); e != nil {
+			return e
+		}
+		return swapTo(publicDir(), dir, old, next)
+	}
+	if cfg.Path() == "" {
+		return errors.Join(renderErr, apply())
+	} // in-memory fixture
+	return errors.Join(renderErr, cfg.WithCurrentFile(apply))
+}
+func renderCurrentInto(cfg *config.Config, out actions.OutputWriter, dir string) error {
 	keep := map[string]bool{}
 	var firstErr error
 	write := func(name string, body []byte) {
@@ -177,8 +273,12 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 			return
 		}
 		name := u.SubToken + suffix + statusSuffix
+		st := buildStatus(in, u, reason)
+		if u.SQLiteMeter != nil && st.UsedBytes == nil {
+			return
+		}
 		keep[name] = true
-		body, err := statusBody(buildStatus(in, u, reason), filepath.Join(dir, name))
+		body, err := statusBody(st, filepath.Join(dir, name))
 		if err != nil {
 			if firstErr == nil {
 				firstErr = err
@@ -201,6 +301,17 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 		}
 	}
 	for _, u := range cfg.Users {
+		if !rotationEligible(cfg, u) {
+			continue
+		}
+		trust, e := buildSubscriptionTrust(cfg, u)
+		if e != nil {
+			if firstErr == nil {
+				firstErr = e
+			}
+		} else {
+			write(u.SubToken+trustSuffix, trust)
+		}
 		for _, client := range []string{"", "windows"} {
 			suffix := ""
 			if client == "windows" {
@@ -242,7 +353,7 @@ func WriteSubscriptions(cfg *config.Config, out actions.OutputWriter) error {
 // identifier it lacks (configs from before they existed), and reports
 // whether anything was added.
 func mintIDs(cfg *config.Config) bool {
-	minted := false
+	minted := cfg.EnsureAddressIdentities()
 	mint := func(s *string, f func() string) {
 		if *s == "" {
 			*s = f()
@@ -290,7 +401,7 @@ func extraAddressItemsForClient(cfg *config.Config, u config.UserConfig, items [
 				continue
 			}
 			have[linkIdentity(it.Link)] = true
-			id := fmt.Sprintf("%s-ip%d", it.ID, n+2)
+			id := fmt.Sprintf("%s-%s", it.ID, cfg.AddressIdentity(addr, n))
 			for ids[id] {
 				id += "x"
 			}

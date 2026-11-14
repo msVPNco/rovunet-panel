@@ -1,16 +1,48 @@
 {
   "schema": 1,
-  "repository": "anonvector/slipgate",
-  "tag": "v1.6.8",
-  "release_commit": "200d8151d8933ac50c80f7dc9ff8516b799c91b3",
+  "repository": "msVPNco/rovunet-panel",
+  "tag": "v2.0.0",
+  "release_commit": "",
   "assets": [
-    {"name":"caddy-naive-linux-amd64","size":59240610,"sha256":"88099ffd284666727b1d3e8224320e9190e1171932f9c3a5e871dc2f67380fef"},
-    {"name":"caddy-naive-linux-arm64","size":55312546,"sha256":"80ceab25305e7b31454bb0f9949054d55e48c25253891a83e289c0f61f65359c"},
-    {"name":"dnstt-server-linux-amd64","size":5111992,"sha256":"c5e627b03e1e79329450833adcd52cf907d8102fd9d2498a2ffbdee1d69ff02f"},
-    {"name":"dnstt-server-linux-arm64","size":3932344,"sha256":"29bbfca9f306754c98203307c69ef304f74035f68fa70fd12fc51d4ed7339474"},
-    {"name":"slipstream-server-linux-amd64","size":2318792,"sha256":"d0254a986e7841cc1555fec459db6df562dd24c1186af6656c20a4a90d9e11ef"},
-    {"name":"slipstream-server-linux-arm64","size":2040320,"sha256":"2f9effd90f8bd73e07ac100ad0362573d91476731fe8223909da454272e15bb3"},
-    {"name":"vaydns-server-linux-amd64","size":5292216,"sha256":"9a6efbd0764ea1f9da199b1b16eb6f536c2a53700d4d5255bd8ea20203737b7e"},
-    {"name":"vaydns-server-linux-arm64","size":4063416,"sha256":"ed96fc18d71bb14933d4847770d4e4bf1fe6c9d7eefcfff72aa8875040bbb7db"}
+    {
+      "name": "caddy-naive-linux-amd64",
+      "size": 58020000,
+      "sha256": "49a7c22f3d4a617143222f438d9b8a14780ee5a0d13324036550a048f443e9cb"
+    },
+    {
+      "name": "caddy-naive-linux-arm64",
+      "size": 54001824,
+      "sha256": "2c185af90022de7ac31390111e4595c7c9da0c754b1fb1908aaa3447d0b65215"
+    },
+    {
+      "name": "dnstt-server-linux-amd64",
+      "size": 4792480,
+      "sha256": "038780278175639097dcbd14366b0764315e7dde5932824ce2df231da56d4e60"
+    },
+    {
+      "name": "dnstt-server-linux-arm64",
+      "size": 3604640,
+      "sha256": "e4d9ff4ef63e5e1a3e8d96dac128859396b1e709bab83a15975aa9e79cfe359b"
+    },
+    {
+      "name": "slipstream-server-linux-amd64",
+      "size": 7743368,
+      "sha256": "8fe7fb5eab8aeae779736dab7ce0bf46c2118fbfc210e3b1bba86b4d1ad22ddf"
+    },
+    {
+      "name": "slipstream-server-linux-arm64",
+      "size": 6912552,
+      "sha256": "d8da15ebcb3dfc64e27e9b420962ad0e0f2d0848d6778fe112a91b698c89396e"
+    },
+    {
+      "name": "vaydns-server-linux-amd64",
+      "size": 5492896,
+      "sha256": "640cfba6a8dca5feb0baa2597c87c46751af86636e32cd1c69820e88ae26038f"
+    },
+    {
+      "name": "vaydns-server-linux-arm64",
+      "size": 4194464,
+      "sha256": "275f32a6510c79169c514d9b401b35a3371fc00deccb834bc5e1b6fd3510343c"
+    }
   ]
 }

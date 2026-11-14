@@ -35,7 +35,7 @@ var runUserAPI = func(endpoint string, action string, args ...string) ([]byte, e
 // Both the disk config (next boot) and API must converge before success.
 func liveUsers(name string, previous []byte, path string) (bool, error) {
 	o, st, ok, err := loadUserCore(name)
-	if err != nil || !ok || !liveUserProtocol(o.Protocol) || apiEndpoint(st) == "" {
+	if err != nil || !ok || (!liveUserProtocol(o.Protocol) && o.QuotaBridge == nil) || apiEndpoint(st) == "" {
 		return false, err
 	}
 	next, err := os.ReadFile(path)
@@ -74,6 +74,10 @@ func liveUsers(name string, previous []byte, path string) (bool, error) {
 			return true, fmt.Errorf("invalid applied credentials")
 		}
 		delete(settings, "clients")
+	}
+	if o.QuotaBridge != nil && bridgeRemovalOnly(oldRoot, newRoot) {
+		oldRoot["outbounds"] = newRoot["outbounds"]
+		oldRoot["routing"] = newRoot["routing"]
 	}
 	if !equal(oldRoot, newRoot) {
 		return false, nil
@@ -151,4 +155,62 @@ func liveUsers(name string, previous []byte, path string) (bool, error) {
 		return true, fmt.Errorf("per-user addition was not confirmed")
 	}
 	return true, nil
+}
+
+// Only removing previously installed routing entries is safe without a restart.
+// Added/changed destinations still require validation and a lifecycle change.
+func bridgeRemovalOnly(before, after map[string]any) bool {
+	same := func(a, b any) bool { x, _ := json.Marshal(a); y, _ := json.Marshal(b); return bytes.Equal(x, y) }
+	subset := func(a, b []any) bool {
+		for _, v := range b {
+			found := false
+			for _, old := range a {
+				if same(v, old) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+		return true
+	}
+	oldOut, ok := before["outbounds"].([]any)
+	if !ok {
+		return false
+	}
+	newOut, ok := after["outbounds"].([]any)
+	if !ok || !subset(oldOut, newOut) {
+		return false
+	}
+	oldRoute, ok := before["routing"].(map[string]any)
+	if !ok {
+		return false
+	}
+	newRoute, ok := after["routing"].(map[string]any)
+	if !ok {
+		return false
+	}
+	oldRules, ok := oldRoute["rules"].([]any)
+	if !ok {
+		return false
+	}
+	newRules, ok := newRoute["rules"].([]any)
+	if !ok || !subset(oldRules, newRules) {
+		return false
+	}
+	a := map[string]any{}
+	b := map[string]any{}
+	for k, v := range oldRoute {
+		if k != "rules" {
+			a[k] = v
+		}
+	}
+	for k, v := range newRoute {
+		if k != "rules" {
+			b[k] = v
+		}
+	}
+	return same(a, b)
 }

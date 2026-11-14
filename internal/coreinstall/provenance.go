@@ -3,6 +3,7 @@ package coreinstall
 import (
 	"crypto/sha256"
 	"debug/buildinfo"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -13,7 +14,14 @@ import (
 	"strings"
 )
 
-const XrayCommit = "63ca2e0c1d31b89f67700c33842431f541fedd25"
+const XrayCommit = "676eaf66f8f05d4d558ee7a74b4736623d3feeb9"
+
+// Reviewed dependency fixes deliberately modify an upstream tree. Its VCS
+// metadata alone cannot authenticate that patch set: exact embedded asset
+// digests bind it to the reviewed source archives and patches instead.
+//
+//go:embed reviewed-go-runtime-pins.json
+var reviewedGoRuntimePins []byte
 
 type engineRecord struct {
 	Source      string `json:"source"`
@@ -61,8 +69,8 @@ func verifyXrayFile(path string) error {
 	if err != nil {
 		return err
 	}
-	if !strings.Contains(string(out), "26.10.31") || !strings.Contains(string(out), "63ca2e0") {
-		return fmt.Errorf("new protocols require pinned Xray 26.10.31 / 63ca2e0; existing engine was preserved")
+	if !strings.Contains(string(out), "26.11.9") || !strings.Contains(string(out), "676eaf6") {
+		return fmt.Errorf("new protocols require reviewed Xray 26.11.9 / 676eaf6; existing engine was preserved")
 	}
 	return recordEngine(path, "https://github.com/XTLS/Xray-core", XrayCommit, "MPL-2.0", "version")
 }
@@ -95,8 +103,37 @@ func verifyGoSource(path, commit string) error {
 			dirty = true
 		}
 	}
-	if revision != commit || dirty {
+	if revision != commit {
 		return fmt.Errorf("engine build does not match the clean pinned source commit; existing binary was preserved")
+	}
+	var pins []struct {
+		Commit string `json:"commit"`
+		Arch   string `json:"arch"`
+		SHA256 string `json:"sha256"`
+	}
+	if err := json.Unmarshal(reviewedGoRuntimePins, &pins); err != nil {
+		return fmt.Errorf("invalid embedded runtime review pins")
+	}
+	matchedCommit := false
+	for _, pin := range pins {
+		if pin.Commit != commit {
+			continue
+		}
+		matchedCommit = true
+		if pin.Arch != runtime.GOARCH {
+			continue
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		sum := sha256.Sum256(data)
+		if hex.EncodeToString(sum[:]) == pin.SHA256 {
+			return nil
+		}
+	}
+	if matchedCommit || dirty {
+		return fmt.Errorf("engine checksum is not an exact reviewed build; existing binary was preserved")
 	}
 	return nil
 }

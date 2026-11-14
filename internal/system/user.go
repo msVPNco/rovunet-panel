@@ -74,6 +74,10 @@ func EnsureDir(path, owner string) error {
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("managed configuration directory must be a regular directory")
 	}
+	// The service group must traverse this directory even under umask 077.
+	if err := os.Chmod(path, 0750); err != nil {
+		return err
+	}
 	return run("chown", "--no-dereference", "--", owner+":"+config.SystemGroup, path)
 }
 

@@ -1,0 +1,62 @@
+[
+  {
+    "name": "amneziawg-go-linux-amd64",
+    "size": 3408032,
+    "sha256": "61b9a9d0507dbb66e70726aa34650f4b57b17f5da15d13befb89a93517573cf0"
+  },
+  {
+    "name": "amneziawg-go-linux-arm64",
+    "size": 3211424,
+    "sha256": "fb566f6009072a626890a4279144988d312709d1b6094471829c1a496490115f"
+  },
+  {
+    "name": "awg-linux-amd64",
+    "size": 2130656,
+    "sha256": "89dc389597d24fea788eeed5b15ea8337c15019ddf47cb8e2f2415fcbe19af67"
+  },
+  {
+    "name": "awg-linux-arm64",
+    "size": 2219168,
+    "sha256": "cb88ce6e373f83a59535832aa585a7ed706a3cad558599af067a938f07281053"
+  },
+  {
+    "name": "awg-provenance-linux-amd64.json",
+    "size": 913,
+    "sha256": "9eb63b34131d7a96fef0e786454c1f56eb992d54258d269f8afe3c3f51a108f1"
+  },
+  {
+    "name": "awg-provenance-linux-arm64.json",
+    "size": 913,
+    "sha256": "610818d9f51c78f75408c4bfb76db2edbe533452355915ce07cdc6e0e81cb8a5"
+  },
+  {
+    "name": "mita-linux-amd64",
+    "size": 21266325,
+    "sha256": "d59c7758446fc1c9a73323e46261b783e2856c8951ca699d97b712e34f192154"
+  },
+  {
+    "name": "mita-linux-arm64",
+    "size": 19917230,
+    "sha256": "c112ba9df78da4f3bb2e705e62aa4efb1daa8e9c49f90c732c18e01d98cf3645"
+  },
+  {
+    "name": "sing-box-linux-amd64",
+    "size": 58212796,
+    "sha256": "b9986e21a1b70a3648f0ff224769e0bf9b7659e700dc27b24df87179a2562626"
+  },
+  {
+    "name": "sing-box-linux-arm64",
+    "size": 54526129,
+    "sha256": "a52d4ca505d754b2c6c6aabe4361664649252cddaf79a7a25c9dd546e861640a"
+  },
+  {
+    "name": "xray-linux-amd64",
+    "size": 32260256,
+    "sha256": "a4b245ad9b0b44a4ce2d6db3356705361a6512c82be16edf62be053a182eefec"
+  },
+  {
+    "name": "xray-linux-arm64",
+    "size": 30015648,
+    "sha256": "537c2dc9e185c5fc4189fcb1c82f5d3f7f491d1414fd02c12c6d2aafab8ed33c"
+  }
+]

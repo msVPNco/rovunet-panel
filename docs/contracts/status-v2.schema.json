@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Rovunet private status version 2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "server_id",
+    "account_id",
+    "period_id",
+    "revision",
+    "account_status",
+    "limit_kind",
+    "limit_bytes",
+    "expiry_kind",
+    "expires_at",
+    "confirmed_bytes",
+    "pending_bytes",
+    "coverage",
+    "measurement",
+    "sampled_at",
+    "generated_at"
+  ],
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "server_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "account_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "period_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807
+    },
+    "account_status": {
+      "enum": [
+        "active",
+        "expired",
+        "limit_reached",
+        "hold",
+        "archived"
+      ]
+    },
+    "limit_kind": {
+      "enum": [
+        "finite",
+        "unlimited",
+        "unknown"
+      ]
+    },
+    "limit_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    },
+    "expiry_kind": {
+      "enum": [
+        "at",
+        "none",
+        "unknown"
+      ]
+    },
+    "expires_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "confirmed_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    },
+    "pending_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    },
+    "coverage": {
+      "enum": [
+        "partial",
+        "unavailable",
+        "not_metered"
+      ]
+    },
+    "measurement": {
+      "enum": [
+        "accounted_lower_bound",
+        "none",
+        "unknown"
+      ]
+    },
+    "sampled_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "limit_kind": {
+            "const": "finite"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "limit_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9223372036854775807
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "limit_bytes": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "expiry_kind": {
+            "const": "at"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "expires_at": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

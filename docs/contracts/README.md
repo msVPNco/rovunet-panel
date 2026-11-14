@@ -24,4 +24,4 @@ migration before being redesigned; do not rotate tokens or IDs to fit a UI.
 
 No client-dependent panel change is enabled for a joint public release before
 the affected apps are ready and integration accepts their final artifacts.
-AnyTLS/TUIC/Mieru and an exact simultaneous-device cap are not activated.
+Panel2 exports the six additional configurations to supported clients through the unchanged strict feed contract; unsupported standard URI families are skipped safely. See the current integration contract for30/29/6 eligibility. An exact simultaneous-device cap is not activated.

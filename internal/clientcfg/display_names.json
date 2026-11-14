@@ -29,5 +29,11 @@
   "vaydns-socks": "VayDNS · SOCKS5",
   "vaydns-ssh": "VayDNS · SSH",
   "slipstream-socks": "Slipstream · SOCKS5",
-  "slipstream-ssh": "Slipstream · SSH"
+  "slipstream-ssh": "Slipstream · SSH",
+  "managed-anytls": "AnyTLS",
+  "managed-tuic": "TUIC",
+  "managed-mieru-tcp": "Mieru TCP",
+  "managed-mieru-udp": "Mieru UDP",
+  "managed-tlsvision": "VLESS TLS Vision",
+  "managed-xhttp-reality": "VLESS XHTTP REALITY"
 }

@@ -16,6 +16,14 @@ error() {
 [[ "$REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || error 'Invalid release repository.'
 [[ $# -eq 0 || ($# -eq 1 && "$1" == --no-run) ]] || error 'Usage: bash install.sh [--no-run]'
 for tool in python3 openssl; do command -v "$tool" > /dev/null || error "Required verification tool is missing: $tool"; done
+# An existing configured installation must go through the panel transaction.
+# Complete an interrupted fresh bootstrap using its matching receipt instead.
+existing=false
+if [[ -f /etc/rovunet/config.json || -d /etc/rovunet/config.json.accounting || -e /etc/rovunet/config.json.unlimited-migration.anchor || -d /var/lib/rovunet/subscriptions/.rotation-receipts ]]; then
+    [[ -x "$INSTALL_DIR/rovunet" && -f /etc/rovunet/config.json ]] || error 'Existing state needs its original executable and configuration for forward recovery.'
+    existing=true
+    [[ ${1:-} != --no-run ]] || error 'An existing configured server requires an upgrade transaction. Run rovunet update.'
+fi
 if command -v curl > /dev/null; then
     download() { (
         ulimit -f "$(((${3:-1048576} + 1023) / 1024))"
@@ -124,6 +132,11 @@ with p.open('rb') as f:
     loads=[table[n*size:(n+1)*size] for n in range(count) if struct.unpack_from('<I',table,n*size)[0]==1]
     if not any(struct.unpack_from('<Q',h,32)[0]>0 and struct.unpack_from('<Q',h,8)[0]+struct.unpack_from('<Q',h,32)[0]<=selected['size'] for h in loads): sys.exit('ELF has no valid load segment')
 PY
+if [[ "$existing" == true ]]; then
+    chmod 0755 "$stage/candidate"
+    "$stage/candidate" upgrade-installed "$INSTALL_DIR/rovunet"
+    exit $?
+fi
 # Network and verification finish before any replacement. No process kills or
 # service stops are necessary. Keep a complete recovery binary on the same FS.
 python3 - "$stage" "$INSTALL_DIR" "$RELEASE_TAG" << 'PY'

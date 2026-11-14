@@ -81,10 +81,24 @@ func setPublicAddress(cfg *config.Config, text string) error {
 			uniq = append(uniq, a)
 		}
 	}
+	if e := config.ValidateAddressSet(main, uniq); e != nil {
+		return e
+	}
+	if e := cfg.ValidateAddressIdentities(); e != nil {
+		return e
+	}
 	oldMain, oldExtra := cfg.PublicAddress, cfg.ExtraAddresses
+	oldIDs := map[string]string{}
+	for k, v := range cfg.ExtraAddressIDs {
+		oldIDs[k] = v
+	}
+	// Migrate the old published order before applying any add/remove/reorder.
+	cfg.EnsureAddressIdentities()
 	cfg.PublicAddress, cfg.ExtraAddresses = main, uniq
+	cfg.EnsureAddressIdentities()
 	if err := cfg.Save(); err != nil {
 		cfg.PublicAddress, cfg.ExtraAddresses = oldMain, oldExtra
+		cfg.ExtraAddressIDs = oldIDs
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 	return nil

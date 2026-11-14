@@ -41,24 +41,7 @@ func handleSystemRestart(ctx *actions.Context) error {
 			} else {
 				proxy.RunAsUser = ""
 			}
-			directSOCKS := false
-			for _, t := range cfg.Tunnels {
-				if t.Transport == config.TransportSOCKS {
-					directSOCKS = true
-				}
-			}
-			var socksErr error
-			if directSOCKS {
-				if len(cfg.Users) > 0 {
-					socksErr = proxy.SetupSOCKSExternalWithUsers(cfg.Users)
-				} else {
-					socksErr = proxy.SetupSOCKS()
-				}
-			} else if len(cfg.Users) > 0 {
-				socksErr = proxy.SetupSOCKSWithUsers(cfg.Users)
-			} else {
-				socksErr = proxy.SetupSOCKS()
-			}
+			socksErr := setupSOCKS(cfg)
 			if socksErr != nil {
 				out.Warning(fmt.Sprintf("Failed to restart rovunet-socks5: %v", socksErr))
 			} else {

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -39,7 +40,14 @@ func handleSystemBackup(ctx *actions.Context) error {
 	if _, err := os.Stat(config.DefaultConfigFile); err != nil {
 		return actions.NewError(actions.SystemBackup, "no rovunet configuration on this server", err)
 	}
-	text, skipped, err := encodeBackup(cfg)
+	var text string
+	var skipped []string
+	var err error
+	if requiresCoherent(cfg) {
+		text, skipped, err = encodeCoherentBackup(cfg)
+	} else {
+		text, skipped, err = encodeBackup(cfg)
+	}
 	if err != nil {
 		return actions.NewError(actions.SystemBackup, "failed to create backup", err)
 	}
@@ -85,7 +93,11 @@ func handleSystemBackup(ctx *actions.Context) error {
 			return actions.NewError(actions.SystemBackup, "failed to write backup", err)
 		}
 		out.Success(fmt.Sprintf("Backup of %s saved to %s", summary, dest))
-		out.Info(fmt.Sprintf("Copy it to the new server and run: rovunet restore %s", dest))
+		if requiresCoherent(cfg) {
+			out.Info("This is a forward-recovery SQLite checkpoint for the existing same-identity installation. Fresh-target disaster recovery requires an externally authenticated sealed checkpoint; do not replace a missing database with this file.")
+		} else {
+			out.Info(fmt.Sprintf("Copy it to the new server and run: rovunet restore %s", dest))
+		}
 	}
 	if backup.IsEncrypted(text) {
 		out.Info("Encrypted backup saved. Keep its private identity or passphrase separately; a lost decryption key cannot be recovered by Rovunet.")
@@ -109,7 +121,13 @@ func handleSystemRestore(ctx *actions.Context) error {
 	if err != nil {
 		return actions.NewError(actions.SystemRestore, err.Error(), nil)
 	}
+	if b.Coherent != nil {
+		return restoreCoherentBackup(ctx, b.Coherent)
+	}
 	incoming := b.Config
+	if requiresCoherent(incoming) || requiresCoherent(ctx.Config.(*config.Config)) {
+		return errors.New("this installation requires coherent forward recovery; legacy restore is disabled before any writes")
+	}
 	for _, reason := range b.DroppedUsers {
 		out.Warning("Skipping a user: " + reason)
 	}
@@ -337,6 +355,9 @@ func (p *restoreProgress) Warning(message string) {
 // encodeBackup returns cfg and its tunnels' files as backup text, and the
 // files left out because they were too large.
 func encodeBackup(cfg *config.Config) (string, []string, error) {
+	if requiresCoherent(cfg) {
+		return "", nil, errors.New("coherent snapshot required for SQLite or operation receipts")
+	}
 	b, err := backup.Create(cfg, config.DefaultTunnelDir, version.String())
 	if err != nil {
 		return "", nil, err

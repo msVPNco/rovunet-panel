@@ -35,7 +35,7 @@ const (
 const (
 	// formatVersion is bumped when a backup can no longer be read by older
 	// rovunet versions.
-	formatVersion = 1
+	formatVersion = 2
 	lineWidth     = 76
 
 	// maxFileSize skips anything in a tunnel directory that can't be a key
@@ -49,10 +49,13 @@ var fileNameRegex = regexp.MustCompile(`^[A-Za-z0-9_-][A-Za-z0-9._-]*$`)
 
 // Bundle is the content of a backup.
 type Bundle struct {
-	Format  int            `json:"format"`
-	Created time.Time      `json:"created"`
-	Version string         `json:"version"` // rovunet version that made it
-	Config  *config.Config `json:"config"`
+	// Coherent carries a hash-verified SQLite/publication checkpoint. Format 2
+	// prevents older panels from restoring only part of a coordinated account.
+	Coherent *CoherentCheckpoint `json:"coherent,omitempty"`
+	Format   int                 `json:"format"`
+	Created  time.Time           `json:"created"`
+	Version  string              `json:"version"` // rovunet version that made it
+	Config   *config.Config      `json:"config"`
 	// Files holds each tunnel's files by tag and file name. The config's key
 	// and certificate paths are stored as names in this map.
 	Files map[string]map[string]File `json:"files"`
@@ -95,7 +98,7 @@ func Create(cfg *config.Config, tunnelRoot, version string) (*Bundle, error) {
 	}
 
 	b := &Bundle{
-		Format:  formatVersion,
+		Format:  1,
 		Created: time.Now().UTC().Truncate(time.Second),
 		Version: version,
 		Config:  &c,
@@ -294,6 +297,16 @@ func Decode(text string) (*Bundle, error) {
 // validate checks the config and that every file belongs to a tunnel, has a
 // plain file name, and that every configured key or certificate is present.
 func (b *Bundle) validate() error {
+	if b.Coherent != nil {
+		if b.Format != 2 {
+			return errors.New("coherent checkpoint requires backup format 2")
+		}
+		if err := b.Coherent.Validate(); err != nil {
+			return err
+		}
+	} else if b.Format == 2 {
+		return errors.New("format 2 requires a coherent checkpoint")
+	}
 	if err := b.Config.ValidateSubscriptionTokens(); err != nil {
 		return err
 	}

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "tag": "v2.0.0",
+  "profile": "owner-authorized-functional-update",
+  "authorization_date": "2026-11-14",
+  "authorization": "Owner explicitly requested version two after panel installation, update, quota/security and recovery testing, independently of app-team or further owner confirmation.",
+  "full_qualification": "not-certified; broader physical-device, external custody and complete fresh-target/provider recovery gates remain open",
+  "requirements": [
+    "30 unrestricted / 29 time-only / 6 finite-budget profiles on both feed forms",
+    "main protocols first, auxiliary next, ten DNS paths last",
+    "same account IDs, subscription tokens, passwords, periods and known usage on update",
+    "durable finite budget with held-stream cutoff and unaffected healthy account",
+    "signed exact-byte normal installation and menu update acceptance",
+    "same-identity encrypted forward recovery, tamper/wrong-key/stale-config negatives",
+    "source-pinned runtime assets with corresponding sources and notices",
+    "Windows-local existing production identity; no key rotation"
+  ],
+  "excluded": [
+    "physical Android/macOS/Windows or every ISP reachability certification",
+    "physical ARM64 certification; emulation is identified",
+    "independent off-site signing-key custody certification",
+    "complete fresh-target restoration of all runtimes, Caddy, firewall and provider state",
+    "WARP provider registration guarantee",
+    "exact simultaneous device limit",
+    "bit-identical independent toolchain rebuild certification"
+  ],
+  "unchanged_files_sha256": {
+    "internal/protocols/policy.go": "14a6d54abeeeca5e692359178eefef0385417916519401aa577f29e633c08ceb",
+    "internal/coreinstall/reviewed-release-runtime-pins.json": "e47bf4f15c8335765b79baf6e4f97261f257f8a813e64019dfd27aa01c899d5a",
+    "internal/binary/transport-catalog.json": "87ccfa12c8d5ddb77cc6c5edcb8dd9b7064269dca699646bbb5b05bf13934dda",
+    "internal/coreinstall/reviewed-go-runtime-pins.json": "de2e765a5ba2bb5f80603289b31681325b165f0fbe8d1153976a63aa6019d829"
+  },
+  "final_exact_byte_acceptance_required": true,
+  "publication_status": "Do not publish until final signed fresh install, menu update and relevant data/backup tests pass. Full qualification gates are reported separately.",
+  "client_contract": "docs/contracts/panel-integration-v1.md"
+}

@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/msVPNco/rovunet-panel/internal/safefile"
 	"net"
 	"os"
 	"os/exec"
@@ -266,30 +267,82 @@ func DisableResolvedStub() error {
 		return nil // not running, nothing to do
 	}
 
-	// Create drop-in config to disable stub listener
-	if err := os.MkdirAll("/etc/systemd/resolved.conf.d", 0755); err != nil {
-		return fmt.Errorf("create resolved conf dir: %w", err)
+	if err := writeResolvedStubDropin("/etc/systemd/resolved.conf.d"); err != nil {
+		return err
 	}
-
-	conf := "[Resolve]\nDNSStubListener=no\n"
-	if err := os.WriteFile("/etc/systemd/resolved.conf.d/rovunet-no-stub.conf", []byte(conf), 0644); err != nil {
-		return fmt.Errorf("write resolved config: %w", err)
+	// Disabling the stub does not update an existing stub-resolv.conf
+	// symlink. Select resolved's uplink file only for that exact managed
+	// symlink; retain static files and other administrators' resolver links.
+	if err := useResolvedUplink("/etc/resolv.conf", "/run/systemd/resolve/stub-resolv.conf", "/run/systemd/resolve/resolv.conf"); err != nil {
+		return err
 	}
-
-	// Restart systemd-resolved — after this, /etc/resolv.conf (whether a
-	// symlink to /run/systemd/resolve/resolv.conf or a static file
-	// managed elsewhere) will list the uplink DNS servers directly
-	// rather than the stub at 127.0.0.53. We intentionally do NOT write
-	// /etc/resolv.conf here: on most distros it's a symlink into
-	// systemd's runtime directory, so os.WriteFile follows the link and
-	// the target gets regenerated on the next network event. If you want
-	// public resolvers (for WARP compatibility), see
-	// warp.ensurePublicResolvers which sets them via resolved drop-in.
 	if err := run("systemctl", "restart", "systemd-resolved"); err != nil {
 		return fmt.Errorf("restart systemd-resolved: %w", err)
 	}
 
 	return nil
+}
+
+func writeResolvedStubDropin(dir string) error {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("create resolved conf dir: %w", err)
+	}
+	info, err := os.Lstat(dir)
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("resolved conf directory must be a regular directory")
+	}
+	if err = os.Chmod(dir, 0755); err != nil {
+		return fmt.Errorf("set resolved directory permissions: %w", err)
+	}
+	if err = safefile.Write(filepath.Join(dir, "rovunet-no-stub.conf"), []byte("[Resolve]\nDNSStubListener=no\n"), 0644); err != nil {
+		return fmt.Errorf("write resolved config: %w", err)
+	}
+	return nil
+}
+
+// useResolvedUplink never rewrites an administrator's static resolver file.
+func useResolvedUplink(path, stub, uplink string) error {
+	target, err := os.Readlink(path)
+	if err != nil { // A regular resolv.conf is managed by another component.
+		if _, statErr := os.Lstat(path); statErr != nil {
+			return statErr
+		}
+		return nil
+	}
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(filepath.Dir(path), target)
+	}
+	if filepath.Clean(target) != filepath.Clean(stub) {
+		return nil
+	}
+	if _, err := os.Stat(uplink); err != nil {
+		return fmt.Errorf("resolved uplink file unavailable: %w", err)
+	}
+	f, err := os.CreateTemp(filepath.Dir(path), ".rovunet-resolv-*")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	if err := f.Close(); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	defer os.Remove(tmp)
+	if err := os.Remove(tmp); err != nil {
+		return err
+	}
+	if err := os.Symlink(uplink, tmp); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		return err
+	}
+	dir, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return dir.Sync()
 }
 
 // FreePort kills any process listening on the given port/protocol.

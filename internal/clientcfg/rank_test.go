@@ -4,17 +4,20 @@ import "testing"
 
 func TestRankOrder(t *testing.T) {
 	order := []int{
-		TunnelRank("vless"), CoreRank("xhttp"), CoreRank("reality"), TunnelRank("naive"),
-		TunnelRank("stuntls"), TunnelRank("direct-ssh"), CoreRank("hysteria2"), CoreRank("wireguard"),
-		TunnelRank("direct-socks5"), TunnelRank("soar"), TunnelRank("dnstt"), TunnelRank("vaydns"), TunnelRank("slipstream"),
+		CoreRank("tlsvision"), CoreRank("reality"), CoreRank("xhttp-reality"), CoreRank("xhttp"),
+		CoreRank("hysteria2"), CoreRank("tuic"), CoreRank("mieru-tcp"), CoreRank("mieru-udp"),
+		CoreRank("anytls"), CoreRank("ss2022"), CoreRank("vlessenc"), CoreRank("trojan"),
+		CoreRank("amneziawg"), CoreRank("wireguard"), TunnelRank("naive"), TunnelRank("vless"),
+		TunnelRank("stuntls"), TunnelRank("direct-ssh"), TunnelRank("direct-socks5"),
+		TunnelRank("soar"), TunnelRank("dnstt"), TunnelRank("vaydns"), TunnelRank("slipstream"),
 	}
 	for i := 1; i < len(order); i++ {
 		if order[i-1] >= order[i] {
 			t.Fatalf("rank %d (%d) is not before rank %d (%d)", i-1, order[i-1], i, order[i])
 		}
 	}
-	if TunnelRank("unknown") <= TunnelRank("slipstream") {
-		t.Fatal("unknown transports must come last")
+	if TunnelRank("unknown") >= TunnelRank("soar") || CoreRank("unknown") >= TunnelRank("soar") {
+		t.Fatal("DNS transports must remain at the end, including with an unknown non-DNS protocol")
 	}
 }
 

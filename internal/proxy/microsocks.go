@@ -2,14 +2,17 @@ package proxy
 
 import (
 	"fmt"
+	"github.com/msVPNco/rovunet-panel/internal/safefile"
 	"log"
 	"os"
-	"os/exec"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/service"
+	"github.com/msVPNco/rovunet-panel/internal/system"
 )
 
 const (
@@ -121,6 +124,11 @@ func setupSOCKSMulti(listenAddr string, users []config.UserConfig, requireAuth b
 // atomically (temp file + rename) so a concurrent SIGHUP reader never sees
 // a partial file.
 func writeSocksCredsFile(users []config.UserConfig) error {
+	if os.Geteuid() == 0 {
+		if err := system.EnsureDir(filepath.Dir(socksCredsFile), "root"); err != nil {
+			return err
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(socksCredsFile), 0750); err != nil {
 		return err
 	}
@@ -132,21 +140,64 @@ func writeSocksCredsFile(users []config.UserConfig) error {
 		}
 	}
 
-	tmp := socksCredsFile + ".tmp"
-	if err := os.WriteFile(tmp, []byte(buf.String()), 0640); err != nil {
-		return err
-	}
-	// The SOCKS service runs as either SystemUser or SocksUser, both of
-	// which have SystemGroup as their primary group; chown so either can
-	// read the file without making it world-readable. Only root can change
-	// ownership — warn loudly when we can't, so the broken auth (SOCKS
-	// service unable to read the file it was handed) is diagnosable.
+	uid, gid := -1, -1
 	if os.Geteuid() == 0 {
-		if err := exec.Command("chown", config.SystemUser+":"+config.SystemGroup, tmp).Run(); err != nil {
-			log.Printf("warning: chown %s failed: %v (SOCKS service may not be able to read creds)", tmp, err)
+		account, err := user.Lookup(config.SystemUser)
+		if err != nil {
+			return fmt.Errorf("resolve SOCKS service user: %w", err)
+		}
+		group, err := user.LookupGroup(config.SystemGroup)
+		if err != nil {
+			return fmt.Errorf("resolve SOCKS service group: %w", err)
+		}
+		uid, err = strconv.Atoi(account.Uid)
+		if err != nil {
+			return err
+		}
+		gid, err = strconv.Atoi(group.Gid)
+		if err != nil {
+			return err
 		}
 	} else {
-		log.Printf("warning: not running as root, skipping chown of %s (SOCKS service may not be able to read creds)", socksCredsFile)
+		log.Printf("warning: not running as root, keeping caller ownership for %s", socksCredsFile)
 	}
-	return os.Rename(tmp, socksCredsFile)
+	return writeSocksCredentials(socksCredsFile, []byte(buf.String()), uid, gid)
+}
+
+// A unique private staging file avoids following a stale fixed .tmp symlink.
+// Ownership and permissions are durable before publication or SIGHUP.
+func writeSocksCredentials(path string, data []byte, uid, gid int) error {
+	if info, err := os.Lstat(path); err == nil {
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("SOCKS credentials destination must be a regular file")
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	f, err := os.CreateTemp(filepath.Dir(path), ".rovunet-socks-*")
+	if err != nil {
+		return err
+	}
+	defer func() { f.Close(); os.Remove(f.Name()) }()
+	if err = f.Chmod(0640); err != nil {
+		return err
+	}
+	if uid >= 0 || gid >= 0 {
+		if err = f.Chown(uid, gid); err != nil {
+			return fmt.Errorf("set SOCKS credential ownership: %w", err)
+		}
+	}
+	if _, err = f.Write(data); err != nil {
+		return err
+	}
+	if err = f.Sync(); err != nil {
+		return err
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
+	if err = os.Rename(f.Name(), path); err != nil {
+		return err
+	}
+	return safefile.SyncDir(filepath.Dir(path))
 }

@@ -1,6 +1,32 @@
 package handlers
 
-import "testing"
+import (
+	"net"
+	"testing"
+)
+
+func TestDiagnosticsRequireBothTCPAndUDPListeners(t *testing.T) {
+	tcp, e := net.Listen("tcp", "127.0.0.1:0")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer tcp.Close()
+	port := tcp.Addr().(*net.TCPAddr).Port
+	if isPortListening(port, "tcp,udp") {
+		t.Fatal("missing UDP listener accepted")
+	}
+	udp, e := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: port})
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer udp.Close()
+	if !isPortListening(port, "tcp,udp") {
+		t.Fatal("healthy combined transport rejected")
+	}
+	if isPortListening(port, "tcp,invalid") {
+		t.Fatal("unknown transport accepted")
+	}
+}
 
 func TestOwnerFromSS(t *testing.T) {
 	line := `udp UNCONN 0 0 0.0.0.0:8443 0.0.0.0:* users:(("xray",pid=812,fd=7))` + "\n"

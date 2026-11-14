@@ -1,0 +1,22 @@
+[
+  {
+    "commit": "676eaf66f8f05d4d558ee7a74b4736623d3feeb9",
+    "sha256": "a4b245ad9b0b44a4ce2d6db3356705361a6512c82be16edf62be053a182eefec",
+    "arch": "amd64"
+  },
+  {
+    "commit": "676eaf66f8f05d4d558ee7a74b4736623d3feeb9",
+    "sha256": "537c2dc9e185c5fc4189fcb1c82f5d3f7f491d1414fd02c12c6d2aafab8ed33c",
+    "arch": "arm64"
+  },
+  {
+    "commit": "b5928efb6ca19f0153958460c3d141f04abc5c2e",
+    "sha256": "61b9a9d0507dbb66e70726aa34650f4b57b17f5da15d13befb89a93517573cf0",
+    "arch": "amd64"
+  },
+  {
+    "commit": "b5928efb6ca19f0153958460c3d141f04abc5c2e",
+    "sha256": "fb566f6009072a626890a4279144988d312709d1b6094471829c1a496490115f",
+    "arch": "arm64"
+  }
+]

@@ -3,6 +3,7 @@ package transport
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/service"
@@ -66,8 +67,34 @@ func buildVLESSExecStart(tunnel *config.TunnelConfig, cfg *config.Config) (strin
 		"--users-file", usersFile,
 		"--block-ports", v.ResolvedBlockPorts(),
 	}
+	var sqlBinding *config.SQLiteBinding
+	for _, u := range cfg.Users {
+		if u.SQLiteMeter != nil && u.QuotaGB > 0 && !u.Expired(time.Now()) {
+			if sqlBinding == nil {
+				sqlBinding = u.SQLiteMeter
+			} else if *sqlBinding != *u.SQLiteMeter {
+				return "", fmt.Errorf("native SQL unit requires one reviewed local store")
+			}
+		}
+	}
+	if sqlBinding != nil {
+		for _, u := range cfg.Users {
+			if u.SQLiteMeter == nil && u.QuotaGB > 0 && !u.Expired(time.Now()) {
+				return "", fmt.Errorf("finite users on the shared SQL listener must have a reviewed ledger binding")
+			}
+		}
+		if !fronted {
+			return "", fmt.Errorf("native SQL unit requires a loopback Caddy front")
+		}
+		if containsUnitPath(sqlBinding.Directory) || containsUnitPath(sqlBinding.Store) {
+			return "", fmt.Errorf("invalid SQL unit binding")
+		}
+		args = append(args, "--preview-quota-directory", sqlBinding.Directory, "--preview-quota-id", sqlBinding.Store)
+	}
 	if v.TLS && !fronted {
 		args = append(args, "--cert", v.Cert, "--key", v.Key)
 	}
 	return strings.Join(args, " "), nil
 }
+
+func containsUnitPath(s string) bool { return s == "" || strings.ContainsAny(s, " \t\r\n%\x22") }

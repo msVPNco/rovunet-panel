@@ -46,7 +46,7 @@ func Proto(protocol string) string {
 	switch protocol {
 	case "ss2022":
 		return "tcp,udp"
-	case "hysteria2", "wireguard", "amneziawg":
+	case "hysteria2", "wireguard", "amneziawg", "tuic", "mieru-udp":
 		return "udp"
 	}
 	return "tcp"
@@ -63,6 +63,9 @@ func Unit(name, dir string) *service.Unit {
 	if _, err := os.Stat(filepath.Join(dir, optionsFile)); err == nil {
 		condition = self + " core-prepare " + name
 		confirm = self + " core-confirm " + name
+	}
+	if m, err := ReadMeta(name); err == nil && coreplan.SupplementalRuntime(m.Protocol) != "" {
+		return supplementalUnit(name, dir, m.Protocol, condition, confirm)
 	}
 	if m, err := ReadMeta(name); err == nil && m.Protocol == "amneziawg" {
 		return &service.Unit{Name: ServiceName(name), Description: "Rovunet Panel AmneziaWG: " + name, ExecStart: self + " core-awg-run " + name, ExecReload: self + " core-awg-sync " + name, ExecCondition: condition, ExecStartPost: confirm, User: "root", Group: config.SystemGroup, After: "network-online.target", Restart: "on-failure"}
@@ -188,6 +191,9 @@ func EnsureXray() error {
 
 // TestConfig asks Xray itself to validate a config before it is deployed.
 func TestConfig(path string) error {
+	if m, e := ReadMeta(filepath.Base(filepath.Dir(path))); e == nil && coreplan.SupplementalRuntime(m.Protocol) != "" {
+		return testSupplemental(path, m.Protocol)
+	}
 	if m, err := ReadMeta(filepath.Base(filepath.Dir(path))); err == nil && m.Protocol == "amneziawg" {
 		_, err := readAWG(path)
 		return err

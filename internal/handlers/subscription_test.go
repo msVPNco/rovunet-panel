@@ -107,7 +107,7 @@ func TestWriteSubscriptionsFeedsAndCleanup(t *testing.T) {
 	for _, e := range entries {
 		names = append(names, e.Name())
 	}
-	want := []string{cfg.Users[0].SubToken + ".json", cfg.Users[0].SubToken + ".status.json", cfg.Users[0].SubToken + ".windows.json", cfg.Users[0].SubToken + ".windows.status.json"}
+	want := []string{cfg.Users[0].SubToken + ".json", cfg.Users[0].SubToken + ".status.json", cfg.Users[0].SubToken + trustSuffix, cfg.Users[0].SubToken + ".windows.json", cfg.Users[0].SubToken + ".windows.status.json"}
 	if strings.Join(names, " ") != strings.Join(want, " ") {
 		t.Fatalf("got files %v, want %v", names, want)
 	}

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
 	"github.com/msVPNco/rovunet-panel/internal/binary"
@@ -519,16 +520,25 @@ func handleQuickWizard(ctx *actions.Context) error {
 		return actions.NewError(actions.QuickWizard, "failed to save config", err)
 	}
 
+	if err := cfg.RefreshIfChanged(); err != nil {
+		return err
+	}
 	// Create SSH user (skip when reusing an existing one — otherwise
 	// AddSSHUser would reset the system password and cfg.AddUser would
 	// overwrite the stored credentials).
+	fresh := map[string]bool{}
 	if reuseExistingUser {
 		out.Info(fmt.Sprintf("Using existing user %q", username))
 	} else {
 		if err := system.AddSSHUser(username, password); err != nil {
 			out.Warning("Failed to create SSH user: " + err.Error())
 		}
-		cfg.AddUser(config.UserConfig{Username: username, Password: password})
+		u := newUser(username, password, 0, 0, time.Now())
+		if err := rememberNewPeriod(cfg, u); err != nil {
+			return err
+		}
+		fresh[u.AccountID] = true
+		cfg.AddUser(u)
 		if err := cfg.Save(); err != nil {
 			return actions.NewError(actions.QuickWizard, "failed to save config", err)
 		}
@@ -607,6 +617,9 @@ func handleQuickWizard(ctx *actions.Context) error {
 		return actions.NewError(actions.QuickWizard, "failed to finalize subscriptions", err)
 	}
 
+	if err := finishInstallationAccounting(cfg, fresh); err != nil {
+		return err
+	}
 	// ── Summary ────────────────────────────────────────────────
 	out.Print("")
 	out.Print("  ══════════════════════════════════════════════════════")

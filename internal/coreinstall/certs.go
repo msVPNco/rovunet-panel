@@ -21,7 +21,7 @@ import (
 
 const certSumFile = "cert.sha256"
 
-var certFileRe = regexp.MustCompile(`"certificateFile"\s*:\s*"([^"]+)"`)
+var certFileRe = regexp.MustCompile(`"(?:certificateFile|certificate_path)"\s*:\s*"([^"]+)"`)
 
 // restartCore restarts a core's service. Variable for tests.
 var restartCore = service.Restart

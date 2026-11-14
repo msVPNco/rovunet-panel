@@ -1,0 +1,25 @@
+{
+  "go": "go1.27.4",
+  "runtimes": [
+    {
+      "engine": "sing-box",
+      "repository": "SagerNet/sing-box",
+      "tag": "v1.14.4",
+      "archive_sha256": "0958ccd23b1ea9a141d715d15478b1e040fd04bcca19d8ff5529636b1b753e18",
+      "arch_sha256": {
+        "amd64": "b9986e21a1b70a3648f0ff224769e0bf9b7659e700dc27b24df87179a2562626",
+        "arm64": "a52d4ca505d754b2c6c6aabe4361664649252cddaf79a7a25c9dd546e861640a"
+      }
+    },
+    {
+      "engine": "mita",
+      "repository": "enfein/mieru",
+      "tag": "v3.39.0",
+      "archive_sha256": "434198ea0558bc440379e9a0a97f6904ba8dd6b213dd6fb9d578388eba7d2f12",
+      "arch_sha256": {
+        "amd64": "d59c7758446fc1c9a73323e46261b783e2856c8951ca699d97b712e34f192154",
+        "arm64": "c112ba9df78da4f3bb2e705e62aa4efb1daa8e9c49f90c732c18e01d98cf3645"
+      }
+    }
+  ]
+}

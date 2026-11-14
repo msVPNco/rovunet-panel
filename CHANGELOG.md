@@ -2,6 +2,17 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v2.0.0
+
+- Complete setup targets30 unrestricted profiles,29 time-only profiles and six shared-budget finite paths. Add TLS Vision, XHTTP REALITY, AnyTLS, TUIC and separate Mieru TCP/UDP.
+- Order main protocols first and all ten DNS paths last; keep protocol display labels, stable profile IDs and saved subscription URLs.
+- Share native finite quotas in durable SQLite; preserve known consumption, periods and credentials. Format2 encrypted checkpoints support same-identity forward reconciliation, without stale database/config rollback or a fresh-target recovery bypass.
+- Keep committed SQLite policy/metadata reads independent of the sole writer through a bounded read-only WAL pool. Slow writes no longer consume the policy read's deadline merely while waiting for that same connection; reservations still require a serialized, validated durable commit.
+- Authenticate and validate runtime upgrades with durable resume and retained old hashes. Refresh installed DNS/TLS transports and use exact reviewed source/dependency pins.
+- Close held compatibility-core streams on revocation; retain per-account finite cutoff and the healthy user's session. Fix service and resolver permissions under strict umask and retain administrator resolver choices.
+- Add certificate health/recovery and public Slipstream certificate companions. Refresh the runtime corresponding sources, native security backports and component notices.
+- See [server acceptance and explicit qualification boundaries](docs/releases/v2.0.0.md). Artifact publication requires final signed exact-byte acceptance; broader physical-client/off-site/fresh-target qualification is separately tracked.
+
 ## v1.21.2
 
 The owner requests this functional release now. App version observations are historical fixtures; future app-dependent work follows the version-independent integration handoff.

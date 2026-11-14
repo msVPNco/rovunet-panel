@@ -37,7 +37,7 @@ var rootCmd = &cobra.Command{
 		// Validation/key generation/version queries are read-only with respect
 		// to the server. Restore authenticates and confirms before migration.
 		switch cmd.Name() {
-		case "backup-check", "backup-keygen", "restore":
+		case "upgrade-installed", "update-compatibility", "backup-check", "backup-keygen", "restore":
 			return nil
 		}
 		if requested, _ := cmd.Flags().GetBool("version"); requested {
@@ -58,7 +58,11 @@ func init() {
 
 	// Wire dispatcher for menu → handlers (breaks import cycle)
 	menu.Dispatcher = handlers.Dispatch
+	rootCmd.AddCommand(&cobra.Command{Use: "update-compatibility", Hidden: true, Args: cobra.NoArgs, Run: func(cmd *cobra.Command, args []string) { cmd.Println(handlers.OnlineUpdateABI) }})
 
+	rootCmd.AddCommand(&cobra.Command{Use: "upgrade-installed TARGET", Hidden: true, Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+		return handlers.UpgradeInstalled(args[0])
+	}})
 	// Register action-based subcommands
 	registerActionCommands()
 
@@ -162,17 +166,18 @@ func registerActionCommands() {
 
 	// System-level commands go directly on root
 	systemActions := map[string]string{
-		actions.QuickWizard:     "wizard",
-		actions.SystemInstall:   "install",
-		actions.SystemUninstall: "uninstall",
-		actions.SystemUpdate:    "update",
-		actions.SystemRestart:   "restart",
-		actions.SystemUsers:     "users",
-		actions.SystemStats:     "stats",
-		actions.SystemDiag:      "diag",
-		actions.SystemMTU:       "mtu",
-		actions.SystemBackup:    "backup",
-		actions.SystemRestore:   "restore",
+		actions.QuickWizard:        "wizard",
+		actions.SystemInstall:      "install",
+		actions.SystemUninstall:    "uninstall",
+		actions.SystemUpdate:       "update",
+		actions.SystemRestart:      "restart",
+		actions.SystemUsers:        "users",
+		actions.SystemStats:        "stats",
+		actions.SystemDiag:         "diag",
+		actions.SystemCertificates: "certificates",
+		actions.SystemMTU:          "mtu",
+		actions.SystemBackup:       "backup",
+		actions.SystemRestore:      "restore",
 	}
 
 	for id, use := range systemActions {

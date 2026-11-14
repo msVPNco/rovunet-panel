@@ -52,7 +52,7 @@ func Build(cfg *config.Config, user config.UserConfig, tunnels []config.TunnelCo
 			errs = append(errs, err)
 		}
 		for _, p := range cores {
-			if user.MeteredOnly() && !opts.StatsWorking(p.Core) {
+			if user.SQLiteMeter == nil && user.MeteredOnly() && !opts.StatsWorking(p.Core) {
 				continue
 			}
 			file := p.Protocol == "wireguard" || p.Protocol == "amneziawg"
@@ -86,6 +86,13 @@ func Build(cfg *config.Config, user config.UserConfig, tunnels []config.TunnelCo
 					}
 					link = u.String()
 				}
+			} else if opts.CompatibleSubscription && (p.Protocol == "anytls" || p.Protocol == "tuic" || p.Protocol == "mieru-tcp" || p.Protocol == "mieru-udp") {
+				// Standard URIs let older clients skip unsupported families without invalidating the old feed.
+				u, parseErr := url.Parse(link)
+				if parseErr != nil { errs = append(errs, fmt.Errorf("core %s: invalid standard profile",p.Core)); continue }
+				name:=clientcfg.ProfileDisplayName(p.Core)
+				if name=="" {name=clientcfg.ProfileDisplayName(p.Protocol)}
+				if name!="" {u.Fragment=name;link=u.String()}
 			} else if opts.Format != "standard" {
 				link, err = clientcfg.GenerateCoreURI(p.Core, p.Link, cfg, clientcfg.URIOptions{Username: user.Username, DisplayName: clientcfg.ProfileDisplayName(p.Core)})
 				if err != nil {
@@ -101,7 +108,7 @@ func Build(cfg *config.Config, user config.UserConfig, tunnels []config.TunnelCo
 		if protocol == config.TransportSoar && t.Backend == config.BackendDirect {
 			protocol = "soar-direct"
 		}
-		if !t.Enabled || !protocols.Allowed(protocol, user.MeteredOnly(), user.ExpiresAt != "") || (clientcfg.PlainSOCKS(&t) && !opts.All) {
+		if (user.SQLiteMeter != nil && user.QuotaGB > 0 && t.Transport != config.TransportVLESS) || !t.Enabled || !protocols.Allowed(protocol, user.MeteredOnly(), user.ExpiresAt != "") || (clientcfg.PlainSOCKS(&t) && !opts.All) {
 			continue
 		}
 		if t.Transport == config.TransportVLESS && user.Username == "" {

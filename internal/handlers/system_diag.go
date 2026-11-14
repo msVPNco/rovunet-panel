@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -74,7 +75,7 @@ func handleSystemDiag(ctx *actions.Context) error {
 	stubDisabled := isResolvedStubDisabled()
 	hasDNSTunnels := false
 	for _, t := range cfg.Tunnels {
-		if t.IsDNSTunnel() {
+		if t.Enabled && t.IsDNSTunnel() {
 			hasDNSTunnels = true
 			break
 		}
@@ -93,6 +94,10 @@ func handleSystemDiag(ctx *actions.Context) error {
 	}
 
 	for _, t := range cfg.Tunnels {
+		if !t.Enabled {
+			info("["+t.Tag+"] service", "disabled in configuration")
+			continue
+		}
 		// Direct transports use system services (sshd, microsocks), not rovunet-managed ones
 		if t.IsDirectTransport() {
 			continue
@@ -333,10 +338,21 @@ func handleSystemDiag(ctx *actions.Context) error {
 	cores, _ := coreinstall.List()
 	if len(cores) > 0 {
 		out.Print("")
-		out.Print(fmt.Sprintf("  Xray cores (%d installed)", len(cores)))
+		out.Print(fmt.Sprintf("  Managed cores (%d installed)", len(cores)))
 		out.Print("  ──────────")
 		certCores := 0
 		for _, c := range cores {
+			if b, e := os.ReadFile(filepath.Join(coreinstall.Root, c.Name, "state.json")); e == nil {
+				active, reason, e := diagnosticCoreExpectedActive(b)
+				if e != nil {
+					check("["+c.Name+"] state", false, "invalid state metadata")
+					continue
+				}
+				if !active {
+					info("["+c.Name+"] service", reason)
+					continue
+				}
+			}
 			svc := coreinstall.ServiceName(c.Name)
 			status := "missing"
 			if service.Exists(svc) {
@@ -353,11 +369,13 @@ func handleSystemDiag(ctx *actions.Context) error {
 			listening := isPortListening(c.Port, c.Proto)
 			check(fmt.Sprintf("[%s] listening on %s/%d", c.Name, c.Proto, c.Port), listening, boolStr(listening, "yes"+portOwnerNote(c.Port, c.Proto), "nothing listens"))
 
-			if coreplan.Metered(c.Protocol) {
+			if coreinstall.UsesQuotaBridge(c.Name) {
+				out.Info(fmt.Sprintf("[%s] finite traffic: enforced by the shared SQLite relay; engine counters are not the quota authority", c.Name))
+			} else if coreplan.Metered(c.Protocol) {
 				if coreinstall.StatsWorking(c.Name) {
 					detail := "answering (traffic-limited accounts may use this core)"
 					if !protocols.QuotaEligible(c.Protocol) {
-						detail = "answering; traffic-limited accounts excluded because established streams cannot be revoked safely"
+						detail = "answering; traffic-limited accounts excluded until durable per-account accounting is validated; revocation restarts this compatibility core"
 					}
 					check(fmt.Sprintf("[%s] traffic statistics", c.Name), true, detail)
 				} else {
@@ -422,7 +440,24 @@ func handleSystemDiag(ctx *actions.Context) error {
 	out.Print(fmt.Sprintf("  Results: %d passed, %d warnings, %d failed", pass, warn, fail))
 	out.Print("")
 
+	if fail > 0 {
+		return fmt.Errorf("diagnostics found %d failed checks", fail)
+	}
 	return nil
+}
+
+func diagnosticCoreExpectedActive(data []byte) (bool, string, error) {
+	var st coreplan.State
+	if e := json.Unmarshal(data, &st); e != nil {
+		return false, "", e
+	}
+	if st.Disabled {
+		return false, "disabled by administrator", nil
+	}
+	if st.Paused {
+		return false, "paused: no eligible accounts", nil
+	}
+	return true, "", nil
 }
 
 func showRecentLogs(out actions.OutputWriter, svcName string) {
@@ -461,6 +496,14 @@ func isServiceEnabled(name string) bool {
 }
 
 func isPortListening(port int, proto string) bool {
+	if strings.Contains(proto, ",") {
+		for _, part := range strings.Split(proto, ",") {
+			if !isPortListening(port, strings.TrimSpace(part)) {
+				return false
+			}
+		}
+		return true
+	}
 	switch proto {
 	case "tcp":
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 1e9)

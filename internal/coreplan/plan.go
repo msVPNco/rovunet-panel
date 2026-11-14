@@ -23,14 +23,16 @@ import (
 )
 
 type Options struct {
-	Protocol      string `json:"protocol"`
-	Host          string `json:"host"`
-	SNI           string `json:"sni"`
-	Cert          string `json:"cert,omitempty"`
-	Key           string `json:"key,omitempty"`
-	RealityTarget string `json:"realityTarget,omitempty"`
-	Port          int    `json:"port"`
-	Devices       int    `json:"-"`
+	QuotaBridge   *NativeQuotaBridge `json:"quotaBridge,omitempty"`
+	QuotaClients  map[string]string  `json:"-"`
+	Protocol      string             `json:"protocol"`
+	Host          string             `json:"host"`
+	SNI           string             `json:"sni"`
+	Cert          string             `json:"cert,omitempty"`
+	Key           string             `json:"key,omitempty"`
+	RealityTarget string             `json:"realityTarget,omitempty"`
+	Port          int                `json:"port"`
+	Devices       int                `json:"-"`
 	// CoreName is the name the core is installed under. It is not stored; it
 	// only lets a second core of the same protocol (reality2) name its links
 	// apart from the first.
@@ -257,17 +259,17 @@ func Validate(o *Options) error {
 		return fmt.Errorf("invalid host")
 	}
 	switch o.Protocol {
-	case "reality", "xhttp", "hysteria2", "wireguard", "ss2022", "trojan", "vlessenc", "amneziawg":
+	case "reality", "xhttp", "hysteria2", "wireguard", "ss2022", "trojan", "vlessenc", "amneziawg", "tlsvision", "xhttp-reality", "anytls", "tuic", "mieru-tcp", "mieru-udp":
 	default:
 		return fmt.Errorf("unsupported protocol")
 	}
 	if o.SNI == "" {
 		o.SNI = o.Host
 	}
-	if (o.Protocol == "xhttp" || o.Protocol == "hysteria2" || o.Protocol == "trojan") && (o.Cert == "" || o.Key == "") {
+	if (o.Protocol == "xhttp" || o.Protocol == "hysteria2" || o.Protocol == "trojan" || o.Protocol == "tlsvision" || o.Protocol == "anytls" || o.Protocol == "tuic") && (o.Cert == "" || o.Key == "") {
 		return fmt.Errorf("TLS certificate and key paths required")
 	}
-	if o.Protocol == "reality" {
+	if o.Protocol == "reality" || o.Protocol == "xhttp-reality" {
 		th, tp, err := net.SplitHostPort(o.RealityTarget)
 		if err != nil || !validHost(th) {
 			return fmt.Errorf("REALITY target %q must be a domain and port such as www.example.com:443", o.RealityTarget)
@@ -301,6 +303,9 @@ func Validate(o *Options) error {
 func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 	if err := Validate(&o); err != nil {
 		return Bundle{}, err
+	}
+	if Supplemental(o.Protocol) {
+		return generateSupplemental(o, st, clients)
 	}
 	if o.Protocol == "amneziawg" {
 		return generateAWG(o, st, clients)
@@ -495,6 +500,14 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 			root["api"] = object{"tag": "api", "listen": st.APISocket, "services": []string{"StatsService", "HandlerService"}}
 			delete(root, "routing")
 		}
+	}
+	if o.QuotaBridge != nil {
+		if api, ok := root["api"].(object); ok {
+			api["services"] = []string{"StatsService", "HandlerService"}
+		}
+	}
+	if err := applyQuotaBridge(root, o); err != nil {
+		return Bundle{}, err
 	}
 	server, err := json.MarshalIndent(root, "", "  ")
 	return Bundle{Server: server, Clients: profiles, Extension: extension}, err

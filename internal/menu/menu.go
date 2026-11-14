@@ -70,6 +70,11 @@ func Run(cfg *config.Config, cfgErr error) error {
 				printError(err)
 			}
 			waitForEnter()
+		case "certificates":
+			if err := runAction(actions.SystemCertificates, cfg); err != nil {
+				printError(err)
+			}
+			waitForEnter()
 		case "install":
 			if err := runAction(actions.SystemInstall, cfg); err != nil {
 				printError(err)
@@ -117,6 +122,7 @@ func showMainMenu() (string, error) {
 	fmt.Println("  8) Update")
 	fmt.Println("  9) Uninstall")
 	fmt.Println(" 10) Backup / Restore")
+	fmt.Println(" 11) Certificates: check / recover")
 	fmt.Println("  0) Quit")
 	fmt.Print("\n  Choice: ")
 
@@ -146,6 +152,8 @@ func showMainMenu() (string, error) {
 		return "uninstall", nil
 	case "10", "backup", "restore":
 		return "backup", nil
+	case "11", "certificates":
+		return "certificates", nil
 	case "0", "q", "quit", "exit":
 		return "quit", nil
 	default:

@@ -32,6 +32,9 @@ func AWGInterface(name string) string {
 }
 
 func ensureEngine(protocol string) error {
+	if kind := coreplan.SupplementalRuntime(protocol); kind != "" {
+		return ensureSupplemental(kind)
+	}
 	if protocol != "amneziawg" {
 		if err := EnsureXray(); err != nil {
 			return err
@@ -140,7 +143,7 @@ func SyncAWG(name string) error {
 func DefaultEgress() (string, error) {
 	out, err := exec.Command("ip", "-j", "route", "get", "1.1.1.1").Output()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("AmneziaWG needs an IPv4 egress route (ip route get 1.1.1.1): %w", err)
 	}
 	var routes []struct {
 		Dev string `json:"dev"`

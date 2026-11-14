@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/msVPNco/rovunet-panel/internal/actions"
+	"github.com/msVPNco/rovunet-panel/internal/config"
 	"github.com/msVPNco/rovunet-panel/internal/coreinstall"
 	"github.com/msVPNco/rovunet-panel/internal/handlers"
 	"github.com/msVPNco/rovunet-panel/internal/service"
@@ -46,6 +47,9 @@ func init() {
 		cfg, err := loadOrDefaultConfig()
 		if err != nil {
 			return err
+		}
+		if config.FiniteUpgradeCorePending(config.DefaultConfigFile, args[0]) {
+			return fmt.Errorf("finite accounting cutover pending; resume finite-accounting-migrate")
 		}
 		return coreinstall.Prepare(args[0], cfg.Users)
 	}})

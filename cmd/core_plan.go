@@ -37,7 +37,7 @@ func init() {
 		return os.WriteFile(filepath.Join(directory, "README.txt"), []byte(note), 0600)
 	}}
 	f := c.Flags()
-	f.StringVar(&o.Protocol, "protocol", "", "reality, xhttp, hysteria2, wireguard, amneziawg, ss2022, trojan, vlessenc")
+	f.StringVar(&o.Protocol, "protocol", "", "reality, xhttp, hysteria2, wireguard, amneziawg, ss2022, trojan, vlessenc, tlsvision, xhttp-reality, anytls, tuic, mieru-tcp, mieru-udp")
 	f.StringVar(&o.Subnet, "subnet", "", "AmneziaWG: IPv4 /24 subnet")
 	f.StringVar(&o.Egress, "egress", "", "AmneziaWG: Internet interface")
 	f.StringVar(&o.Host, "host", "", "Public endpoint hostname or IP")

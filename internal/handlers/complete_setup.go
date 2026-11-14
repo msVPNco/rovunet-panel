@@ -37,9 +37,15 @@ var completeCoreSpecs = []completeCoreSpec{
 	{"managed-ss2022", "ss2022", []int{28444, 28445, 28446}},
 	{"managed-trojan", "trojan", []int{30444, 30445, 30446}},
 	{"managed-vlessenc", "vlessenc", []int{31444, 31445, 31446}},
+	{"managed-anytls", "anytls", []int{32444, 32445, 32446}},
+	{"managed-tuic", "tuic", []int{33444, 33445, 33446}},
+	{"managed-mieru-tcp", "mieru-tcp", []int{34444, 34445, 34446}},
+	{"managed-mieru-udp", "mieru-udp", []int{35444, 35445, 35446}},
+	{"managed-tlsvision", "tlsvision", []int{36444, 36445, 36446}},
+	{"managed-xhttp-reality", "xhttp-reality", []int{37444, 37445, 37446}},
 }
 
-// No plain public SOCKS5 listener is needed for the 24-profile setup.
+// No plain public SOCKS5 listener is needed for the 30-profile setup.
 func completeTransports() []string {
 	return []string{config.TransportDNSTT, config.TransportSlipstream, config.TransportVayDNS,
 		config.TransportSoar, config.TransportNaive, config.TransportStunTLS, config.TransportVLESS, config.TransportSSH}
@@ -100,6 +106,9 @@ func HandleCompleteSetup(ctx *actions.Context) error {
 	if err := completeAfterUpdate(ctx, ctx.Config.(*config.Config)); err != nil {
 		return err
 	}
+	if err := finishInstallationAccounting(ctx.Config.(*config.Config), nil); err != nil {
+		return err
+	}
 	return CompleteBootstrap()
 }
 
@@ -113,6 +122,9 @@ type completeSetupOps struct {
 }
 
 func setupBackup(cfg *config.Config) (string, error) {
+	if requiresCoherent(cfg) || cfg.SubscriptionV2 {
+		return coherentUpdateBackup(cfg)
+	}
 	return setupBackupAt(cfg, filepath.Join(config.DefaultConfigDir, "setup-backups"))
 }
 
@@ -158,6 +170,12 @@ func EnsureCompleteSetup(cfg *config.Config, out actions.OutputWriter) error {
 	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
 	// Refresh after taking the lock; another setup may have finished meanwhile.
 	if err := cfg.Reload(); err != nil {
+		return err
+	}
+	if err := MigrateFiniteAccounting(cfg, out); err != nil {
+		return err
+	}
+	if err := coreinstall.RepairMissingProfiles(cfg.Users); err != nil {
 		return err
 	}
 	ops := completeSetupOps{
@@ -223,6 +241,10 @@ func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops c
 			}
 		}
 	}
+	bridge, bridgeErr := finiteBridgeOptions(cfg)
+	if bridgeErr != nil {
+		return bridgeErr
+	}
 	eligible := false
 	for _, u := range cfg.Users {
 		if !u.MeteredOnly() && !u.Expired(time.Now()) {
@@ -247,7 +269,7 @@ func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops c
 		if names[name] && spec.protocol == "reality" && !names["reality"] {
 			name = "reality"
 		}
-		if !eligible && (spec.protocol == "amneziawg" || spec.protocol == "ss2022" || spec.protocol == "trojan" || spec.protocol == "vlessenc" || spec.protocol == "wireguard" || spec.protocol == "hysteria2") {
+		if !eligible && !(bridge != nil && coreplan.BridgeProtocol(spec.protocol)) && (coreplan.Supplemental(spec.protocol) || spec.protocol == "amneziawg" || spec.protocol == "ss2022" || spec.protocol == "trojan" || spec.protocol == "vlessenc" || spec.protocol == "wireguard" || spec.protocol == "hysteria2") {
 			out.Info("Automatic setup: " + spec.protocol + " excluded for traffic-limited/expired accounts")
 			continue
 		}
@@ -266,7 +288,7 @@ func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops c
 			problems = append(problems, fmt.Errorf("%s: candidate ports are occupied", spec.protocol))
 			continue
 		}
-		if spec.protocol == "xhttp" || spec.protocol == "hysteria2" || spec.protocol == "trojan" {
+		if spec.protocol == "xhttp" || spec.protocol == "hysteria2" || spec.protocol == "trojan" || spec.protocol == "tlsvision" || spec.protocol == "anytls" || spec.protocol == "tuic" {
 			if !certChecked {
 				certChecked = true
 				if domain != "" {
@@ -279,7 +301,7 @@ func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops c
 			}
 			o.Host, o.SNI, o.Cert, o.Key = domain, domain, crt, key
 		}
-		if spec.protocol == "reality" {
+		if spec.protocol == "reality" || spec.protocol == "xhttp-reality" {
 			if err := ops.reality(&o, avoid); err != nil {
 				problems = append(problems, fmt.Errorf("%s: %w", spec.name, err))
 				continue
@@ -288,7 +310,10 @@ func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops c
 		if spec.protocol == "amneziawg" {
 			o.Subnet = "10.203.72.0/24"
 		}
-		o.DedicatedXray = spec.protocol == "ss2022" || spec.protocol == "trojan" || spec.protocol == "vlessenc"
+		if bridge != nil && coreplan.BridgeProtocol(spec.protocol) {
+			o.QuotaBridge = bridge
+		}
+		o.DedicatedXray = o.QuotaBridge != nil || spec.protocol == "tlsvision" || spec.protocol == "xhttp-reality" || spec.protocol == "ss2022" || spec.protocol == "trojan" || spec.protocol == "vlessenc"
 		o.HysteriaSalamander, o.HysteriaObfsConfigured = spec.protocol == "hysteria2", spec.protocol == "hysteria2"
 		if !backedUp {
 			path, err := ops.backup(cfg)
@@ -343,7 +368,7 @@ func reportCompleteProfiles(cfg *config.Config, out actions.OutputWriter) error 
 			out.Info("Traffic-limited account: restricted protocol set retained")
 			continue
 		}
-		required := 24
+		required := 30
 		if u.ExpiresAt != "" {
 			required--
 		} // shared-key Soar Direct is excluded for timed accounts

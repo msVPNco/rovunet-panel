@@ -34,7 +34,7 @@ func ensureOptionsEngine(o coreplan.Options) error {
 	if !o.DedicatedXray {
 		return ensureEngine(o.Protocol)
 	}
-	if !liveUserProtocol(o.Protocol) {
+	if !liveUserProtocol(o.Protocol) && !coreplan.BridgeProtocol(o.Protocol) {
 		return fmt.Errorf("dedicated runtime is only used for managed Xray protocols")
 	}
 	path := dedicatedXrayPath()

@@ -119,7 +119,7 @@ func AutoRealityOther(o *Options, first string) (string, error) {
 }
 
 func autoReality(o *Options, allow func(string) bool) (string, error) {
-	if o.Protocol != "reality" || strings.TrimSpace(o.RealityTarget) != "" {
+	if (o.Protocol != "reality" && o.Protocol != "xhttp-reality") || strings.TrimSpace(o.RealityTarget) != "" {
 		return "", nil
 	}
 	targets := RealityTargets

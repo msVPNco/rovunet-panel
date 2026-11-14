@@ -42,6 +42,9 @@ func usersFor(protocol string, users []config.UserConfig) []config.UserConfig {
 	var allowed []config.UserConfig
 	totals, _ := usage.TotalsChecked()
 	for _, u := range users {
+		if u.SQLiteMeter != nil && u.QuotaGB > 0 {
+			continue
+		} // finite native TCP is the only admitted SQL domain
 		spent := u.QuotaGB > 0 && totals[u.Username] >= u.UsageBase+u.QuotaBytes()
 		if !spent && !u.Expired(time.Now()) && protocols.Allowed(protocol, u.MeteredOnly(), u.ExpiresAt != "") {
 			allowed = append(allowed, u)
@@ -94,9 +97,17 @@ func loadUserCore(name string) (o coreplan.Options, st coreplan.State, ok bool, 
 // writeUserCore regenerates a user core's files for users. changed reports
 // whether the server configuration differs from what was on disk.
 func writeUserCore(dir string, o coreplan.Options, st *coreplan.State, users []config.UserConfig) (changed bool, err error) {
-	clients := clientsFor(usersFor(o.Protocol, users))
+	eligible := usersFor(o.Protocol, users)
+	if o.QuotaBridge != nil {
+		var e error
+		eligible, o.QuotaClients, e = bridgeUsers(o, users, eligible)
+		if e != nil {
+			return false, e
+		}
+	}
+	clients := clientsFor(eligible)
 	st.Paused = len(clients) == 0
-	if liveUserProtocol(o.Protocol) {
+	if liveUserProtocol(o.Protocol) || o.QuotaBridge != nil {
 		st.APISocket = filepath.Join(dir, "api.sock")
 		st.APIPort = 0
 	}
@@ -260,6 +271,42 @@ func Sync(users []config.UserConfig) error {
 	return errors.Join(errs...)
 }
 
+// RepairMissingProfiles provisions existing cores for accounts that were added
+// before an interrupted update completed. Healthy cores with complete client
+// files are left alone; an administrator's disabled core stays disabled.
+func RepairMissingProfiles(users []config.UserConfig) error {
+	cores, err := List()
+	if err != nil {
+		return err
+	}
+	for _, c := range cores {
+		o, st, managed, e := loadUserCore(c.Name)
+		if e != nil {
+			return e
+		}
+		if !managed || st.Disabled {
+			continue
+		}
+		eligible := usersFor(o.Protocol, users)
+		if o.QuotaBridge != nil {
+			eligible, _, e = bridgeUsers(o, users, eligible)
+			if e != nil {
+				return e
+			}
+		}
+		names := clientNames(filepath.Join(Root, c.Name))
+		for _, u := range eligible {
+			if !names[u.Username] {
+				if e = syncCore(c.Name, users); e != nil {
+					return fmt.Errorf("core %s: %w", c.Name, e)
+				}
+				break
+			}
+		}
+	}
+	return nil
+}
+
 // Seams for tests.
 var (
 	startUnit           = service.Start
@@ -319,8 +366,18 @@ func applyCore(name, serverPath string, previous []byte, revoking, start bool) e
 		return SyncAWG(name)
 	}
 	if !start {
-		if handled, err := liveUsers(name, previous, serverPath); handled {
-			return err
+		// HandlerService credential removal does not close established streams.
+		// Compatibility cores therefore need a validated restart on revocation;
+		// additions can still use the live API. Native quota bridges retain their
+		// per-account stream cutoff and do not restart other accounts here.
+		meta, e := ReadMeta(name)
+		if e != nil {
+			return e
+		}
+		if !revoking || !liveUserProtocol(meta.Protocol) {
+			if handled, err := liveUsers(name, previous, serverPath); handled {
+				return err
+			}
 		}
 	}
 	var err error
@@ -470,7 +527,7 @@ func Profiles(user config.UserConfig) ([]Profile, error) {
 		if !ok {
 			continue
 		}
-		if !protocols.Allowed(o.Protocol, user.MeteredOnly(), user.ExpiresAt != "") || st.Paused || st.Disabled || (st.Revocation != "" && !liveUserProtocol(o.Protocol) && o.Protocol != "amneziawg") {
+		if (user.SQLiteMeter != nil && user.QuotaGB > 0 && !bridgeEligible(o, user)) || (!protocols.Allowed(o.Protocol, user.MeteredOnly(), user.ExpiresAt != "") && !bridgeEligible(o, user)) || st.Paused || st.Disabled || (st.Revocation != "" && !liveUserProtocol(o.Protocol) && o.Protocol != "amneziawg") {
 			continue
 		}
 		// Generate for this user alone: credentials depend only on the user,

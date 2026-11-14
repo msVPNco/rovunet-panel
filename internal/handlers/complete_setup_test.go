@@ -72,7 +72,7 @@ func TestAutomaticUpgradeAddsFourAndRetainsOldFilesURLsAndCredentials(t *testing
 			t.Fatal(err)
 		}
 		after := savedSubscription(t, u, "android")
-		if len(after.Items) != 24 || len(savedSubscription(t, u, "windows").Items) != 24 {
+		if len(after.Items) != 30 || len(savedSubscription(t, u, "windows").Items) != 30 {
 			t.Fatal("complete counts were not exported")
 		}
 		links := map[string]string{}
@@ -98,7 +98,7 @@ func TestAutomaticUpgradeAddsFourAndRetainsOldFilesURLsAndCredentials(t *testing
 			t.Fatal("an account or URL changed")
 		}
 	}
-	if len(installed) != 4 || backups != 1 {
+	if len(installed) != 10 || backups != 1 {
 		t.Fatalf("installs=%v backups=%d; retry must be a no-op", installed, backups)
 	}
 	for _, name := range []string{"managed-ss2022", "managed-trojan", "managed-vlessenc"} {
@@ -119,7 +119,7 @@ func TestTimedCompleteAccountUsesEligibleTwentyThreeWithoutFalsePending(t *testi
 	if err := ensureCompleteSetupWith(cfg, discardOutput{}, ops); err != nil {
 		t.Fatal(err)
 	}
-	if len(savedSubscription(t, cfg.Users[0], "android").Items) != 23 || len(savedSubscription(t, cfg.Users[0], "windows").Items) != 23 {
+	if len(savedSubscription(t, cfg.Users[0], "android").Items) != 29 || len(savedSubscription(t, cfg.Users[0], "windows").Items) != 29 {
 		t.Fatal("timed eligibility was replaced with a fabricated full set")
 	}
 }
@@ -148,10 +148,10 @@ func TestFreshCompleteSetupExports24And22(t *testing.T) {
 	if err := ensureCompleteSetupWith(cfg, discardOutput{}, fixtureSetupOps(t, cfg, &installed, &backups)); err != nil {
 		t.Fatal(err)
 	}
-	if len(installed) != 9 || backups != 1 {
+	if len(installed) != 15 || backups != 1 {
 		t.Fatalf("fresh setup installed %v, backups=%d", installed, backups)
 	}
-	if len(savedSubscription(t, cfg.Users[0], "android").Items) != 24 || len(savedSubscription(t, cfg.Users[0], "windows").Items) != 24 {
+	if len(savedSubscription(t, cfg.Users[0], "android").Items) != 30 || len(savedSubscription(t, cfg.Users[0], "windows").Items) != 30 {
 		t.Fatal("fresh complete setup counts differ")
 	}
 }
@@ -182,7 +182,7 @@ func TestAutomaticSetupPartialFailureResumesWithoutRekeying(t *testing.T) {
 			t.Fatal("retry changed an already-installed core")
 		}
 	}
-	if len(installed) != 4 {
+	if len(installed) != 10 {
 		t.Fatalf("retry duplicated installs: %v", installed)
 	}
 }
@@ -231,7 +231,7 @@ func TestAutomaticSetupReportsMissingTLSInsteadOfClaiming24(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "valid certificate") {
 		t.Fatal("missing TLS was not reported")
 	}
-	if len(savedSubscription(t, cfg.Users[0], "android").Items) != 23 {
+	if len(savedSubscription(t, cfg.Users[0], "android").Items) != 26 {
 		t.Fatal("missing Trojan was fabricated in the feed")
 	}
 }
@@ -295,7 +295,7 @@ func TestAutomaticSetupDoesNotReenableAdministrativelyStoppedCore(t *testing.T) 
 		t.Fatal("stopped core was reported as complete")
 	}
 	after, _ := os.ReadFile(path)
-	if string(after) != string(data) || len(installed) != 4 {
+	if string(after) != string(data) || len(installed) != 10 {
 		t.Fatal("stopped core was modified or installed again")
 	}
 }

@@ -47,6 +47,7 @@ func init() {
 			{Key: "prefix", Label: "Username prefix", DependsOn: "action", DependsOnValues: []string{"bulk_add"}},
 			{Key: "days", Label: "Days until the user expires (blank or 0 = unlimited)", DependsOn: "action", DependsOnValues: []string{"add", "bulk_add", "renew"}},
 			{Key: "gb", Label: "Traffic limit in GB (blank or 0 = unlimited)", DependsOn: "action", DependsOnValues: []string{"add", "bulk_add", "renew"}},
+			{Key: "operation-id", Label: "Rotation request ID (32 lowercase hex); reuse for retries", CLIOnly: true},
 		},
 	})
 
@@ -61,6 +62,10 @@ func init() {
 		Name:     "Diagnostics",
 		Category: "system",
 	})
+	Register(&Action{ID: SystemCertificates, Name: "Certificates: check / recover", Category: "system", Inputs: []InputField{
+		{Key: "mode", Label: "Certificate operation", Default: "check", Options: []SelectOption{{Value: "check", Label: "Check certificates"}, {Value: "recover", Label: "Recover an expired certificate"}}},
+		{Key: "tag", Label: "TLS front or Slipstream tunnel tag (recovery only)", CLIOnly: true},
+	}})
 
 	Register(&Action{
 		ID:       SystemMTU,

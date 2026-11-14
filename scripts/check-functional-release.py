@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import subprocess
 
@@ -10,7 +11,12 @@ ROOT=Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--tag',required=True)
 a=p.parse_args()
-scope=json.loads((ROOT/'docs/releases/v1.21.2-scope.json').read_text())
+if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+',a.tag):
+    p.exit(1,'An exact stable semantic version tag is required.\n')
+scope_file=ROOT/'docs/releases'/f'{a.tag}-scope.json'
+if not scope_file.is_file():
+    p.exit(1,'No matching owner-authorized functional release scope.\n')
+scope=json.loads(scope_file.read_text())
 gates=json.loads((ROOT/'docs/release-gates.json').read_text())
 version=subprocess.check_output(['make','-s','print-version'],cwd=ROOT,text=True).strip()
 if scope['schema']!=1 or scope['tag']!=a.tag or a.tag!='v'+version or scope['profile']!='owner-authorized-functional-update':

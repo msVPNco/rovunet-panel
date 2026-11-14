@@ -25,6 +25,10 @@ import (
 
 func handleSystemUpdate(ctx *actions.Context) error {
 	out := ctx.Output
+	cfg := ctx.Config.(*config.Config)
+	if cfg.RecoverySealed {
+		return config.ErrCoordinatedRecovery
+	}
 	out.Info("Current version: " + version.String())
 	if strings.Contains(version.Version, "managed-preview") {
 		return actions.NewError(actions.SystemUpdate, "this private preview requires a reviewed preview package or its rollback script; the public updater does not yet support its managed cores", nil)
@@ -62,14 +66,19 @@ func handleSystemUpdate(ctx *actions.Context) error {
 	}
 	if newVersion == "" {
 		out.Info("The installed panel already matches the selected release.")
-		cfg := ctx.Config.(*config.Config)
+		if cfg.SubscriptionV2 || requiresCoherent(cfg) {
+			return HandlePostUpdate(ctx)
+		}
 		if err := completeAfterUpdate(ctx, cfg); err != nil {
 			return err
 		}
 		if err := coreinstall.ConfigureDefaultHysteriaObfuscation(cfg.Users); err != nil {
 			return err
 		}
-		return WriteSubscriptions(cfg, out)
+		if err := WriteSubscriptions(cfg, out); err != nil {
+			return err
+		}
+		return finishInstallationAccounting(cfg, nil)
 	}
 	out.Info("Staging authenticated release " + newVersion + "...")
 	tmpPath, err := binary.Download(downloadURL, filepath.Dir(execPath))
@@ -77,7 +86,7 @@ func handleSystemUpdate(ctx *actions.Context) error {
 		return actions.NewError(actions.SystemUpdate, "failed to authenticate update; existing panel was retained", err)
 	}
 	defer os.Remove(tmpPath)
-	recovery, err := prepareUpdateRecovery(ctx.Config.(*config.Config))
+	recovery, err := prepareCandidateRecovery(cfg, tmpPath)
 	if err != nil {
 		return actions.NewError(actions.SystemUpdate, "could not prepare validated recovery snapshot; existing panel was retained", err)
 	}
@@ -96,7 +105,91 @@ func handleSystemUpdate(ctx *actions.Context) error {
 // HandlePostUpdate runs the post-update steps (transport binary updates,
 // service regeneration). Exported for use by the hidden post-update command.
 func HandlePostUpdate(ctx *actions.Context) error {
-	return runPostUpdate(ctx)
+	cfg := ctx.Config.(*config.Config)
+	if cfg.SubscriptionV2 || cfg.V2Authority != nil {
+		if e := ValidateV2Authority(cfg); e != nil {
+			return e
+		}
+	}
+	if cfg.SubscriptionV2 || requiresCoherent(cfg) {
+		if e := coreinstall.RefreshInstalledEngines(); e != nil {
+			return e
+		}
+		if e := RecoverBeforeServing(cfg); e != nil {
+			return e
+		}
+		if e := refreshCoherentTransports(ctx); e != nil {
+			return e
+		}
+		if e := ApplyV2Deployment(cfg); e != nil {
+			return e
+		}
+		if completeBaseTunnels(cfg) {
+			if e := EnsureCompleteSetup(cfg, ctx.Output); e != nil {
+				return e
+			}
+		}
+		if e := finishInstallationAccounting(cfg, nil); e != nil {
+			return e
+		}
+		return WriteSubscriptions(cfg, ctx.Output)
+	}
+	if err := coreinstall.RefreshInstalledEngines(); err != nil {
+		return err
+	}
+	if err := runPostUpdate(ctx); err != nil {
+		return err
+	}
+	return finishInstallationAccounting(cfg, nil)
+}
+
+// SQLite-backed installations still need the reviewed transport executable and
+// unit migrations. Keep the legacy account synchronizer out of this path: the
+// coordinated deployment below owns credentials and accounting admission.
+func refreshCoherentTransports(ctx *actions.Context) error {
+	cfg := ctx.Config.(*config.Config)
+	var problems []error
+	for _, name := range []string{"dnstt-server", "slipstream-server", "vaydns-server", "caddy-naive"} {
+		path := filepath.Join(config.DefaultBinDir, name)
+		if _, e := binary.RecoverInterrupted(path); e != nil {
+			problems = append(problems, fmt.Errorf("%s recovery: %w", name, e))
+			continue
+		}
+		if _, e := os.Lstat(path); os.IsNotExist(e) {
+			continue
+		} else if e != nil {
+			problems = append(problems, e)
+			continue
+		}
+		if e := binary.UpdateInstalled(name); e != nil {
+			problems = append(problems, fmt.Errorf("%s reviewed runtime update pending: %w", name, e))
+		}
+	}
+	if e := errors.Join(problems...); e != nil {
+		return e
+	}
+	if cfg.Warp.Enabled {
+		path := filepath.Join(config.DefaultBinDir, "caddy-naive")
+		if _, e := os.Stat(path); e == nil {
+			if e := exec.Command("setcap", "cap_net_bind_service=+ep", path).Run(); e != nil {
+				return fmt.Errorf("restore TLS front capability: %w", e)
+			}
+		}
+	}
+	openTunnelPorts(cfg, ctx.Output)
+	for i := range cfg.Tunnels {
+		t := &cfg.Tunnels[i]
+		if !t.Enabled || t.IsDirectTransport() {
+			continue
+		}
+		if e := transport.RegenerateService(t, cfg); e != nil {
+			return e
+		}
+	}
+	if service.Exists("rovunet-dnsrouter") {
+		return dnsrouter.RegenerateRouterService()
+	}
+	return nil
 }
 
 func runPostUpdate(ctx *actions.Context) error {

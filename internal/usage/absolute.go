@@ -2,12 +2,18 @@ package usage
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// ErrUnsampledTraffic means the current reading and lifetime totals were
+// committed, while a previous process/counter gap remains explicitly unknown.
+// It is distinct from a failed read or durable write.
+var ErrUnsampledTraffic = errors.New("engine epoch or counter changed: totals preserved, unsampled traffic is unknown")
 
 // AbsoluteSource commits the last engine reading and the durable totals in
 // one file. Reading an engine never resets its counters: a crash between the
@@ -110,7 +116,7 @@ func RecordAbsolute(source, epoch string, reading map[string]int64) error {
 		}
 	}
 	if s.Incomplete {
-		return fmt.Errorf("engine epoch or counter changed: totals preserved, unsampled traffic is unknown")
+		return ErrUnsampledTraffic
 	}
 	return nil
 }
