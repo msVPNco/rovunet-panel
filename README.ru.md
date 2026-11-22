@@ -1,50 +1,78 @@
-# Rovunet Panel 2
+# Rovunet Panel 2.1.0
 
-## Исправления 2.0.2
+[English](README.md) · [فارسی](README.fa.md) · **Русский** · [简体中文](README.zh-CN.md)
 
-Общий адрес `/sub/TOKEN.trust.json` теперь доступен для Slipstream SOCKS и SSH. Используйте обычное обновление панели: оно также пересоздаёт активную конфигурацию Caddy. Старые ссылки, идентификаторы и учёт трафика сохраняются; v2 и автоматическая смена pin не включаются. Создание первого пользователя перенесено после подготовки движков. Удаление учитывает таймеры и SSH, сохраняет закрытую резервную копию и удаляет файлы общего bin только при совпадении записи владения и хеша.
+[Релиз v2.1.0](https://github.com/msVPNco/rovunet-panel/releases/tag/v2.1.0) · [Изменения и границы проверки](docs/releases/v2.1.0.md) · [Документация](docs/ru/README.md)
 
+Версия 2.1.0 основана на публичной 2.0.2. Два протокола по умолчанию заменены: WireGuard — на Shadowsocks 2022 AES-128, TUIC — на классический Shadowsocks AEAD ChaCha20-Poly1305. Добавлен пункт Free config в меню пользователей. AmneziaWG и Shadowsocks 2022 AES-256 сохранены.
 
-[English — complete reference](README.md) · [فارسی](README.fa.md) · [Release notes](docs/releases/v2.0.2.md)
+## Установка: Ubuntu 24.04, systemd, root
 
-Полная установка создаёт 15 ядер и базовые службы. Безлимитный аккаунт получает 30 профилей, аккаунт только со сроком — 29, с лимитом трафика — 6. Основные протоколы идут первыми, десять DNS-профилей — последними. Это порядок отображения, а не измерение скорости. 25 GB = 25 600 MB = 26 843 545 600 байт. Обновление сохраняет адрес подписки и записанный расход; обновите существующую подписку в приложении. Неизвестный расход не заменяется нулём. Проверьте домены, делегирование DNS и облачный межсетевой экран. Компоненты имеют отдельные лицензии. Тесты панели не гарантируют работу каждого приложения и провайдера.
-
-## Install / Ubuntu 24.04, systemd, root
+Загрузите установщик фиксированного релиза и проверьте его SHA-256 перед запуском. Связка `&&` останавливает установку при ошибке загрузки или проверки. Установщик проверяет подпись артефактов исходным производственным ключом.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.0.2/install.sh -o rovunet-install.sh
-python3 -c 'import hashlib,pathlib; assert hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="4ecf359cd96cfb8583ad89bdae5bfe4e14bfe1ee4dc12cedd603b77ec7519555", "Installer checksum mismatch"'
-sudo env ROVUNET_RELEASE_TAG=v2.0.2 bash rovunet-install.sh
+curl -fsSL https://raw.githubusercontent.com/msVPNco/rovunet-panel/v2.1.0/install.sh -o rovunet-install.sh &&
+python3 -c 'import hashlib,pathlib,sys; sys.exit(0 if hashlib.sha256(pathlib.Path("rovunet-install.sh").read_bytes()).hexdigest()=="4ecf359cd96cfb8583ad89bdae5bfe4e14bfe1ee4dc12cedd603b77ec7519555" else "Installer checksum mismatch")' &&
+sudo env ROVUNET_RELEASE_TAG=v2.1.0 bash rovunet-install.sh
 ```
 
-## Profiles
+## Протоколы и порты
 
-| Profile group | Default ports | Account policy |
+Порты ниже — первые варианты для новой установки. При обновлении замена использует сохранённый порт прежнего ядра, включая пользовательский. Остальные ядра и их порты сохраняются. Для отсутствующих ядер предусмотрены фиксированные запасные порты; случайного выбора нет.
+
+| Группа профилей | Порты по умолчанию | Допустимые аккаунты |
 |---|---|---|
-| VLESS TLS Vision, REALITY 1/2, XHTTP REALITY, XHTTP TLS | 36444, 9443, 2087, 37444, 2096 TCP | Unlimited, timed, finite |
-| VLESS WS TLS | 443 TCP, fronted by NaiveProxy | Unlimited, timed, finite |
-| Hysteria 2 (Salamander), TUIC | 8443, 33444 UDP | Unlimited, timed |
-| Mieru TCP / UDP | 34444 TCP / 35444 UDP | Unlimited, timed |
-| AnyTLS | 32444 TCP | Unlimited, timed |
-| Shadowsocks 2022, VLESS Encryption, Trojan TLS | 28444 TCP+UDP, 31444 TCP, 30444 TCP | Unlimited, timed; compatibility protocols |
-| AmneziaWG, WireGuard | 51840, 51820 UDP | Unlimited, timed |
-| NaiveProxy SOCKS5 / SSH; StunTLS SSH; direct SSH | 443 TCP; direct SSH 22 TCP | Unlimited, timed |
-| Soar Direct / SSH | 53 UDP | Direct: unlimited only; SSH: unlimited, timed |
-| DNSTT / NoizDNS SOCKS5 / SSH | 53 UDP | Unlimited, timed |
-| VayDNS SOCKS5 / SSH; Slipstream SOCKS5 / SSH | 53 UDP | Unlimited, timed |
+| VLESS TLS Vision, REALITY 1/2, XHTTP REALITY, XHTTP TLS | 36444, 9443, 2087, 37444, 2096 TCP | Безлимитные, со сроком, с лимитом трафика |
+| VLESS WS TLS | 443 TCP, через NaiveProxy | Безлимитные, со сроком, с лимитом трафика |
+| Hysteria 2 (Salamander) | 8443 UDP | Безлимитные, со сроком |
+| Mieru TCP / UDP | 34444 TCP / 35444 UDP | Безлимитные, со сроком |
+| AnyTLS | 32444 TCP | Безлимитные, со сроком |
+| **Shadowsocks 2022 AES-128** — `2022-blake3-aes-128-gcm` | **51820 TCP + UDP** | Безлимитные, со сроком |
+| **Shadowsocks AEAD ChaCha20** — `chacha20-ietf-poly1305` | **33444 TCP + UDP** | Безлимитные, со сроком |
+| Shadowsocks 2022 AES-256 | 28444 TCP + UDP | Безлимитные, со сроком |
+| VLESS Encryption / Trojan TLS | 31444 / 30444 TCP | Безлимитные, со сроком |
+| AmneziaWG | 51840 UDP | Безлимитные, со сроком |
+| NaiveProxy SOCKS5 / SSH; StunTLS SSH; прямой SSH | 443 TCP; прямой SSH — 22 TCP | Безлимитные, со сроком |
+| Soar Direct / SSH | 53 UDP | Direct: только безлимитные; SSH: безлимитные, со сроком |
+| DNSTT / NoizDNS SOCKS5 / SSH | 53 UDP | Безлимитные, со сроком |
+| VayDNS SOCKS5 / SSH; Slipstream SOCKS5 / SSH | 53 UDP | Безлимитные, со сроком |
 
-## Commands
+Новый ChaCha20 использует классический AEAD, а не метод Shadowsocks 2022 ChaCha20. Оба новых метода выдают отдельные данные доступа каждому пользователю и стандартные ссылки `ss://`; TLS-сертификат им не требуется.
+
+При полной поддерживаемой конфигурации устанавливаются 15 ядер и базовые службы: безлимитный аккаунт получает 30 профилей, аккаунт только со сроком — 29, с лимитом трафика — 6. Десять DNS-профилей идут последними; порядок не является рейтингом скорости. Нужны корректные домены, делегирование DNS и правила облачного межсетевого экрана.
+
+## Free config: 50 GiB на 30 дней
+
+Откройте `sudo rovunet`, затем **3 — Users → 2 — Free config (50 GB / 30 days)**. Панель создаст отдельный помеченный аккаунт с общим лимитом **50 GiB** и сроком **30 дней**. Обычные аккаунты не преобразуются; повтор после прерывания сохраняет созданную учётную запись и остаток лимита.
+
+**Users → 3 — Export Free config for review** повторяет приватный экспорт в `/etc/rovunet/donations/<username>.json`. Экспорт требует исправного привязанного учёта и доступного остатка. Все три Shadowsocks-метода, включая новые AES-128 и ChaCha20, исключены из аккаунтов с лимитом трафика.
+
+Это функция панели и приватный экспорт данных доступа. Каталог и вкладка Free в выпущенных приложениях ещё не опубликованы и не включаются этим релизом; для них нужен отдельный выпуск и активация.
+
+## Обновление и сертификаты
+
+Используйте обычный пункт Update, затем обновите ту же сохранённую подписку в приложении. Сохраняются аккаунты, пароли, сроки, известный расход, URL подписки и посторонние профили. Два заменённых протокола получают новые идентификаторы и данные доступа; перед заменой создаются закрытая резервная копия ядра и журнал восстановления. Неизвестный расход не приравнивается к нулю.
+
+Сохранены проверка TLS, восстановление сертификатов и `/sub/TOKEN.trust.json` для обоих вариантов подписки Slipstream. Управляемые движки по-прежнему загружаются из проверенного подписанного набора v2.0.2. Отдельный подписанный trust-формат частной 2.0.3 требует самостоятельной проверки совместимости.
+
+## Что проверено
+
+[CI исходников релиза](https://github.com/msVPNco/rovunet-panel/actions/runs/45071747305), [подготовка с точными артефактами движков](https://github.com/msVPNco/rovunet-panel/actions/runs/45072135345) и [финальная проверка подписанных артефактов и публикация](https://github.com/msVPNco/rovunet-panel/actions/runs/45076586381) завершились успешно.
+
+Финальная проверка охватывает установщик `--no-run` и настоящее меню обновления **официальной 2.0.2 → 2.1.0**, сохранение SQLite-учёта и TLS/trust-файлов. Среда — Linux amd64 в изолированных пространствах имён с имитацией systemd. Подписанные байты ARM64 проверены, но не выполнялись; обновление частной 2.0.3 не испытывалось. Это не проверка полного первого интерактивного запуска, живого трафика Caddy/Slipstream, каждого приложения или провайдера. См. [границы приёмки](docs/releases/v2.1.0-test-scope.txt) и [общие требования безопасности](docs/release-gates.json).
+
+## Полезные команды
 
 ```bash
-sudo rovunet                         # interactive menu
-sudo rovunet users add               # account creation, time and traffic limits
-sudo rovunet subscriptions-refresh   # regenerate saved URLs
+sudo rovunet                         # интерактивное меню
+sudo rovunet users add               # обычный аккаунт, срок и лимит трафика
+sudo rovunet subscriptions-refresh   # обновить данные по сохранённым URL
 sudo rovunet certificates --mode check
 sudo rovunet certificates --mode recover --tag slipstream-socks
 sudo rovunet diag
 sudo rovunet backup --file /root/rovunet-backup.age --recipient age1YOUR_PUBLIC_RECIPIENT
 ```
 
-See the English reference for encrypted backup identities, certificate recovery, authenticated Slipstream certificate pins, update journals, compatibility limitations and security qualification scope.
+[Полный английский справочник](README.md) описывает ключи зашифрованных резервных копий, восстановление сертификатов и журналы обновлений. [Контракт Panel2](docs/contracts/panel-v2-addendum.md): строгий feed1, status2 по отдельному включению, без API сессий устройств.
 
-[Panel2 status, certificate and session contract](docs/contracts/panel-v2-addendum.md) — strict feed1; opt-in status2; no device-session API.
+Лицензия панели — [AGPL-3.0](LICENSE); компоненты имеют собственные лицензии. Проект основан на SlipGate и официально с ним не связан; см. [NOTICE](NOTICE.md).
