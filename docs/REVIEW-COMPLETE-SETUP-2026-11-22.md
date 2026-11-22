@@ -39,11 +39,16 @@ and legacy executable choices retain their existing preservation rules.
 
 ## Consolidated earlier review changes
 
-This candidate includes the reviewed changes from PRs #66–#69: an empty or
+This candidate includes the reviewed changes from PRs #66–#68: an empty or
 unreadable core inventory is visible in diagnostics, tunnel statistics cover
-the full inventory, managed ports are selected randomly from free compatible
-ports, and donation accounts use a shared 50 GiB/30-day server quota with
-private export. Existing chosen ports and the DNS/HTTPS base ports are kept.
+the full inventory, and donation accounts use a shared 50 GiB/30-day server
+quota with private export. The owner withdrew the random-port change from
+PR #69 on 2026-11-22. Automatic setup again tries the original documented
+ports in their original order and checks the complete TCP/UDP requirement.
+Existing saved ports and the DNS/HTTPS base ports are kept. This source
+revert does not change any port on an already running server; live port
+restoration must use the verified prior configuration and the installed
+panel's rollback-capable port operation, not an inferred list of numbers.
 
 ## Slipstream
 

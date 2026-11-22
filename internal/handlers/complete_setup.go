@@ -116,9 +116,6 @@ type completeSetupOps struct {
 	list     func() ([]coreinstall.Meta, error)
 	install  func(string, coreplan.Options, []config.UserConfig) (string, error)
 	portFree func(int, string) error
-	// When present, used by the real installer for random port allocation.
-	// Test fixtures without this field preserve deterministic legacy defaults.
-	selectPort func(completeCoreSpec, func(int, string) error) (int, error)
 	cert     func(string) (string, string, bool)
 	backup   func(*config.Config) (string, error)
 	reality  func(*coreplan.Options, string) error
@@ -183,7 +180,6 @@ func EnsureCompleteSetup(cfg *config.Config, out actions.OutputWriter) error {
 	}
 	ops := completeSetupOps{
 		list: coreinstall.List, install: coreinstall.InstallForUsers, portFree: coreinstall.PortFree,
-		selectPort: randomFreeCorePort,
 		cert: func(domain string) (string, string, bool) {
 			crt, key, found := waitCaddyCert(out, domain, 90*time.Second)
 			if !found || validSetupCertificate(crt, key, domain) != nil {
@@ -282,19 +278,10 @@ func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops c
 			continue
 		}
 		o := coreplan.Options{Protocol: spec.protocol, Host: host}
-		if ops.selectPort != nil {
-			chosen, chooseErr := ops.selectPort(spec, ops.portFree)
-			if chooseErr != nil {
-				problems = append(problems, fmt.Errorf("%s: %w", spec.protocol, chooseErr))
-				continue
-			}
-			o.Port = chosen
-		} else {
-			for _, port := range spec.ports {
-				if ops.portFree(port, coreinstall.Proto(spec.protocol)) == nil {
-					o.Port = port
-					break
-				}
+		for _, port := range spec.ports {
+			if ops.portFree(port, coreinstall.Proto(spec.protocol)) == nil {
+				o.Port = port
+				break
 			}
 		}
 		if o.Port == 0 {
