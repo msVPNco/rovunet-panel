@@ -35,6 +35,8 @@ func handleSystemUsers(ctx *actions.Context) error {
 		var err error
 		action, err = prompt.Select("Action", []actions.SelectOption{
 			{Value: "add", Label: "Add user"},
+			{Value: "donate", Label: "Donated config (50 GB / 30 days)"},
+			{Value: "donation-export", Label: "Export existing donated config for review"},
 			{Value: "bulk_add", Label: "Add multiple users (random creds)"},
 			{Value: "edit_password", Label: "Edit user password"},
 			{Value: "rotate_link", Label: "Replace subscription link (keep connection credentials)"},
@@ -114,6 +116,21 @@ func handleSystemUsers(ctx *actions.Context) error {
 
 	case "add":
 		if err := createUserInteractive(cfg, out, username, ctx.GetArg("days"), ctx.GetArg("gb")); err != nil {
+			return actions.NewError(actions.SystemUsers, err.Error(), nil)
+		}
+
+	case "donate":
+		if err := createDonationUser(cfg, out, username); err != nil {
+			return actions.NewError(actions.SystemUsers, err.Error(), nil)
+		}
+
+	case "donation-export":
+		if username == "" {
+			var err error
+			username, err = prompt.String("Donation username", "")
+			if err != nil { return err }
+		}
+		if err := writeDonationCandidate(cfg, strings.TrimSpace(username), out); err != nil {
 			return actions.NewError(actions.SystemUsers, err.Error(), nil)
 		}
 
