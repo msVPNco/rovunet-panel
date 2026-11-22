@@ -113,6 +113,7 @@ func handleSystemStats(ctx *actions.Context) error {
 			txHist = appendCapped(txHist, txRate)
 
 			tunnels := activeTunnels(cfg)
+			_, page, _ = pagedTunnels(tunnels, page, statsTunnelPageSize)
 
 			drawDashboard(cpuHist, ramHist, rxHist, txHist,
 				cpuPct, ramPct, rxRate, txRate,
