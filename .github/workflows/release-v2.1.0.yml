@@ -66,6 +66,7 @@ jobs:
           python3 scripts/prepare-v2.1.0-release.py build --source "$SOURCE_COMMIT" --work "$PREPARATION"
 
       - name: Exercise original signed baseline harness
+        id: baseline_harness
         timeout-minutes: 20
         run: |
           # Prove the final acceptance harness on original signed 2.0.2 before
@@ -74,6 +75,25 @@ jobs:
             --baseline "$PREPARATION/base" --work "$PREPARATION/baseline-smoke"
           sudo chown -R "$(id -u):$(id -g)" "$PREPARATION/baseline-smoke"
           python3 scripts/prepare-v2.1.0-release.py record-gate --work "$PREPARATION" --gate signed-baseline-harness
+
+      - name: Make baseline diagnostics readable after execution
+        if: always() && steps.baseline_harness.outcome != 'skipped' && steps.baseline_harness.outcome != ''
+        run: |
+          # The harness copies only synthetic command logs and its public smoke
+          # summary here. Its private namespace inputs and TLS keys stay out.
+          if sudo test -d "$PREPARATION/baseline-smoke"; then
+            sudo chown -R "$(id -u):$(id -g)" "$PREPARATION/baseline-smoke"
+          fi
+      - name: Retain signed baseline harness diagnostics
+        if: always() && steps.baseline_harness.outcome != 'skipped' && steps.baseline_harness.outcome != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rovunet-v2.1.0-baseline-harness-diagnostics
+          path: |
+            ${{ env.PREPARATION }}/baseline-smoke/BASELINE-SMOKE.json
+            ${{ env.PREPARATION }}/baseline-smoke/logs/**
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Validate Shadowsocks with reviewed Xray
         timeout-minutes: 20
