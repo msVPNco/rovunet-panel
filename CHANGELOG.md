@@ -4,11 +4,14 @@ Changes in Rovunet Panel. Each release's notes come from its section here.
 
 ## v2.1.0
 
+Released **2026-11-22 (UTC)** as [v2.1.0](https://github.com/msVPNco/rovunet-panel/releases/tag/v2.1.0), from source [`eba8286f2aeb68792090332dd3f7a535ab95b99a`](https://github.com/msVPNco/rovunet-panel/commit/eba8286f2aeb68792090332dd3f7a535ab95b99a).
+
 - Build from the public v2.0.2 source. Replace the default WireGuard and TUIC cores with Shadowsocks 2022 AES-128 and classic AEAD ChaCha20-Poly1305, using the old saved ports and a private per-core recovery journal. Retain stopped choices, AmneziaWG, the existing AES-256 core and unrelated profiles.
 - Keep the original ordered fixed port choices for fresh setup. Both new Shadowsocks methods use TCP and UDP without a TLS certificate. Preserve account IDs, periods, consumption and saved subscription URLs; refresh that same subscription for the replacement profiles.
 - Add **Users → Free config (50 GB / 30 days)** and a private review export, enforcing the existing finite-account ledger and protocol policy. This panel feature does not release or activate the separate app Free catalog.
 - Pin managed runtime downloads to authenticated v2.0.2 engine assets independently of panel version. Preserve the v2.0.2 Slipstream trust-companion route, TLS verification and original production signing root.
-- See [scope and release acceptance](docs/releases/v2.1.0.md). Public availability requires exact source/runtime tests, the owner's original manifest signature and final signed install/update acceptance.
+- Exact-source CI and preparation passed, including configuration, TCP and UDP checks with the authenticated Xray runtime, complete setup and migration/recovery checks. The owner's existing production identity signed the manifest. [Final signed acceptance and publication run 45076586381](https://github.com/msVPNco/rovunet-panel/actions/runs/45076586381) passed all four final gates: signed fresh-installer staging, the official v2.0.2 menu update, account identity and usage preservation, and TLS/trust preservation.
+- Final signed acceptance ran on Linux amd64 in private namespaces with simulated systemd. Fresh installation was checked with `--no-run`; the update fixture retained its recorded SQLite usage and TLS/trust files. ARM64 bytes were authenticated but not executed in that lane. This does not certify a physical VM, an upgrade from private v2.0.3, or live Caddy/Slipstream payload traffic over an ISP. See [scope and release acceptance](docs/releases/v2.1.0.md).
 
 ## v2.0.1
 
