@@ -47,6 +47,7 @@ jobs:
           python3 scripts/test-preview-rollback-usage.py
           python3 scripts/test-managed-preview-upgrade.py
           python3 scripts/test-release-tag.py
+          python3 scripts/test-repair-preview-runtimes.py
       - name: Isolated source unit and race suites
         # Exact-runtime suites run before publication in the signer VM and again
         # below against authenticated published assets. A fresh upstream rebuild

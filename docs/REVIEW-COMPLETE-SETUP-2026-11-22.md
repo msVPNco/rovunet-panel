@@ -61,3 +61,35 @@ VPS repair. No customer server has been modified. Runtime acquisition tests
 and source checks do not establish a real client connection over the user's
 network; the existing isolated system/runtime acceptance gates remain required
 before production promotion.
+
+## Repair for the inspected private binary
+
+The operator subsequently confirmed that every managed runtime target was
+missing and that the installed panel has SHA256
+`26a796b3891c662e8c8d788f2430e7391f0cc4012cca77343251344b49b1640d`.
+The matching uploaded ELF was inspected statically, without executing it.
+Its linked version is `2.0.3`, source label is
+`bf7c63fc7fa685be77d3df65149daef0a1ac24a9`, and its runtime download code
+constructs the nonexistent `v2.0.3` release path. The preview bundle's tag
+`v2.0.3-preview.2` is not the runtime tag used by this executable.
+
+The actual linked reviewed Go/release runtime tables and production keyring
+are byte-identical to the public v2.0.2 source. Static inspection of the
+supplemental map initializer and verification functions also confirms the
+same sing-box/mita digests, Xray commit/version and AmneziaWG commits. This
+supports adding those exact authenticated runtime files to this installation;
+it does not establish correctness of every unavailable private-source change.
+
+`scripts/repair-preview-runtimes.py` is restricted to that exact panel digest
+on Linux amd64. It verifies the pinned production manifest/signature and all
+required asset bytes before publishing missing runtime files. It preserves
+existing matching files and refuses conflicting files or symlinks. It keeps
+its own private repair receipt and does not edit the panel's ownership ledger,
+panel executable, configuration, users or subscription data.
+
+The script stages only the missing runtimes. After it reports success, the
+operator invokes the installed panel's normal `rovunet complete-setup` command
+to configure and start the missing cores. That second command is a real setup
+operation, not a read-only check. Any failure must be inspected before a
+further installation attempt. This repair does not install the new panel code
+or the other feature changes in this pull request.
