@@ -30,8 +30,14 @@ Release requirements:
 Exact source CI, authenticated-runtime/system acceptance and draft preparation
 must pass before signing. The owner's existing Windows-local production root
 signs only the reviewed exact manifest. Publication verifies the signature and
-every artifact hash, exact source/preparation CI, signed fresh-install/update
+every artifact hash, exact source/preparation CI, signed fresh-installer staging/update
 acceptance and the previous-Latest lease. CI cannot sign or choose a new root.
+
+The final signed runner stages the actual installer with --no-run and exercises
+the original 2.0.2 Update menu in private Linux namespaces with simulated
+systemd. It preserves a real SQLite opening and TLS/trust identities. This is
+not full interactive first-account onboarding or live Caddy/Slipstream traffic;
+those two transport services are administratively inactive in that fixture.
 
 The panel menu/export does not ship or activate the separate app Free catalog.
 No claim is made that the owner's reported connection failures have been

@@ -18,7 +18,7 @@
     "No silent conversion of normal accounts or app catalog publication/activation",
     "Preserve public v2.0.2 Slipstream trust-companion route and normal certificate validation",
     "Runtime version independent of panel version, pinned to authenticated unchanged v2.0.2 assets and provenance",
-    "Exact source CI, actual runtime/system tests and final signed fresh-install/menu-update/accounting/recovery acceptance",
+    "Exact source CI, actual runtime/system tests and final production-signed fresh-installer staging/menu-update/accounting/recovery acceptance in isolated Linux namespaces with simulated systemd",
     "Windows-local existing production signing identity; exact signed bytes and expected previous Latest lease; no key rotation"
   ],
   "excluded": [
@@ -40,6 +40,6 @@
   },
   "policy_change": "Only register the two requested Shadowsocks aliases as metered compatibility protocols; finite quota eligibility remains unchanged.",
   "final_exact_byte_acceptance_required": true,
-  "publication_status": "Do not publish until exact source/runtime/preparation CI and final signed fresh-install, menu-update and relevant accounting/recovery acceptance pass. Broader qualifications are reported separately.",
+  "publication_status": "Do not publish until exact source/runtime/preparation CI and final signed fresh-installer staging, menu-update and relevant accounting/recovery acceptance pass. The final fixture does not certify full interactive onboarding or live Caddy/Slipstream traffic; broader qualifications are reported separately.",
   "client_contract": "docs/contracts/panel-integration-v1.md"
 }

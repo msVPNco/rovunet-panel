@@ -123,6 +123,10 @@ type completeSetupOps struct {
 	reality         func(*coreplan.Options, string) error
 }
 
+// The same replacement operation is used by a full setup and by a coherent
+// update that intentionally retains a partial selection of base transports.
+var replaceSetupDefaults = migrateCompleteReplacements
+
 func setupBackup(cfg *config.Config) (string, error) {
 	if requiresCoherent(cfg) || cfg.SubscriptionV2 {
 		return coherentUpdateBackup(cfg)
@@ -159,10 +163,21 @@ func setupBackupAt(cfg *config.Config, dir string) (string, error) {
 // recovery journal, then adds missing cores. Unrelated cores and stopped choices
 // retain their saved settings and credentials.
 func EnsureCompleteSetup(cfg *config.Config, out actions.OutputWriter) error {
-	if err := os.MkdirAll(config.DefaultConfigDir, 0750); err != nil {
+	return ensureCompleteSetupMode(cfg, out, false)
+}
+
+func completeCoherentCoreSetup(cfg *config.Config, out actions.OutputWriter) error {
+	return ensureCompleteSetupMode(cfg, out, true)
+}
+
+func ensureCompleteSetupMode(cfg *config.Config, out actions.OutputWriter, preservePartial bool) error {
+	// The lock belongs to the shared core installation, including when the
+	// caller loaded a configuration from a custom path.
+	lockDir := filepath.Dir(coreinstall.Root)
+	if err := os.MkdirAll(lockDir, 0750); err != nil {
 		return err
 	}
-	f, err := os.OpenFile(filepath.Join(config.DefaultConfigDir, ".complete-setup.lock"), os.O_CREATE|os.O_RDWR, 0600)
+	f, err := os.OpenFile(filepath.Join(lockDir, ".complete-setup.lock"), os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		return err
 	}
@@ -175,6 +190,13 @@ func EnsureCompleteSetup(cfg *config.Config, out actions.OutputWriter) error {
 	if err := cfg.Reload(); err != nil {
 		return err
 	}
+	if preservePartial && !completeBaseTunnels(cfg) {
+		// Updating an existing partial installation replaces only the selected
+		// old defaults. It does not create an unrelated full preset or prompt
+		// for new domains. Completed replacements still need current feeds.
+		_, err := replaceDefaultsAndPublish(cfg, out, replaceSetupDefaults)
+		return err
+	}
 	if err := MigrateFiniteAccounting(cfg, out); err != nil {
 		return err
 	}
@@ -182,7 +204,7 @@ func EnsureCompleteSetup(cfg *config.Config, out actions.OutputWriter) error {
 		return err
 	}
 	ops := completeSetupOps{
-		replaceDefaults: migrateCompleteReplacements,
+		replaceDefaults: replaceSetupDefaults,
 		list:            coreinstall.List, install: coreinstall.InstallForUsers, portFree: coreinstall.PortFree,
 		cert: func(domain string) (string, string, bool) {
 			crt, key, found := waitCaddyCert(out, domain, 90*time.Second)
@@ -202,6 +224,14 @@ func EnsureCompleteSetup(cfg *config.Config, out actions.OutputWriter) error {
 		},
 	}
 	return ensureCompleteSetupWith(cfg, out, ops)
+}
+
+func replaceDefaultsAndPublish(cfg *config.Config, out actions.OutputWriter, replace func(*config.Config, actions.OutputWriter) (map[string]bool, error)) (map[string]bool, error) {
+	blocked, err := replace(cfg, out)
+	// A replacement may already have retired its old listener, even if a
+	// later replacement or setup prerequisite fails. Publish applied profiles
+	// before entering any of those later early-return paths.
+	return blocked, errors.Join(err, WriteSubscriptions(cfg, out))
 }
 
 func validSetupCertificate(crt, key, domain string) error {
@@ -229,11 +259,9 @@ func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops c
 	blocked := map[string]bool{}
 	if ops.replaceDefaults != nil {
 		var err error
-		blocked, err = ops.replaceDefaults(cfg, out)
+		blocked, err = replaceDefaultsAndPublish(cfg, out, ops.replaceDefaults)
 		if err != nil {
-			// A completed replacement remains usable if a later one fails.
-			// Publish only applied cores and retain all existing subscription URLs.
-			return errors.Join(err, WriteSubscriptions(cfg, out))
+			return err
 		}
 	}
 	list, err := ops.list()

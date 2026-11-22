@@ -2,7 +2,7 @@
 """Prepare a tested v2.1.0 draft, then publish only its existing-key signature.
 
 No command creates a key, exports a vault, signs in CI, or replaces public assets.
-The separate build, gate, draft and publish commands keep publication last.
+The separate build, gate, draft, signed-stage and publish commands keep publication last.
 """
 import argparse
 import base64
@@ -32,6 +32,7 @@ PANELS = ('rovunet-linux-amd64', 'rovunet-linux-arm64')
 REPLACED = set(PANELS) | {'install.sh', 'rovunet-panel-source.tar.gz', 'TEST-SCOPE.txt',
                          'SHA256SUMS', 'RELEASE-MANIFEST.json', 'RELEASE-MANIFEST.sig'}
 GATES = {
+    'signed-baseline-harness': 'Exercise original signed baseline harness',
     'shadowsocks': 'Validate Shadowsocks with reviewed Xray',
     'amneziawg': 'Exercise preserved AmneziaWG with candidate',
     'complete-setup': 'Exercise candidate complete setup',
@@ -46,8 +47,6 @@ RUNTIME_CASES = {
     'TestShadowsocksUDPPayload': {'ss2022', 'ss2022-aes128', 'ss-aead-chacha20'},
 }
 FINAL_GATES = {'signed_fresh_install', 'signed_menu_update', 'account_identity_and_usage', 'tls_trust_preservation'}
-UPGRADE_BASES = {BASE_TAG: BASE_COMMIT,
-                 'v2.0.3-preview.2': 'bf7c63fc7fa685be77d3df65149daef0a1ac24a9'}
 
 
 def unique(pairs):
@@ -260,6 +259,20 @@ def file_map(directory):
     return result
 
 
+def build_signing_helper(work):
+    """Build the unchanged Windows vault tool; never execute it or access a key."""
+    signing = work / 'signing'
+    signing.mkdir()
+    env = os.environ.copy()
+    env.update(GOOS='windows', GOARCH='amd64', CGO_ENABLED='0', GOAMD64='v1',
+               GOTOOLCHAIN='local', GOTELEMETRY='off', GOENV='off', GOPROXY='off')
+    run('go', 'build', '-buildvcs=false', '-trimpath', '-ldflags=-s -w',
+        '-o', signing / 'signing-vault.exe', './tools/signing-vault', env=env, cwd=ROOT)
+    shutil.copyfile(ROOT / 'scripts/panel-signing-vault.ps1', signing / 'panel-signing-vault.ps1')
+    shutil.copyfile(ROOT / 'scripts/sign-v2.1.0-candidate.ps1', signing / 'SIGN-CANDIDATE.ps1')
+    return file_map(signing)
+
+
 def build(source, work):
     clean_source(source)
     run_id = require_actions(source)
@@ -293,9 +306,11 @@ def build(source, work):
     (assets / 'rovunet-panel-source.tar.gz').write_bytes(assembler.source_archive(assembler.git_tree()))
     shutil.copyfile(ROOT / 'install.sh', assets / 'install.sh')
     shutil.copyfile(ROOT / 'docs/releases/v2.1.0-test-scope.txt', assets / 'TEST-SCOPE.txt')
+    signing_files = build_signing_helper(work)
+    clean_source(source)
     receipt = {'schema': 1, 'tag': TAG, 'source_commit': source, 'source_ci': ci,
                'prepare_run_id': run_id, 'base_tag': BASE_TAG, 'base_manifest_sha256': BASE_MANIFEST_SHA256,
-               'files': file_map(assets)}
+               'files': file_map(assets), 'signing_files': signing_files}
     (work / 'BUILD-RECEIPT.json').write_bytes(canonical(receipt))
     for path in assets.glob('*-linux-*'):
         if path.name.endswith(('amd64', 'arm64')):
@@ -307,7 +322,8 @@ def checked_build(work):
     receipt = decode_json((work / 'BUILD-RECEIPT.json').read_bytes())
     if receipt.get('schema') != 1 or receipt.get('tag') != TAG or receipt.get('base_tag') != BASE_TAG or \
             receipt.get('base_manifest_sha256') != BASE_MANIFEST_SHA256 or \
-            file_map(work / 'assets') != receipt.get('files'):
+            file_map(work / 'assets') != receipt.get('files') or \
+            file_map(work / 'signing') != receipt.get('signing_files'):
         raise ValueError('Candidate changed after preparation')
     return receipt
 
@@ -332,6 +348,72 @@ def runtime_results(raw):
     return {name: sorted(case for case in cases if name + '/' + case in passed) for name, cases in RUNTIME_CASES.items()}
 
 
+def baseline_smoke_summary(summary, panel_hash, installer_hash):
+    if summary.get('schema') != 1 or summary.get('purpose') != 'rovunet-signed-baseline-harness-smoke' or \
+            summary.get('status') != 'pass' or summary.get('tag') != BASE_TAG or \
+            summary.get('source_commit') != BASE_COMMIT or summary.get('manifest_sha256') != BASE_MANIFEST_SHA256 or \
+            summary.get('panel_sha256') != panel_hash or summary.get('production_signature_verified') is not True or \
+            summary.get('final_v210_acceptance') is not False or \
+            summary.get('runner_sha256') != digest(ROOT / 'scripts/test-signed-v210-update.py') or \
+            summary.get('simulator_sha256') != digest(ROOT / 'scripts/test-complete-setup.py') or \
+            summary.get('scope', {}).get('environment') != 'isolated-linux-namespaces' or \
+            summary.get('scope', {}).get('systemd') != 'simulated':
+        raise ValueError('Signed baseline smoke does not match the immutable baseline/reviewed harness')
+    fresh = summary.get('signed_baseline_fresh_installer', {})
+    fixture = summary.get('fixture', {})
+    if fresh.get('installed_sha256') != panel_hash or fresh.get('installer_sha256') != installer_hash or \
+            fresh.get('negative_cases_rejected') != ['signature', 'panel'] or \
+            fresh.get('setup_pending') is not True or fresh.get('pending_repeat_preserved') is not True or \
+            fixture.get('sqlite_confirmed_bytes') != 1217 or \
+            fixture.get('active_legacy_cores') != ['managed-tuic', 'wireguard'] or fixture.get('tls_trust_present') is not True:
+        raise ValueError('Signed baseline installer/accounting/TLS/legacy-core fixture did not pass')
+
+
+def execution_logs(work, executions, phase):
+    if not isinstance(executions, list) or not 1 <= len(executions) <= 256:
+        raise ValueError('Acceptance is missing its execution logs')
+    log_root = work / 'logs'
+    if log_root.is_symlink() or (log_root / phase).is_symlink():
+        raise ValueError('Execution logs must remain in the staged workspace')
+    for execution in executions:
+        log_name = execution.get('name', '')
+        if not re.fullmatch('logs/' + phase + '/[A-Za-z0-9._-]+[.]log', log_name) or \
+                type(execution.get('exit_code')) is not int:
+            raise ValueError('Unexpected execution-log identity')
+        log = work / log_name
+        if log.is_symlink() or not log.is_file() or log.stat().st_size > 16777216 or digest(log) != execution.get('sha256'):
+            raise ValueError('A retained signed acceptance execution log changed')
+
+
+def baseline_smoke_result(work):
+    raw = (work / 'base/RELEASE-MANIFEST.json').read_bytes()
+    if hashlib.sha256(raw).hexdigest() != BASE_MANIFEST_SHA256:
+        raise ValueError('Baseline smoke requires the original immutable manifest')
+    manifest = authenticate_manifest(raw, (work / 'base/RELEASE-MANIFEST.sig').read_bytes(), BASE_COMMIT, BASE_TAG)
+    entries = {a['name']: a for a in manifest['assets']}
+    for name in (PANELS[0], 'install.sh'):
+        if digest(work / 'base' / name) != entries[name]['sha256']:
+            raise ValueError('Signed baseline smoke input changed')
+    smoke_work = work / 'baseline-smoke'
+    path = smoke_work / 'BASELINE-SMOKE.json'
+    if smoke_work.is_symlink() or path.is_symlink() or not path.is_file() or path.stat().st_size > 1048576:
+        raise ValueError('Missing signed-baseline harness smoke summary')
+    summary = decode_json(path.read_bytes())
+    baseline_smoke_summary(summary, entries[PANELS[0]]['sha256'], entries['install.sh']['sha256'])
+    execution_logs(smoke_work, summary.get('executions'), 'smoke')
+    return {'tag': BASE_TAG, 'source_commit': BASE_COMMIT, 'manifest_sha256': BASE_MANIFEST_SHA256,
+            'summary_sha256': digest(path), 'final_v210_acceptance': False}
+
+
+def baseline_smoke_identity(value):
+    if not isinstance(value, dict) or set(value) != {'tag', 'source_commit', 'manifest_sha256', 'summary_sha256', 'final_v210_acceptance'} or \
+            value['tag'] != BASE_TAG or value['source_commit'] != BASE_COMMIT or \
+            value['manifest_sha256'] != BASE_MANIFEST_SHA256 or value['final_v210_acceptance'] is not False or \
+            not isinstance(value['summary_sha256'], str) or not re.fullmatch('[0-9a-f]{64}', value['summary_sha256']) or \
+            value['summary_sha256'] == '0' * 64:
+        raise ValueError('Candidate is missing its original signed-baseline harness qualification')
+
+
 def record_gate(work, name, log=None):
     if name not in GATES or (name == 'shadowsocks') != (log is not None):
         raise ValueError('Invalid required gate/log')
@@ -341,6 +423,8 @@ def record_gate(work, name, log=None):
              'panels': {p: receipt['files'][p] for p in PANELS}}
     if log is not None:
         proof['runtime_cases'] = runtime_results(log.read_bytes())
+    if name == 'signed-baseline-harness':
+        proof['baseline_smoke'] = baseline_smoke_result(work)
     (work / ('GATE-' + name + '.json')).write_bytes(canonical(proof))
 
 
@@ -400,6 +484,8 @@ def stage_draft(work):
         if proof.get('schema') != 1 or proof.get('gate') != name or proof.get('source_commit') != source or \
                 proof.get('panels') != {p: receipt['files'][p] for p in PANELS}:
             raise ValueError('Candidate acceptance does not match these exact binaries')
+        if name == 'signed-baseline-harness':
+            baseline_smoke_identity(proof.get('baseline_smoke'))
         proofs[name] = proof
     if proofs['shadowsocks'].get('runtime_cases') != {k: sorted(v) for k, v in RUNTIME_CASES.items()}:
         raise ValueError('Exact Shadowsocks acceptance is incomplete')
@@ -428,38 +514,60 @@ def stage_draft(work):
     assert_draft(release, source)
     info = {'tag': TAG, 'source_commit': source, 'draft_id': release['id'],
             'prepare_run_id': receipt['prepare_run_id'], 'manifest_sha256': hashlib.sha256(raw).hexdigest(),
-            'unsigned_assets': len(manifest['assets']) + 1, 'production_signature_present': False}
+            'unsigned_assets': len(manifest['assets']) + 1, 'production_signature_present': False,
+            'signing_files': receipt['signing_files']}
     (work / 'CANDIDATE.json').write_bytes(canonical(info))
     final_template = {
         'schema': 1, 'purpose': 'rovunet-final-signed-release-acceptance', 'tag': TAG,
         'source_commit': source, 'manifest_sha256': info['manifest_sha256'], 'production_key_id': KEY_ID,
         'panel_sha256': {p: receipt['files'][p]['sha256'] for p in PANELS},
         'runtime_base_tag': BASE_TAG, 'runtime_base_manifest_sha256': BASE_MANIFEST_SHA256,
-        'environment': 'isolated-systemd-vm', 'architecture': 'amd64',
+        'environment': 'isolated-linux-namespaces', 'architecture': 'amd64',
         'production_signature_verified': False,
         'upgrade_baseline': {'tag': BASE_TAG, 'source_commit': BASE_COMMIT},
         'checks': {name: {'status': 'not_run', 'evidence_sha256': None} for name in sorted(FINAL_GATES)},
     }
     (work / 'FINAL-ACCEPTANCE.template.json').write_bytes(canonical(final_template))
-    (work / 'SIGNING-INSTRUCTIONS.txt').write_text(
+    signing_handoff(work, info, raw)
+    print(json.dumps(info))
+
+
+def signing_handoff(work, info, raw):
+    signing = work / 'signing'
+    (signing / 'RELEASE-MANIFEST.json').write_bytes(raw)
+    (signing / 'CANDIDATE.json').write_bytes(canonical(info))
+    command = 'pwsh -NoProfile -File .\\SIGN-CANDIDATE.ps1 -ExpectedManifestSha256 ' + \
+        info['manifest_sha256'] + ' -ExpectedHelperSha256 ' + info['signing_files']['signing-vault.exe']['sha256']
+    instructions = (
         'Rovunet Panel v2.1.0 unsigned candidate\n\n'
-        f'Exact source: {source}\nDraft release ID: {release["id"]}\n'
+        f'Exact source: {info["source_commit"]}\nDraft release ID: {info["draft_id"]}\n'
         f'Manifest SHA-256: {info["manifest_sha256"]}\nProduction root: {KEY_ID}\n\n'
-        'Keep every file in assets unchanged. Extract the included exact source archive.\n'
-        'Use its scripts/sign-release.py with --assets, --tag v2.1.0, --commit above,\n'
-        'and the existing --windows-vault, --vault-tool and --identity-public-file paths\n'
-        'from the private custody handoff. The private key stays in Windows DPAPI.\n'
-        'The resulting manifest must be byte-identical to the hash above. Return\n'
-        'RELEASE-MANIFEST.json and RELEASE-MANIFEST.sig. A separate final signed\n'
-        'fresh-install/menu-update VM acceptance is still required. Its template\n'
-        'deliberately contains not_run/false values. Record only observed passing\n'
-        'checks, exact baseline, and SHA-256 of retained evidence after verifying\n'
-        'the production signature. Review the final receipt hash independently;\n'
-        'publication requires its bytes and hash as additional request fields.\n'
+        '1. Extract the small rovunet-v2.1.0-windows-signing artifact on the original\n'
+        '   Windows account that holds the existing production vault.\n'
+        '2. Open PowerShell 7 in that extracted folder and run this one command:\n\n'
+        + command + '\n\n'
+        '3. Return only RELEASE-MANIFEST.json and RELEASE-MANIFEST.sig.\n\n'
+        'The command checks the exact manifest/helper hashes, checks the existing\n'
+        'production identity, then signs without exporting or changing the key.\n'
+        'It uses the existing vault at:\n'
+        '  $env:LOCALAPPDATA\\Rovunet\\PanelProductionSigning-v1\n'
+        'If that existing vault has a different path, append -Vault "FULL_PATH".\n'
+        'No Go, Python, OpenSSL, new key, recovery or execution-policy change is needed.\n'
+        'The Windows helper is built from the exact source above; its immutable SHA-256 is:\n'
+        + info['signing_files']['signing-vault.exe']['sha256'] + '\n\n'
+        'The publication workflow\n'
+        'will authenticate both, stage the exact candidate, and exercise the real\n'
+        'signed installer and official 2.0.2 menu updater in isolated Linux\n'
+        'namespaces before publication. Systemd is simulated in that lane; it\n'
+        'does not certify a physical VM, ARM64 execution, or live ISP traffic.\n'
+        'The receipt template deliberately contains not_run/false values. Only\n'
+        'the executed acceptance runner supplies the receipt and retained\n'
+        'evidence to the final publication guard; the owner supplies no receipt.\n'
         'Neither the vault, recovery\n'
         'identity nor a private key belongs in GitHub or this package.\n'
-        'The draft remains unpublished until the signed candidate is verified.\n', encoding='utf-8')
-    print(json.dumps(info))
+        'The draft remains unpublished until the signed candidate is verified.\n')
+    (work / 'SIGNING-INSTRUCTIONS.txt').write_text(instructions, encoding='utf-8')
+    (signing / 'SIGNING-INSTRUCTIONS.txt').write_text(instructions, encoding='utf-8')
 
 
 def publication_request(path):
@@ -467,23 +575,20 @@ def publication_request(path):
         raise ValueError('Publication request exceeds size bound')
     request = decode_json(path.read_bytes())
     if set(request) != {'schema', 'tag', 'previous_tag', 'source_commit', 'draft_id',
-                        'manifest_base64', 'signature_base64', 'final_acceptance_base64',
-                        'final_acceptance_sha256', 'publish_latest'} or \
+                        'manifest_base64', 'signature_base64', 'publish_latest'} or \
             request['schema'] != 1 or request['tag'] != TAG or request['previous_tag'] != BASE_TAG or \
             request['publish_latest'] is not True or type(request['draft_id']) is not int or request['draft_id'] <= 0:
         raise ValueError('Unexpected publication request identity')
     raw = base64.b64decode(request['manifest_base64'], validate=True)
     signature = base64.b64decode(request['signature_base64'], validate=True)
     manifest = authenticate_manifest(raw, signature, request['source_commit'])
-    final_acceptance(base64.b64decode(request['final_acceptance_base64'], validate=True),
-                     request['final_acceptance_sha256'], raw, manifest)
     return request, manifest, raw, signature
 
 
 def final_acceptance(raw, expected_hash, manifest_raw, manifest):
     if not 0 < len(raw) <= 262144 or not isinstance(expected_hash, str) or \
             not re.fullmatch('[0-9a-f]{64}', expected_hash) or hashlib.sha256(raw).hexdigest() != expected_hash:
-        raise ValueError('A separately reviewed final acceptance receipt/hash is required')
+        raise ValueError('An intact final acceptance receipt/hash is required')
     receipt = decode_json(raw)
     if set(receipt) != {'schema', 'purpose', 'tag', 'source_commit', 'manifest_sha256', 'production_key_id',
                         'panel_sha256', 'runtime_base_tag', 'runtime_base_manifest_sha256', 'environment',
@@ -493,15 +598,14 @@ def final_acceptance(raw, expected_hash, manifest_raw, manifest):
             receipt['manifest_sha256'] != hashlib.sha256(manifest_raw).hexdigest() or \
             receipt['production_key_id'] != KEY_ID or receipt['runtime_base_tag'] != BASE_TAG or \
             receipt['runtime_base_manifest_sha256'] != BASE_MANIFEST_SHA256 or \
-            receipt['environment'] != 'isolated-systemd-vm' or receipt['architecture'] != 'amd64' or \
+            receipt['environment'] != 'isolated-linux-namespaces' or receipt['architecture'] != 'amd64' or \
             receipt['production_signature_verified'] is not True:
         raise ValueError('Final acceptance is unverified or bound to another source/signature/runtime')
     panels = {a['name']: a['sha256'] for a in manifest['assets'] if a['name'] in PANELS}
     if set(panels) != set(PANELS) or receipt['panel_sha256'] != panels:
         raise ValueError('Final acceptance does not bind both exact panel binaries')
     baseline = receipt['upgrade_baseline']
-    if not isinstance(baseline, dict) or set(baseline) != {'tag', 'source_commit'} or \
-            UPGRADE_BASES.get(baseline['tag']) != baseline['source_commit']:
+    if baseline != {'tag': BASE_TAG, 'source_commit': BASE_COMMIT}:
         raise ValueError('Final menu-update acceptance has an unreviewed baseline')
     checks = receipt['checks']
     if not isinstance(checks, dict) or set(checks) != FINAL_GATES:
@@ -511,6 +615,39 @@ def final_acceptance(raw, expected_hash, manifest_raw, manifest):
                 not isinstance(check['evidence_sha256'], str) or \
                 not re.fullmatch('[0-9a-f]{64}', check['evidence_sha256']) or check['evidence_sha256'] == '0' * 64:
             raise ValueError('A final signed-install/update or identity/TLS gate remains unrun')
+    return receipt
+
+
+def retained_final_acceptance(work, manifest_raw, manifest):
+    """Require the runner's local receipt and all four retained evidence files."""
+    receipt_path = work / 'FINAL-ACCEPTANCE.json'
+    if receipt_path.is_symlink() or not receipt_path.is_file() or receipt_path.stat().st_size > 262144:
+        raise ValueError('The final signed acceptance runner has not produced its receipt')
+    raw = receipt_path.read_bytes()
+    receipt = final_acceptance(raw, hashlib.sha256(raw).hexdigest(), manifest_raw, manifest)
+    evidence = work / 'final' / 'evidence'
+    if (work / 'final').is_symlink() or evidence.is_symlink() or not evidence.is_dir():
+        raise ValueError('Final acceptance evidence must be retained in this workflow workspace')
+    for name, check in receipt['checks'].items():
+        path = evidence / (name + '.json')
+        if path.is_symlink() or not path.is_file() or not 0 < path.stat().st_size <= 1048576 or \
+                digest(path) != check['evidence_sha256']:
+            raise ValueError('Missing or altered final acceptance evidence for ' + name)
+        proof = decode_json(path.read_bytes())
+        if proof.get('schema') != 1 or proof.get('check') != name or proof.get('status') != 'pass' or \
+                any(proof.get(k) != receipt[k] for k in ('tag', 'source_commit', 'manifest_sha256', 'production_key_id', 'panel_sha256')) or \
+                proof.get('runner_sha256') != digest(ROOT / 'scripts/test-signed-v210-update.py') or \
+                proof.get('simulator_sha256') != digest(ROOT / 'scripts/test-complete-setup.py') or \
+                proof.get('scope', {}).get('environment') != 'isolated-linux-namespaces' or \
+                proof.get('scope', {}).get('systemd') != 'simulated':
+            raise ValueError('Final evidence is not from the exact reviewed signed acceptance runner')
+        phase = 'fresh' if name == 'signed_fresh_install' else 'upgrade'
+        execution_logs(work / 'final', proof.get('executions'), phase)
+        log_root = work / 'final' / 'logs'
+        requests = log_root / phase / 'https-requests.json'
+        if requests.is_symlink() or not requests.is_file() or requests.stat().st_size > 1048576 or \
+                digest(requests) != proof.get('https_requests_sha256'):
+            raise ValueError('Retained final HTTPS request evidence changed')
     return receipt
 
 
@@ -527,36 +664,36 @@ def preparation_succeeded(run_info, jobs, source, run_id):
         raise ValueError('Required candidate runtime/system gates did not all pass')
 
 
-def publish(request_path, work):
-    require_actions()
-    request, manifest, raw, signature = publication_request(request_path)
+def signed_candidate(request, manifest, raw, signature, assets, *, download=False):
+    """Verify the immutable draft and preparation history without GitHub writes."""
     source = request['source_commit']
-    clean_source(source)
-    source_ci(source)
-    latest_lease()
-    existing_tag(source)
     release = api(f'repos/{REPO}/releases/{request["draft_id"]}')
     assert_draft(release, source, request['draft_id'])
     entries = release_assets(release)
     names = {a['name'] for a in manifest['assets']} | {'RELEASE-MANIFEST.json'}
     if set(entries) not in (names, names | {'RELEASE-MANIFEST.sig'}):
         raise ValueError('Draft asset set differs from the signed candidate')
-    if work.exists():
-        raise ValueError('Use a fresh publication verification directory')
-    work.mkdir(parents=True)
-    for name, entry in entries.items():
-        download_asset(entry, work / name)
-    if (work / 'RELEASE-MANIFEST.json').read_bytes() != raw:
-        raise ValueError('Signed manifest differs from the prepared draft')
-    signature_path = work / 'RELEASE-MANIFEST.sig'
-    if signature_path.exists() and signature_path.read_bytes() != signature:
-        raise ValueError('Existing draft signature differs; overwriting is forbidden')
-    signature_path.write_bytes(signature)
-    load_script('verify-release.py').verify(work, TAG, source, authority())
-    acceptance = decode_json((work / 'ACCEPTANCE.json').read_bytes())
+    files = {a['name']: {'size': a['size'], 'sha256': a['sha256']} for a in manifest['assets']}
+    for name, payload in [('RELEASE-MANIFEST.json', raw), ('RELEASE-MANIFEST.sig', signature)]:
+        files[name] = {'size': len(payload), 'sha256': hashlib.sha256(payload).hexdigest()}
+    matching_remote_assets(release, files)
+    if download:
+        assets.mkdir()
+        for name, entry in entries.items():
+            download_asset(entry, assets / name)
+        if 'RELEASE-MANIFEST.sig' not in entries:
+            (assets / 'RELEASE-MANIFEST.sig').write_bytes(signature)
+    if assets.is_symlink() or file_map(assets) != files:
+        raise ValueError('Staged candidate differs from the signed manifest/signature')
+    load_script('verify-release.py').verify(assets, TAG, source, authority())
+    acceptance = decode_json((assets / 'ACCEPTANCE.json').read_bytes())
     if acceptance.get('source_commit') != source or acceptance.get('tag') != TAG or \
             acceptance.get('base_tag') != BASE_TAG or acceptance.get('base_manifest_sha256') != BASE_MANIFEST_SHA256:
         raise ValueError('Signed candidate acceptance has another source/runtime baseline')
+    ci_id = acceptance.get('source_ci')
+    if type(ci_id) is not int or ci_id <= 0 or \
+            successful_source_run([api(f'repos/{REPO}/actions/runs/{ci_id}')], source) != ci_id:
+        raise ValueError('Signed candidate source CI is not successful for this exact source')
     run_id = acceptance.get('prepare_run_id')
     if type(run_id) is not int or run_id <= 0:
         raise ValueError('Invalid candidate preparation run')
@@ -565,11 +702,57 @@ def publish(request_path, work):
     for name in GATES:
         proof = acceptance.get('gates', {}).get(name, {})
         if proof.get('source_commit') != source or proof.get('gate') != name or \
-                proof.get('panels') != {p: {'size': (work / p).stat().st_size, 'sha256': digest(work / p)} for p in PANELS}:
+                proof.get('panels') != {p: files[p] for p in PANELS}:
             raise ValueError('Signed acceptance does not bind these panel bytes')
+        if name == 'signed-baseline-harness':
+            baseline_smoke_identity(proof.get('baseline_smoke'))
     if acceptance['gates']['shadowsocks'].get('runtime_cases') != {k: sorted(v) for k, v in RUNTIME_CASES.items()}:
         raise ValueError('Signed Shadowsocks runtime acceptance is incomplete')
-    release = upload_missing(release, work, source)
+    return release
+
+
+def stage_identity(request, raw, signature, run_id):
+    return {'schema': 1, 'tag': TAG, 'source_commit': request['source_commit'],
+            'draft_id': request['draft_id'], 'publication_run_id': run_id,
+            'manifest_sha256': hashlib.sha256(raw).hexdigest(),
+            'signature_sha256': hashlib.sha256(signature).hexdigest(),
+            'base_tag': BASE_TAG, 'base_manifest_sha256': BASE_MANIFEST_SHA256}
+
+
+def stage_signed(request_path, work):
+    run_id = require_actions()
+    request, manifest, raw, signature = publication_request(request_path)
+    source = request['source_commit']
+    clean_source(source)
+    source_ci(source)
+    latest_lease()
+    existing_tag(source)
+    if work.exists():
+        raise ValueError('Use a fresh signed candidate staging directory')
+    work.mkdir(parents=True)
+    signed_candidate(request, manifest, raw, signature, work / 'assets', download=True)
+    authenticate_base(work / 'base')
+    (work / 'STAGED-CANDIDATE.json').write_bytes(canonical(stage_identity(request, raw, signature, run_id)))
+    print('Authenticated signed candidate and original baseline staged; no release assets or state were changed.')
+
+
+def publish(request_path, work):
+    run_id = require_actions()
+    request, manifest, raw, signature = publication_request(request_path)
+    # Final acceptance is local runner output, never owner-supplied request data.
+    # Fail before any GitHub write (or lookup) if execution/evidence is missing.
+    retained_final_acceptance(work, raw, manifest)
+    staged = work / 'STAGED-CANDIDATE.json'
+    if staged.is_symlink() or decode_json(staged.read_bytes()) != stage_identity(request, raw, signature, run_id):
+        raise ValueError('Signed candidate staging belongs to another source/signature/workflow run')
+    source = request['source_commit']
+    clean_source(source)
+    source_ci(source)
+    latest_lease()
+    existing_tag(source)
+    assets = work / 'assets'
+    release = signed_candidate(request, manifest, raw, signature, assets)
+    release = upload_missing(release, assets, source)
     assert_draft(release, source, request['draft_id'])
     source_ci(source)
     latest_lease()
@@ -584,7 +767,7 @@ def publish(request_path, work):
     if published.get('draft') is not False or published.get('prerelease') is not False or \
             tag.get('object', {}).get('sha') != source or tag.get('object', {}).get('type') != 'commit':
         raise ValueError('Publication returned an unexpected tag/identity; inspect it before retrying')
-    matching_remote_assets(api(f'repos/{REPO}/releases/{release["id"]}'), file_map(work), complete=True)
+    matching_remote_assets(api(f'repos/{REPO}/releases/{release["id"]}'), file_map(assets), complete=True)
     if api(f'repos/{REPO}/releases/latest').get('id') != release['id']:
         raise ValueError('Published release is not the selected Latest; inspect the concurrent release state')
     print(json.dumps({'published': TAG, 'source_commit': source, 'release_id': release['id'],
@@ -593,7 +776,7 @@ def publish(request_path, work):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=['build', 'record-gate', 'draft', 'validate-request', 'publish'])
+    parser.add_argument('mode', choices=['build', 'record-gate', 'draft', 'validate-request', 'stage-signed', 'publish'])
     parser.add_argument('--source')
     parser.add_argument('--work', type=Path)
     parser.add_argument('--gate', choices=sorted(GATES))
@@ -612,6 +795,8 @@ def main():
             with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
                 output.write('source=' + request['source_commit'] + '\n')
         print(json.dumps({'tag': TAG, 'source_commit': request['source_commit'], 'draft_id': request['draft_id']}))
+    elif args.mode == 'stage-signed':
+        stage_signed(args.request, args.work.resolve())
     else:
         publish(args.request, args.work.resolve())
 

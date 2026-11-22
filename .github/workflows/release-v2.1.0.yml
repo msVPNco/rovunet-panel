@@ -22,12 +22,6 @@ on:
       signature_base64:
         description: Base64 of its existing Windows-vault signature (publish only)
         type: string
-      final_acceptance_base64:
-        description: Base64 of the separately verified final signed-install/update VM receipt (publish only)
-        type: string
-      final_acceptance_sha256:
-        description: Independently reviewed SHA-256 of that final acceptance receipt (publish only)
-        type: string
   # These exact branch names make the reviewed route usable by the GitHub
   # connector. Ordinary release/v2.1.0-* source pushes only run source CI.
   push:
@@ -55,7 +49,6 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       SOURCE_COMMIT: ${{ inputs.source_commit || github.sha }}
-      PREPARATION: ${{ runner.temp }}/rovunet-v2.1.0-candidate
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -64,11 +57,23 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: '1.27.4'
+      - name: Set candidate work directory
+        run: printf 'PREPARATION=%s\n' "$RUNNER_TEMP/rovunet-v2.1.0-candidate" >>"$GITHUB_ENV"
       - name: Prepare exact source and authenticated immutable runtime bundle
         run: |
           python3 scripts/test-prepare-v2.1.0-release.py
           go mod download
           python3 scripts/prepare-v2.1.0-release.py build --source "$SOURCE_COMMIT" --work "$PREPARATION"
+
+      - name: Exercise original signed baseline harness
+        timeout-minutes: 20
+        run: |
+          # Prove the final acceptance harness on original signed 2.0.2 before
+          # asking the owner to sign. This is not final 2.1.0 acceptance.
+          sudo python3 -u scripts/test-signed-v210-update.py --baseline-smoke \
+            --baseline "$PREPARATION/base" --work "$PREPARATION/baseline-smoke"
+          sudo chown -R "$(id -u):$(id -g)" "$PREPARATION/baseline-smoke"
+          python3 scripts/prepare-v2.1.0-release.py record-gate --work "$PREPARATION" --gate signed-baseline-harness
 
       - name: Validate Shadowsocks with reviewed Xray
         timeout-minutes: 20
@@ -145,6 +150,15 @@ jobs:
             ${{ env.PREPARATION }}/CANDIDATE.json
             ${{ env.PREPARATION }}/SIGNING-INSTRUCTIONS.txt
             ${{ env.PREPARATION }}/FINAL-ACCEPTANCE.template.json
+            ${{ env.PREPARATION }}/baseline-smoke/BASELINE-SMOKE.json
+            ${{ env.PREPARATION }}/baseline-smoke/logs/**
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain the small Windows signing handoff
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rovunet-v2.1.0-windows-signing
+          path: ${{ env.PREPARATION }}/signing/*
           if-no-files-found: error
           retention-days: 14
 
@@ -166,8 +180,6 @@ jobs:
           REQUEST_DRAFT: ${{ inputs.draft_id }}
           REQUEST_MANIFEST: ${{ inputs.manifest_base64 }}
           REQUEST_SIGNATURE: ${{ inputs.signature_base64 }}
-          REQUEST_FINAL_ACCEPTANCE: ${{ inputs.final_acceptance_base64 }}
-          REQUEST_FINAL_ACCEPTANCE_SHA256: ${{ inputs.final_acceptance_sha256 }}
         run: |
           python3 - <<'PY'
           import json, os, pathlib, shutil
@@ -178,8 +190,6 @@ jobs:
               request = dict(schema=1, tag='v2.1.0', previous_tag='v2.0.2',
                   source_commit=os.environ['REQUEST_SOURCE'], draft_id=int(os.environ['REQUEST_DRAFT']),
                   manifest_base64=os.environ['REQUEST_MANIFEST'], signature_base64=os.environ['REQUEST_SIGNATURE'],
-                  final_acceptance_base64=os.environ['REQUEST_FINAL_ACCEPTANCE'],
-                  final_acceptance_sha256=os.environ['REQUEST_FINAL_ACCEPTANCE_SHA256'],
                   publish_latest=True)
               target.write_text(json.dumps(request), encoding='utf-8')
           PY
@@ -188,6 +198,41 @@ jobs:
         with:
           ref: ${{ steps.request.outputs.source }}
           persist-credentials: false
+      - name: Stage authenticated signed candidate and official baseline
+        id: signed_stage
+        run: |
+          python3 scripts/prepare-v2.1.0-release.py stage-signed \
+            --request "$RUNNER_TEMP/v2.1.0-publication-request.json" \
+            --work "$RUNNER_TEMP/v2.1.0-signed-verification"
+      - name: Exercise production-signed installer and menu updater
+        timeout-minutes: 20
+        run: |
+          # Actual installer/updater bytes and original Ed25519 root. Private
+          # Linux namespaces simulate systemd; transport CA is fixture-only.
+          # The runner writes its receipt only after all required checks pass.
+          sudo python3 -u scripts/test-signed-v210-update.py \
+            --candidate "$RUNNER_TEMP/v2.1.0-signed-verification/assets" \
+            --baseline "$RUNNER_TEMP/v2.1.0-signed-verification/base" \
+            --work "$RUNNER_TEMP/v2.1.0-signed-verification/final" \
+            --receipt "$RUNNER_TEMP/v2.1.0-signed-verification/FINAL-ACCEPTANCE.json"
+      - name: Retain readable public acceptance results
+        if: always() && steps.signed_stage.outcome == 'success'
+        run: |
+          final="$RUNNER_TEMP/v2.1.0-signed-verification/final"
+          receipt="$RUNNER_TEMP/v2.1.0-signed-verification/FINAL-ACCEPTANCE.json"
+          if sudo test -d "$final"; then sudo chown -R "$(id -u):$(id -g)" "$final"; fi
+          if sudo test -f "$receipt"; then sudo chown "$(id -u):$(id -g)" "$receipt"; fi
+      - name: Retain final signed acceptance evidence
+        if: always() && steps.signed_stage.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rovunet-v2.1.0-final-signed-acceptance
+          path: |
+            ${{ runner.temp }}/v2.1.0-signed-verification/FINAL-ACCEPTANCE.json
+            ${{ runner.temp }}/v2.1.0-signed-verification/final/evidence/*.json
+            ${{ runner.temp }}/v2.1.0-signed-verification/final/logs/**
+          if-no-files-found: error
+          retention-days: 30
       - name: Verify signed candidate and publish its exact bytes
         run: |
           python3 scripts/prepare-v2.1.0-release.py publish \
