@@ -64,7 +64,7 @@ func Build(cfg *config.Config, user config.UserConfig, tunnels []config.TunnelCo
 			// the entire subscription for unsupported native xray envelopes.
 			// Android accepts both lossless forms. Keep IDs, credentials and
 			// native envelopes for CLI exports and every other subscription item.
-			if (opts.Client == "windows" || opts.CompatibleSubscription) && (p.Protocol == "amneziawg" || p.Protocol == "ss2022") {
+			if (opts.Client == "windows" || opts.CompatibleSubscription) && (p.Protocol == "amneziawg" || protocols.IsShadowsocks(p.Protocol)) {
 				if p.Protocol == "amneziawg" {
 					name := clientcfg.ProfileDisplayName(p.Core)
 					if name == "" {
@@ -89,10 +89,18 @@ func Build(cfg *config.Config, user config.UserConfig, tunnels []config.TunnelCo
 			} else if opts.CompatibleSubscription && (p.Protocol == "anytls" || p.Protocol == "tuic" || p.Protocol == "mieru-tcp" || p.Protocol == "mieru-udp") {
 				// Standard URIs let older clients skip unsupported families without invalidating the old feed.
 				u, parseErr := url.Parse(link)
-				if parseErr != nil { errs = append(errs, fmt.Errorf("core %s: invalid standard profile",p.Core)); continue }
-				name:=clientcfg.ProfileDisplayName(p.Core)
-				if name=="" {name=clientcfg.ProfileDisplayName(p.Protocol)}
-				if name!="" {u.Fragment=name;link=u.String()}
+				if parseErr != nil {
+					errs = append(errs, fmt.Errorf("core %s: invalid standard profile", p.Core))
+					continue
+				}
+				name := clientcfg.ProfileDisplayName(p.Core)
+				if name == "" {
+					name = clientcfg.ProfileDisplayName(p.Protocol)
+				}
+				if name != "" {
+					u.Fragment = name
+					link = u.String()
+				}
 			} else if opts.Format != "standard" {
 				link, err = clientcfg.GenerateCoreURI(p.Core, p.Link, cfg, clientcfg.URIOptions{Username: user.Username, DisplayName: clientcfg.ProfileDisplayName(p.Core)})
 				if err != nil {

@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "tag": "v2.1.0",
+  "profile": "owner-authorized-functional-update",
+  "authorization_date": "2026-11-22",
+  "authorization": "Owner explicitly requested working from public v2.0.2, replacing default WireGuard and TUIC with two Shadowsocks methods, preserving former ports, adding the Free config menu, and publishing version 2.1.0 so normal server Update can select it.",
+  "full_qualification": "not-certified; physical-client/ISP, external custody and complete fresh-target/provider recovery gates remain open",
+  "source_base": "efa697256880b0d2c0b1494513b51f4c72a7735b",
+  "runtime_release": "v2.0.2",
+  "requirements": [
+    "Default WireGuard to Shadowsocks 2022 AES-128 and default TUIC to classic AEAD ChaCha20-Poly1305, preserving each existing saved port",
+    "Root-only per-core backup and resumable replacement; confirm new service before retiring old; retain stopped choices and unrelated cores",
+    "Ordered original fixed ports for fresh missing cores; no random listener allocation",
+    "Preserve old AES-256 keys, unrelated profile bytes, account IDs, passwords, periods, known usage, subscription tokens and URLs",
+    "Actual authenticated Xray TCP/lifecycle and independent two-user UDP acceptance for all three Shadowsocks variants; no missing-engine skip",
+    "30 unrestricted / 29 time-only / 6 finite-budget profiles where the complete eligible setup exists",
+    "Visible Users Free config menu, marked first persistence, 50 GiB shared quota, 30-day expiry and private review export with bound-ledger enforcement",
+    "No silent conversion of normal accounts or app catalog publication/activation",
+    "Preserve public v2.0.2 Slipstream trust-companion route and normal certificate validation",
+    "Runtime version independent of panel version, pinned to authenticated unchanged v2.0.2 assets and provenance",
+    "Exact source CI, actual runtime/system tests and final production-signed fresh-installer staging/menu-update/accounting/recovery acceptance in isolated Linux namespaces with simulated systemd",
+    "Windows-local existing production signing identity; exact signed bytes and expected previous Latest lease; no key rotation"
+  ],
+  "excluded": [
+    "app Free catalog release or activation",
+    "physical Android/macOS/Windows or every ISP reachability certification",
+    "diagnosis of the owner's live certificate/connection failures without client evidence",
+    "physical ARM64 certification; emulation is identified",
+    "independent off-site signing-key custody certification",
+    "complete fresh-target restoration of all runtimes, Caddy, firewall and provider state",
+    "WARP provider registration guarantee",
+    "exact simultaneous device limit",
+    "bit-identical independent toolchain rebuild certification"
+  ],
+  "unchanged_files_sha256": {
+    "internal/coreinstall/reviewed-release-runtime-pins.json": "e47bf4f15c8335765b79baf6e4f97261f257f8a813e64019dfd27aa01c899d5a",
+    "internal/binary/transport-catalog.json": "5520392179408881a4c21d217244714b2ac2be9d91bdedf776fe80ef021b4960",
+    "internal/coreinstall/reviewed-go-runtime-pins.json": "568c381ccb245ac197068fde6b5c6284b18ef475d12eed4c8c9fbfa58847b68b",
+    "internal/releaseauth/production-keys.json": "c0082e9fe3b41333a71ba5a5a3cc8b3a7428fb5ad6c6f2278b1ca7959a6a17a1"
+  },
+  "policy_change": "Only register the two requested Shadowsocks aliases as metered compatibility protocols; finite quota eligibility remains unchanged.",
+  "final_exact_byte_acceptance_required": true,
+  "publication_status": "Do not publish until exact source/runtime/preparation CI and final signed fresh-installer staging, menu-update and relevant accounting/recovery acceptance pass. The final fixture does not certify full interactive onboarding or live Caddy/Slipstream traffic; broader qualifications are reported separately.",
+  "client_contract": "docs/contracts/panel-integration-v1.md"
+}

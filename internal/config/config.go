@@ -53,13 +53,16 @@ type Config struct {
 	ExtraAddresses  []string          `json:"extra_addresses,omitempty"`
 	// ServerID names this panel in each user's status file. It is random,
 	// made once, and does not change with the server's address or name.
-	ServerID              string             `json:"server_id,omitempty"`
-	V2Authority           *RevisionAuthority `json:"subscription_v2_authority,omitempty"`
-	SubscriptionV2        bool               `json:"subscription_v2,omitempty"`
-	InstanceID            string             `json:"instance_id,omitempty"`
-	RecoverySealOperation string             `json:"recovery_seal_operation,omitempty"`
-	RecoverySealed        bool               `json:"recovery_sealed,omitempty"`
-	RouterLimits          RouterLimits       `json:"router_limits,omitzero"`
+	ServerID       string             `json:"server_id,omitempty"`
+	V2Authority    *RevisionAuthority `json:"subscription_v2_authority,omitempty"`
+	SubscriptionV2 bool               `json:"subscription_v2,omitempty"`
+	// Preserve the known private preview's identity metadata during config
+	// writes. This field does not enable or implement its signed-trust format.
+	SubscriptionTrustKeyID string       `json:"subscription_trust_key_id,omitempty"`
+	InstanceID             string       `json:"instance_id,omitempty"`
+	RecoverySealOperation  string       `json:"recovery_seal_operation,omitempty"`
+	RecoverySealed         bool         `json:"recovery_sealed,omitempty"`
+	RouterLimits           RouterLimits `json:"router_limits,omitzero"`
 }
 
 // UserConfig tracks a managed user (same credentials for SSH + SOCKS).
@@ -76,6 +79,9 @@ type UserConfig struct {
 	ExpiresAt string `json:"expires_at,omitempty"`
 	// QuotaGB is the traffic limit in GB; 0 means unlimited.
 	QuotaGB int `json:"quota_gb,omitempty"`
+	// Donation marks a dedicated Free config account. Its shared 50 GiB quota
+	// and 30-day lifetime use the ordinary server-side finite-account policy.
+	Donation bool `json:"donation,omitempty"`
 	// SubToken is the unguessable name of the user's subscription file. It is
 	// replaced when the password changes, which retires the old link.
 	SubToken string `json:"sub_token,omitempty"`

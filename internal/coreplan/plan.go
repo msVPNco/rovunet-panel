@@ -259,7 +259,7 @@ func Validate(o *Options) error {
 		return fmt.Errorf("invalid host")
 	}
 	switch o.Protocol {
-	case "reality", "xhttp", "hysteria2", "wireguard", "ss2022", "trojan", "vlessenc", "amneziawg", "tlsvision", "xhttp-reality", "anytls", "tuic", "mieru-tcp", "mieru-udp":
+	case "reality", "xhttp", "hysteria2", "wireguard", "ss2022", "ss2022-aes128", "ss-aead-chacha20", "trojan", "vlessenc", "amneziawg", "tlsvision", "xhttp-reality", "anytls", "tuic", "mieru-tcp", "mieru-udp":
 	default:
 		return fmt.Errorf("unsupported protocol")
 	}
@@ -336,6 +336,16 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 	profiles := []string{}
 	extension := "txt"
 	peers := []object{}
+	ssMethod, ssKeySize, ssHasServerKey := shadowsocksCipher(o.Protocol)
+	ssServerPassword := ""
+	if ssHasServerKey {
+		// Keep the original ss2022-server derivation unchanged for AES-256.
+		master, err := st.derive(o.Protocol+"-server", Client{}, ssKeySize)
+		if err != nil {
+			return Bundle{}, err
+		}
+		ssServerPassword = base64.StdEncoding.EncodeToString(master)
+	}
 	obfsPassword := ""
 	if o.HysteriaSalamander {
 		key, err := st.derive("hysteria2-salamander", Client{}, 32)
@@ -390,18 +400,21 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 			users = append(users, object{"password": credential, "email": c.Name})
 			scheme = "trojan"
 			q = url.Values{"type": {"tcp"}, "security": {"tls"}, "sni": {o.SNI}, "alpn": {"http/1.1"}}
-		case "ss2022":
-			master, err := st.derive("ss2022-server", Client{}, 32)
-			if err != nil {
-				return Bundle{}, err
-			}
-			key, err := st.derive(o.Protocol, c, 32)
+		case "ss2022", "ss2022-aes128", "ss-aead-chacha20":
+			key, err := st.derive(o.Protocol, c, ssKeySize)
 			if err != nil {
 				return Bundle{}, err
 			}
 			password := base64.StdEncoding.EncodeToString(key)
-			users = append(users, object{"password": password, "email": c.Name})
-			credential = base64.RawURLEncoding.EncodeToString([]byte("2022-blake3-aes-256-gcm:" + base64.StdEncoding.EncodeToString(master) + ":" + password))
+			user := object{"password": password, "email": c.Name}
+			clientPassword := password
+			if ssHasServerKey {
+				clientPassword = ssServerPassword + ":" + password
+			} else {
+				user["method"] = ssMethod
+			}
+			users = append(users, user)
+			credential = base64.RawURLEncoding.EncodeToString([]byte(ssMethod + ":" + clientPassword))
 			scheme = "ss"
 		case "hysteria2":
 			b, err := st.derive(o.Protocol, c, 24)
@@ -444,13 +457,13 @@ func GenerateFor(o Options, st *State, clients []Client) (Bundle, error) {
 		inbound["protocol"] = "trojan"
 		inbound["settings"] = object{"clients": users}
 		stream = object{"network": "raw", "security": "tls"}
-	case "ss2022":
-		master, err := st.derive("ss2022-server", Client{}, 32)
-		if err != nil {
-			return Bundle{}, err
-		}
+	case "ss2022", "ss2022-aes128", "ss-aead-chacha20":
 		inbound["protocol"] = "shadowsocks"
-		inbound["settings"] = object{"method": "2022-blake3-aes-256-gcm", "password": base64.StdEncoding.EncodeToString(master), "clients": users, "network": "tcp,udp"}
+		settings := object{"clients": users, "network": "tcp,udp"}
+		if ssHasServerKey {
+			settings["method"], settings["password"] = ssMethod, ssServerPassword
+		}
+		inbound["settings"] = settings
 	case "reality":
 		inbound["protocol"] = "vless"
 		inbound["settings"] = object{"clients": users, "decryption": "none"}

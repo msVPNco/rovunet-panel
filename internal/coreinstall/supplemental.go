@@ -50,7 +50,7 @@ func ensureSupplemental(kind string) error {
 	if e := os.MkdirAll(filepath.Dir(path), 0755); e != nil {
 		return e
 	}
-	temp, e := binary.Download(fmt.Sprintf("%s/%s-linux-%s", binary.RuntimeDownloadBase(), kind, runtime.GOARCH), filepath.Dir(path))
+	temp, e := binary.DownloadRuntime(fmt.Sprintf("%s-linux-%s", kind, runtime.GOARCH), filepath.Dir(path))
 	if e != nil {
 		return e
 	}

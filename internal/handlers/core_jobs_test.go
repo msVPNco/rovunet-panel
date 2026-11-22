@@ -20,3 +20,16 @@ func TestCoreJobsAddASecondRealityCore(t *testing.T) {
 		t.Fatal("nothing chosen, nothing installed")
 	}
 }
+
+func TestShadowsocksWizardUsesCompleteSetupNames(t *testing.T) {
+	got := coreJobs([]string{"ss2022-aes128", "ss-aead-chacha20"})
+	want := []coreJob{{"managed-ss2022-aes128", "ss2022-aes128"}, {"managed-ss-aead-chacha20", "ss-aead-chacha20"}}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+}

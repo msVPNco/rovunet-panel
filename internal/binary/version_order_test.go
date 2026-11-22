@@ -14,3 +14,17 @@ func TestAutomaticUpdateCannotReplayAnOlderRelease(t *testing.T) {
 		}
 	}
 }
+
+func TestVersion210UpdatesPublic202AndPrivate203(t *testing.T) {
+	for _, current := range []string{"2.0.2", "2.0.3"} {
+		if err := CheckUpgradeOrder(current, "v2.1.0"); err != nil {
+			t.Fatalf("%s cannot update to the replacement release: %v", current, err)
+		}
+	}
+	if CheckUpgradeOrder("2.0.3", "v2.0.2") == nil {
+		t.Fatal("the previous public version must still be rejected as a downgrade")
+	}
+	if CheckUpgradeOrder("2.1.0", "v2.0.3") == nil {
+		t.Fatal("the new release must not silently revert to the private version")
+	}
+}

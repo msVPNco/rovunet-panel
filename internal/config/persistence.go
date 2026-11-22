@@ -77,6 +77,7 @@ func (c *Config) replaceLocked(f *Config) {
 	c.ExtraAddresses = f.ExtraAddresses
 	c.ServerID = f.ServerID
 	c.SubscriptionV2 = f.SubscriptionV2
+	c.SubscriptionTrustKeyID = f.SubscriptionTrustKeyID
 	c.V2Authority = f.V2Authority
 	c.InstanceID = f.InstanceID
 	c.RecoverySealOperation = f.RecoverySealOperation

@@ -17,18 +17,35 @@ import (
 // This bounded loopback lab overloads only a test-owned backend. It makes no
 // public resolver requests and does not assign an identity/limit to an IP.
 func TestBoundedBurstAndSharedResolverRecovery(t *testing.T) {
+	const (
+		burst       = 5000
+		burstName   = "x.t.example.com"
+		healthyName = "healthy.t.example.com"
+	)
 	backend, err := net.ListenPacket("udp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer backend.Close()
 	var answering atomic.Bool
+	blackholeObserved := make(chan struct{}, 1)
 	go func() {
 		buf := make([]byte, 4096)
 		for {
 			n, addr, err := backend.ReadFrom(buf)
 			if err != nil {
 				return
+			}
+			// Pending excludes packets still in the UDP/worker queues. Keep
+			// burst queries blackholed even if they reach this backend after
+			// recovery starts; replying would put valid old responses on the
+			// shared socket ahead of the healthy query's response.
+			if extractDomain(buf[:n]) == burstName+"." {
+				select {
+				case blackholeObserved <- struct{}{}:
+				default:
+				}
+				continue
 			}
 			if answering.Load() {
 				b := append([]byte(nil), buf[:n]...)
@@ -55,11 +72,19 @@ func TestBoundedBurstAndSharedResolverRecovery(t *testing.T) {
 	runtime.ReadMemStats(&before)
 	var cpuBefore, cpuAfter syscall.Rusage
 	syscall.Getrusage(syscall.RUSAGE_SELF, &cpuBefore)
-	const burst = 5000
 	start := time.Now()
 	for i := 0; i < burst; i++ {
-		if _, err := c.Write(buildQuery(uint16(i), "x.t.example.com")); err != nil {
+		if _, err := c.Write(buildQuery(uint16(i), burstName)); err != nil {
 			t.Fatal(err)
+		}
+		if i == 0 {
+			// Observe an admitted, unanswered request before overloading the
+			// queue. An initial Pending == 0 must not count as recovery.
+			select {
+			case <-blackholeObserved:
+			case <-time.After(time.Second):
+				t.Fatal("initial burst query did not reach the blackhole backend")
+			}
 		}
 	}
 	deadline := time.Now().Add(2 * time.Second)
@@ -67,7 +92,7 @@ func TestBoundedBurstAndSharedResolverRecovery(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 	stats := router.Stats()
-	if stats.PendingPeak > 64 || stats.WorkerPeak > 4 || stats.BackendConnections > 2 || stats.BudgetDrops+stats.QueueDrops == 0 {
+	if stats.PendingPeak == 0 || stats.PendingPeak > 64 || stats.WorkerPeak > 4 || stats.BackendConnections > 2 || stats.BudgetDrops+stats.QueueDrops == 0 {
 		t.Fatalf("unbounded/untested overload: %+v", stats)
 	}
 	for router.Stats().Pending > 0 && time.Now().Before(deadline) {
@@ -83,17 +108,22 @@ func TestBoundedBurstAndSharedResolverRecovery(t *testing.T) {
 	var queryBytes, responseBytes int
 	buf := make([]byte, 4096)
 	for i := 0; i < 100; i++ {
-		query := buildQuery(uint16(10000+i), "healthy.t.example.com")
+		query := buildQuery(uint16(10000+i), healthyName)
 		queryBytes += len(query)
 		qstart := time.Now()
-		c.SetDeadline(time.Now().Add(time.Second))
-		c.Write(query)
+		if err := c.SetDeadline(time.Now().Add(time.Second)); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Write(query); err != nil {
+			t.Fatal(err)
+		}
 		n, err := c.Read(buf)
 		if err != nil {
 			t.Fatalf("healthy query %d failed: %v", i, err)
 		}
-		if binary.BigEndian.Uint16(buf[:2]) != uint16(10000+i) {
-			t.Fatal("cross-client response mismatch")
+		if n < 12 || binary.BigEndian.Uint16(buf[:2]) != uint16(10000+i) || !questionMatches(questionSection(query), buf[:n]) {
+			t.Fatalf("response mismatch: want ID %d question %q; got ID %d question %q (%d bytes), stats=%+v", 10000+i,
+				extractDomain(query), binary.BigEndian.Uint16(buf[:2]), extractDomain(buf[:n]), n, router.Stats())
 		}
 		responseBytes += n
 		latencies = append(latencies, time.Since(qstart))

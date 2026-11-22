@@ -20,6 +20,9 @@ func init() {
 		Use:   "core-install",
 		Short: "Install a managed protocol with per-account credentials",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if o.Protocol == "ss2022-aes128" || o.Protocol == "ss-aead-chacha20" {
+				o.DedicatedXray = true
+			}
 			if o.Protocol == "hysteria2" {
 				if !cmd.Flags().Changed("hy2-salamander") {
 					o.HysteriaSalamander = true
@@ -75,7 +78,7 @@ func init() {
 	}
 	f := install.Flags()
 	f.StringVar(&name, "name", "", "Core name (a-z, 0-9, '-')")
-	f.StringVar(&o.Protocol, "protocol", "", "reality, xhttp, hysteria2, wireguard, amneziawg, ss2022, trojan, vlessenc")
+	f.StringVar(&o.Protocol, "protocol", "", "reality, xhttp, hysteria2, amneziawg, ss2022, ss2022-aes128, ss-aead-chacha20, trojan, vlessenc, tlsvision, xhttp-reality, anytls, mieru-tcp, mieru-udp; legacy manual protocols: wireguard, tuic")
 	f.StringVar(&o.Subnet, "subnet", "", "AmneziaWG: unused IPv4 /24 (default 10.203.72.0/24)")
 	f.StringVar(&o.Egress, "egress", "", "AmneziaWG: Internet interface (default: current route)")
 	f.StringVar(&o.Host, "host", "", "Public endpoint hostname or IP")

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, 'release/v2.0.2-*']
+    branches: [main, 'release/v2.0.2-*', 'release/v2.1.0-*']
   pull_request:
   release:
     types: [published]
@@ -37,6 +37,7 @@ jobs:
         run: |
           bash scripts/check-shell.sh
           python3 scripts/test-release-auth.py
+          python3 scripts/test-prepare-v2.1.0-release.py
           python3 scripts/check-release-gates.py --report-only
           govulncheck ./...
       - name: Vet

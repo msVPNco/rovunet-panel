@@ -19,8 +19,11 @@ pidfile=root/(name+'.pid')
 def active():
     if name.endswith('.timer'):return True
     if not pidfile.exists():return False
-    try:os.kill(int(pidfile.read_text()),0);return True
-    except ProcessLookupError:return False
+    try:
+        pid=int(pidfile.read_text())
+        os.kill(pid,0)
+        return pathlib.Path('/proc',str(pid),'stat').read_text().rsplit(')',1)[1].split()[0]!='Z'
+    except (ProcessLookupError,FileNotFoundError):return False
 if action=='is-active':print('active' if active() else 'inactive');sys.exit(0 if active() else 3)
 if action=='is-enabled':print('enabled');sys.exit(0)
 if action=='show':
@@ -55,6 +58,10 @@ if action=='stop':
     if pidfile.exists():
         try:os.kill(int(pidfile.read_text()),signal.SIGTERM)
         except ProcessLookupError:pass
+        deadline=time.monotonic()+5
+        while active() and time.monotonic()<deadline:time.sleep(.02)
+        if active():raise SystemExit('Fixture service did not stop: '+name)
+        pidfile.unlink(missing_ok=True)
     sys.exit(0)
 raise SystemExit('Unexpected systemctl operation: '+action+' '+name)
 '''
@@ -76,6 +83,61 @@ def feeds():
 
 def snapshot(root):
     return {str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
+
+def seed_existing_service(unit_dir,state,name):
+    """Pair each synthetic old process with its installed unit, as in production."""
+    unit='rovunet-core-'+name+'.service'
+    path=unit_dir/unit
+    path.write_text('[Unit]\nDescription=Synthetic existing core '+name+'\n'
+                    '[Service]\nType=simple\nExecStart=/bin/sleep 240\n'
+                    '[Install]\nWantedBy=multi-user.target\n')
+    path.chmod(0o644)
+    process=subprocess.Popen(['/bin/sleep','240'])
+    (state/(unit+'.pid')).write_text(str(process.pid))
+    return process
+
+def replacement_evidence(old, old_files, saved_options):
+    """Require completed retirement, unchanged private backup, and live new rules."""
+    root=old.parent/'core-replacements'
+    owners=json.loads((old.parent/'firewall-owners.json').read_text())
+    evidence={}
+    for previous,name,protocol,method in (
+        ('wireguard','managed-ss2022-aes128','ss2022-aes128','2022-blake3-aes-128-gcm'),
+        ('managed-tuic','managed-ss-aead-chacha20','ss-aead-chacha20','chacha20-ietf-poly1305'),
+    ):
+        port=saved_options[previous]['port']
+        assert not (old/previous).exists(), 'Retired default remains: '+previous
+        journal=root/(previous+'.json')
+        record=json.loads(journal.read_text())
+        assert record['version']==1 and record['stage']=='done' and record['was_active']
+        assert record['old_name']==previous and record['new_name']==name
+        assert record['new_protocol']==protocol and record['port']==port
+        assert record['host']==saved_options[previous]['host']
+        backup=pathlib.Path(record['backup'])
+        assert backup.parent==root and backup.is_dir()
+        assert journal.stat().st_mode&0o777==0o600 and backup.stat().st_mode&0o777==0o700
+        expected={path[len(previous)+1:]:data for path,data in old_files.items() if path.startswith(previous+'/')}
+        assert expected and snapshot(backup)==expected, 'Private backup changed original '+previous
+        assert all(p.stat().st_mode&0o777==0o600 for p in backup.rglob('*') if p.is_file())
+        options=json.loads((old/name/'options.json').read_text())
+        assert options['protocol']==protocol and options['port']==port and options['dedicatedXray']
+        assert options['host']==saved_options[previous]['host']
+        server=json.loads((old/name/'server.json').read_text())
+        inbounds=[inbound for inbound in server['inbounds'] if inbound['protocol']=='shadowsocks']
+        assert len(inbounds)==1 and inbounds[0]['port']==port
+        settings=inbounds[0]['settings']
+        assert settings['network']=='tcp,udp' and len(settings['clients'])==1
+        if protocol=='ss2022-aes128':assert settings['method']==method
+        else:assert not settings.get('method') and settings['clients'][0]['method']==method
+        unit=(pathlib.Path('/etc/systemd/system')/('rovunet-core-'+name+'.service')).read_text()
+        assert 'ExecStart=/usr/local/bin/rovunet-xray-managed run -c '+str(old/name/'server.json') in unit
+        for transport in ('tcp','udp'):
+            entry=owners[str(port)+'/'+transport]
+            assert entry['owners']=={'core:'+name:True}, 'Replacement lost exclusive firewall ownership'
+            run('iptables','-C','INPUT','-p',transport,'--dport',str(port),'-j','ACCEPT')
+        evidence[previous]={'replacement':name,'protocol':protocol,'method':method,'port':port,
+                            'dedicated_runtime':True,'tcp_udp_firewall_ownership':'PASS','private_original_backup':'PASS'}
+    return evidence
 
 def child(a):
     for name in ('mnt','net','pid'):
@@ -132,44 +194,83 @@ def child(a):
     run('ip','addr','add','198.51.100.1/24','dev','complete0')
     run('ip','link','set','complete0','up')
     run('ip','route','add','default','dev','complete0')
-    processes=[]
+    processes={}
     try:
         old=pathlib.Path('/etc/rovunet/core')
         old_names=sorted(p.name for p in old.iterdir() if p.is_dir())
+        retired={'wireguard','managed-tuic'}
+        assert retired.issubset(old_names)
+        saved_options={name:json.loads((old/name/'options.json').read_text()) for name in old_names}
+        # Existing installations own their listener rules before the migration.
+        # Seed that state inside this private network namespace, then require
+        # both TCP/UDP ownership and rules to survive removal of the old UDP core.
+        old_owners={}
         for name in old_names:
-            p=subprocess.Popen(['/bin/sleep','240']);processes.append(p)
-            (state/('rovunet-core-'+name+'.service.pid')).write_text(str(p.pid))
+            # service.Stop checks the installed unit before calling systemctl.
+            # A PID without a unit is not a coherent existing-service fixture.
+            processes[name]=seed_existing_service(pathlib.Path('/etc/systemd/system'),state,name)
+            meta=dict(line.split('=',1) for line in (old/name/'meta').read_text().splitlines() if '=' in line)
+            for transport in meta['proto'].split(','):
+                port=meta['port'];key=port+'/'+transport
+                assert key not in old_owners
+                run('iptables','-A','INPUT','-p',transport,'--dport',port,'-j','ACCEPT')
+                old_owners[key]={'owners':{'core:'+name:True},'preexisting':False}
+        (old.parent/'firewall-owners.json').write_text(json.dumps(old_owners))
         run('/usr/local/bin/rovunet','subscriptions-refresh')
-        before=feeds();assert len(before['android'][1]['items'])==20
+        before=feeds();assert len(before['android'][1]['items'])==21 and len(before['windows'][1]['items'])==21
         old_files=snapshot(old)
         config_before=pathlib.Path('/etc/rovunet/config.json').read_bytes()
         output=run('/usr/local/bin/rovunet','complete-setup').stdout.decode()
         (work/'first-setup.log').write_text(output)
         after=feeds()
         assert len(after['android'][1]['items'])==30 and len(after['windows'][1]['items'])==30
-        for platform in before:assert before[platform][0]==after[platform][0]
-        links={item['id']:item['link'] for item in after['android'][1]['items']}
-        for item in before['android'][1]['items']:assert links[item['id']]==item['link']
+        for platform in before:
+            assert before[platform][0]==after[platform][0]
+            links={item['id']:item['link'] for item in after[platform][1]['items']}
+            for item in before[platform][1]['items']:
+                if item['id'] in retired:assert item['id'] not in links
+                else:assert links[item['id']]==item['link'], 'Unrelated profile changed: '+item['id']
+            for name in ('managed-ss2022-aes128','managed-ss-aead-chacha20'):assert links[name]
         assert config_before==pathlib.Path('/etc/rovunet/config.json').read_bytes()
-        for path,data in old_files.items():assert (old/path).read_bytes()==data
+        for path,data in old_files.items():
+            if path.split('/',1)[0] not in retired:assert (old/path).read_bytes()==data
+        evidence=replacement_evidence(old,old_files,saved_options)
         assert pathlib.Path('/usr/local/bin/xray').read_bytes()==legacy
-        for p in processes:assert p.poll() is None
+        for name,p in processes.items():
+            if name in retired:
+                unit=pathlib.Path('/etc/systemd/system')/('rovunet-core-'+name+'.service')
+                pidfile=state/(unit.name+'.pid')
+                assert p.poll() is not None, ('Retired service still runs: '+name+
+                    ' pid='+str(p.pid)+' unit_exists='+str(unit.exists())+' pidfile_exists='+str(pidfile.exists()))
+                assert not unit.exists() and not pidfile.exists(), 'Retired service state remains: '+name
+            else:assert p.poll() is None, 'Unrelated process was stopped: '+name
+        owners=json.loads((old.parent/'firewall-owners.json').read_text())
+        for key,entry in old_owners.items():
+            if not any('core:'+name in entry['owners'] for name in retired):assert owners[key]==entry
         backups=list(pathlib.Path('/etc/rovunet/setup-backups').glob('*.backup'));assert len(backups)==1
         run('/usr/local/bin/rovunet','backup-check',str(backups[0]))
         new_files=snapshot(old)
+        private_backups=snapshot(old.parent/'core-replacements')
         run('/usr/local/bin/rovunet','complete-setup')
         assert snapshot(old)==new_files
+        assert snapshot(old.parent/'core-replacements')==private_backups
+        assert replacement_evidence(old,old_files,saved_options)==evidence
         assert len(list(pathlib.Path('/etc/rovunet/setup-backups').glob('*.backup')))==1
         calls=(state/'calls').read_text().splitlines()
         for name in old_names:
             assert 'start rovunet-core-'+name+'.service' not in calls
-            assert 'stop rovunet-core-'+name+'.service' not in calls
             assert 'restart rovunet-core-'+name+'.service' not in calls
+            if name in retired:
+                stops=[i for i,line in enumerate(calls) if line=='stop rovunet-core-'+name+'.service']
+                started=calls.index('start rovunet-core-'+evidence[name]['replacement']+'.service')
+                assert len(stops)>=2 and min(stops)<started<max(stops)
+            else:assert 'stop rovunet-core-'+name+'.service' not in calls
         print(json.dumps({'actual_panel_cli':True,'actual_xray_and_awg_processes':True,'systemd':'simulated','host_modified':False,
-            'android_profiles':30,'windows_profiles':30,'old_urls_profiles_credentials_core_files':'preserved',
-            'legacy_runtime_and_processes':'preserved','private_backup_validation':'PASS','idempotent_retry':'PASS'},indent=2))
+            'android_profiles':30,'windows_profiles':30,'subscription_urls_accounts':'preserved',
+            'unrelated_profiles_credentials_core_files':'preserved','replacements':evidence,
+            'incompatible_legacy_runtime_and_unrelated_processes':'preserved','private_backup_validation':'PASS','idempotent_retry':'PASS'},indent=2))
     finally:
-        pids=[p.pid for p in processes]
+        pids=[p.pid for p in processes.values()]
         pids += [int(p.read_text()) for p in state.glob('*.pid')]
         for pid in set(pids):
             try:os.kill(pid,signal.SIGTERM)
@@ -197,16 +298,22 @@ def main():
         (work/'ext').write_text('subjectAltName=DNS:n.example.com,DNS:www.cloudflare.com\nextendedKeyUsage=serverAuth\nbasicConstraints=CA:FALSE\n')
         run('openssl','x509','-req','-in',str(work/'leaf.csr'),'-CA',str(work/'ca.crt'),'-CAkey',str(work/'ca.key'),'-CAcreateserial','-out',str(work/'leaf.crt'),'-days','1','-extfile',str(work/'ext'))
         env=dict(os.environ,ROVUNET_TEST_COMPLETE_FIXTURE=str(fixture),ROVUNET_TEST_COMPLETE_CERT=str(work/'leaf.crt'),ROVUNET_TEST_COMPLETE_KEY=str(work/'leaf.key'))
-        if a.fixture_test_binary:
-            run(str(pathlib.Path(a.fixture_test_binary).resolve()),'-test.run','^TestExportCompleteCLIFixture$',env=env)
-        else:run('go','test','-count=1','-run','^TestExportCompleteCLIFixture$','./internal/handlers',env=env)
+        # Separate invocations guarantee augmentation follows the original
+        # fixture export, even when the test runner changes registration order.
+        for fixture_test in ('TestExportCompleteCLIFixture','TestExportCompleteReplacementCLIFixture'):
+            if a.fixture_test_binary:
+                run(str(pathlib.Path(a.fixture_test_binary).resolve()),'-test.run','^'+fixture_test+'$',env=env)
+            else:run('go','test','-count=1','-run','^'+fixture_test+'$','./internal/handlers',env=env)
         argv=[sys.executable,str(pathlib.Path(__file__).resolve()),'--child','--work',str(work)]
         for name in ('panel','xray','engine','tool','sing_box','mita'):argv+=['--'+name.replace('_','-'),getattr(a,name)]
         env=dict(os.environ,**{'ROVUNET_COMPLETE_PARENT_'+n.upper():os.readlink('/proc/self/ns/'+n) for n in ('mnt','net','pid')})
         result=subprocess.run(['unshare','--mount','--net','--pid','--mount-proc','--kill-child','--fork']+argv,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,env=env)
         (root/'complete-setup-integration.log').write_bytes(result.stdout)
+        calls=work/'systemd/calls'
+        if calls.exists():shutil.copyfile(calls,root/'complete-setup-systemctl.log')
         print(result.stdout.decode())
         if result.returncode:
+            if calls.exists():print('systemctl call trace (tail)\n'+calls.read_text()[-12000:])
             for file in sorted((work/'systemd').glob('*.log')):print(file.name+'\n'+file.read_text(errors='replace')[-4000:])
             if (work/'first-setup.log').exists():print((work/'first-setup.log').read_text())
             raise SystemExit(result.returncode)

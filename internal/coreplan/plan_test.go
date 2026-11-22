@@ -14,7 +14,7 @@ import (
 )
 
 func TestDistinctProfiles(t *testing.T) {
-	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard", "ss2022", "trojan", "vlessenc"} {
+	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard", "ss2022", "ss2022-aes128", "ss-aead-chacha20", "trojan", "vlessenc"} {
 		b, err := Generate(Options{Protocol: protocol, Host: "example.org", SNI: "example.org", RealityTarget: "example.org:443", Port: 8443, Devices: 300, Cert: "cert.pem", Key: "key.pem"})
 		if err != nil {
 			t.Fatal(err)
@@ -54,7 +54,7 @@ func TestGeneratedConfigWithXray(t *testing.T) {
 	if output, err := exec.Command("openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-subj", "/CN=example.org", "-keyout", key, "-out", cert).CombinedOutput(); err != nil {
 		t.Fatalf("certificate: %v %s", err, output)
 	}
-	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard", "ss2022", "trojan", "vlessenc"} {
+	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard", "ss2022", "ss2022-aes128", "ss-aead-chacha20", "trojan", "vlessenc"} {
 		t.Run(protocol, func(t *testing.T) {
 			b, err := Generate(Options{Protocol: protocol, Host: "example.org", SNI: "example.org", RealityTarget: "example.org:443", Port: 8443, Devices: 3, Cert: cert, Key: key})
 			if err != nil {
@@ -111,7 +111,7 @@ func TestWriteAppFixture(t *testing.T) {
 }
 
 func TestGenerateForIsStablePerClient(t *testing.T) {
-	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard", "ss2022", "trojan", "vlessenc"} {
+	for _, protocol := range []string{"reality", "xhttp", "hysteria2", "wireguard", "ss2022", "ss2022-aes128", "ss-aead-chacha20", "trojan", "vlessenc"} {
 		o := Options{Protocol: protocol, Host: "example.org", SNI: "example.org", RealityTarget: "example.org:443", Port: 8443, Cert: "c.pem", Key: "k.pem"}
 		st, err := NewState()
 		if err != nil {

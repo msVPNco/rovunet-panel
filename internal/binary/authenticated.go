@@ -59,10 +59,6 @@ func transportAsset(name, goos, arch string) (pinnedTransport, string, error) {
 	return pinnedTransport{}, "", fmt.Errorf("no pinned %s runtime for %s/%s", name, goos, arch)
 }
 
-// RuntimeDownloadBase binds runtime bytes to the installed panel release;
-// changing an upstream or panel "latest" must not change this version's cores.
-func RuntimeDownloadBase() string { return releaseBaseURL + "/download/v" + version.Version }
-
 func fetchSmall(url string, limit int64) ([]byte, error) {
 	resp, err := httpClient.Get(url)
 	if err != nil {

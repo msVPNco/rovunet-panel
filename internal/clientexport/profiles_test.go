@@ -46,26 +46,48 @@ func TestSupplementalDisplayNamesPreserveConnectionAndIdentity(t *testing.T) {
 	for protocol := range wants {
 		o := coreplan.Options{Protocol: protocol, Host: "192.0.2.1", SNI: "example.test", Port: 33444, Cert: "cert", Key: "key"}
 		st, err := coreplan.NewState()
-		if err != nil { t.Fatal(err) }
+		if err != nil {
+			t.Fatal(err)
+		}
 		b, err := coreplan.GenerateFor(o, &st, []coreplan.Client{{Name: u.Username, Secret: u.Password}})
-		if err != nil { t.Fatal(err) }
+		if err != nil {
+			t.Fatal(err)
+		}
 		dir := filepath.Join(coreinstall.Root, "managed-"+protocol)
-		if err := coreinstall.WriteBundle(dir, o, b); err != nil { t.Fatal(err) }
+		if err := coreinstall.WriteBundle(dir, o, b); err != nil {
+			t.Fatal(err)
+		}
 		for file, value := range map[string]any{"options.json": o, "state.json": st} {
 			data, _ := json.Marshal(value)
-			if err := os.WriteFile(filepath.Join(dir, file), data, 0600); err != nil { t.Fatal(err) }
+			if err := os.WriteFile(filepath.Join(dir, file), data, 0600); err != nil {
+				t.Fatal(err)
+			}
 		}
-		if err := os.Rename(filepath.Join(dir, "clients", "device-001."+b.Extension), filepath.Join(dir, "clients", u.Username+"."+b.Extension)); err != nil { t.Fatal(err) }
+		if err := os.Rename(filepath.Join(dir, "clients", "device-001."+b.Extension), filepath.Join(dir, "clients", u.Username+"."+b.Extension)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, platform := range []string{"android", "windows"} {
 		feed, err := Build(&config.Config{PublicAddress: "192.0.2.1"}, u, nil, Options{Client: platform, CompatibleSubscription: true})
-		if err != nil || len(feed) != 4 { t.Fatalf("feed count=%d err=%v", len(feed), err) }
+		if err != nil || len(feed) != 4 {
+			t.Fatalf("feed count=%d err=%v", len(feed), err)
+		}
 		for _, p := range feed {
-			a, err := url.Parse(p.Link); if err != nil { t.Fatal(err) }
-			b, err := url.Parse(p.Standard); if err != nil { t.Fatal(err) }
-			if p.ID != "managed-"+p.Protocol || a.Fragment != wants[p.Protocol] { t.Fatalf("identity/display mismatch: %s %s", p.ID, a.Fragment) }
+			a, err := url.Parse(p.Link)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b, err := url.Parse(p.Standard)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if p.ID != "managed-"+p.Protocol || a.Fragment != wants[p.Protocol] {
+				t.Fatalf("identity/display mismatch: %s %s", p.ID, a.Fragment)
+			}
 			a.Fragment, b.Fragment = "", ""
-			if a.String() != b.String() { t.Fatal("display rename changed connection parameters") }
+			if a.String() != b.String() {
+				t.Fatal("display rename changed connection parameters")
+			}
 		}
 	}
 }
@@ -75,7 +97,7 @@ func TestReleasedClientCapabilitiesAndAccountPolicy(t *testing.T) {
 	coreinstall.Root = t.TempDir()
 	t.Cleanup(func() { coreinstall.Root = old })
 	u := config.UserConfig{Username: "alice", Password: "fixture"}
-	for _, protocol := range []string{"amneziawg", "ss2022", "trojan", "vlessenc"} {
+	for _, protocol := range []string{"amneziawg", "ss2022", "ss2022-aes128", "ss-aead-chacha20", "trojan", "vlessenc"} {
 		o := coreplan.Options{Protocol: protocol, Host: "192.0.2.1", SNI: "example.test", Port: 28444, Cert: "cert", Key: "key", Subnet: "10.203.72.0/24", Egress: "eth0"}
 		st, err := coreplan.NewState()
 		if err != nil {
@@ -103,11 +125,18 @@ func TestReleasedClientCapabilitiesAndAccountPolicy(t *testing.T) {
 	for _, tc := range []struct {
 		platform    string
 		quota, want int
-	}{{"android", 0, 4}, {"windows", 0, 4}, {"android", 1, 0}, {"windows", 1, 0}} {
+	}{{"android", 0, 6}, {"windows", 0, 6}, {"android", 1, 0}, {"windows", 1, 0}} {
 		u.QuotaGB = tc.quota
 		got, err := Build(cfg, u, nil, Options{Client: tc.platform, StatsWorking: func(string) bool { return true }})
 		if err != nil || len(got) != tc.want {
 			t.Fatalf("platform=%s quota=%d profiles=%d want=%d err=%v", tc.platform, tc.quota, len(got), tc.want, err)
+		}
+		if tc.quota == 0 && tc.platform == "windows" {
+			for _, p := range got {
+				if coreplan.IsShadowsocks(p.Protocol) && !strings.HasPrefix(p.Link, "ss://") {
+					t.Fatal("Windows Shadowsocks export used an incompatible native envelope")
+				}
+			}
 		}
 		if tc.quota == 0 && tc.platform == "android" {
 			for _, p := range got {
@@ -116,12 +145,26 @@ func TestReleasedClientCapabilitiesAndAccountPolicy(t *testing.T) {
 				}
 			}
 			feed, err := Build(cfg, u, nil, Options{Client: "android", CompatibleSubscription: true})
-			if err != nil || len(feed) != 4 {
+			if err != nil || len(feed) != 6 {
 				t.Fatal("compatible subscription generation failed")
 			}
 			for _, p := range feed {
-				if p.Protocol == "amneziawg" && !strings.HasPrefix(p.Link, "wireguard://") || p.Protocol == "ss2022" && !strings.HasPrefix(p.Link, "ss://") {
+				if p.Protocol == "amneziawg" && !strings.HasPrefix(p.Link, "wireguard://") || coreplan.IsShadowsocks(p.Protocol) && !strings.HasPrefix(p.Link, "ss://") {
 					t.Fatal("unsafe older-client encoding")
+				}
+				if coreplan.IsShadowsocks(p.Protocol) {
+					standard, err := url.Parse(p.Standard)
+					if err != nil {
+						t.Fatal(err)
+					}
+					exported, err := url.Parse(p.Link)
+					if err != nil {
+						t.Fatal(err)
+					}
+					standard.Fragment, exported.Fragment = "", ""
+					if p.ID != p.Protocol || standard.String() != exported.String() {
+						t.Fatal("compatible export changed Shadowsocks identity or credentials")
+					}
 				}
 			}
 		}

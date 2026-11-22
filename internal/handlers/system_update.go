@@ -127,10 +127,8 @@ func HandlePostUpdate(ctx *actions.Context) error {
 		if e := ApplyV2Deployment(cfg); e != nil {
 			return e
 		}
-		if completeBaseTunnels(cfg) {
-			if e := EnsureCompleteSetup(cfg, ctx.Output); e != nil {
-				return e
-			}
+		if e := completeCoherentCoreSetup(cfg, ctx.Output); e != nil {
+			return e
 		}
 		if e := finishInstallationAccounting(cfg, nil); e != nil {
 			return e

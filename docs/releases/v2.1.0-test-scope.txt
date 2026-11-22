@@ -1,0 +1,47 @@
+Rovunet Panel 2.1.0: owner-authorized bounded functional update
+
+Source base: public v2.0.2, efa697256880b0d2c0b1494513b51f4c72a7735b.
+The private v2.0.3 source is not the base. The owner requested replacement of
+default WireGuard/TUIC with two Shadowsocks methods, old fixed ports and a
+visible Free config menu, followed by publication as version 2.1.0.
+
+Required implementation acceptance:
+- Fresh complete setup creates ss2022-aes128 on 51820 TCP+UDP and classic
+  ss-aead-chacha20 on 33444 TCP+UDP, using ordered fixed fallback ports only.
+- Existing default wireguard/managed-tuic migrate on their exact saved ports.
+  Back up before stopping; confirm replacement before retirement; preserve
+  created keys on retries. Failures/collisions/stopped choices are explicit.
+- Preserve unrelated core bytes, credentials and saved ports; preserve account
+  IDs, periods, passwords, known consumption, subscription tokens and URLs.
+- Exact methods: 2022-blake3-aes-128-gcm and chacha20-ietf-poly1305. Retain the
+  existing AES-256 derivation and exclude all three from finite quotas.
+- Actual authenticated Xray: nine generated-config subcases, ten managed
+  protocol lifecycle subcases and three two-user UDP payload subcases, without
+  silently skipping a missing runtime. Test both additions on real TCP/UDP.
+- Users menu creates marked 50 GiB / 30-day Free accounts and private exports;
+  normal accounts are not converted, quota/expiry failures block export, and
+  interrupted onboarding is resumable without fresh allowance or identity.
+- Both subscription feed forms keep intended counts (30 unrestricted, 29
+  time-only, six finite-budget when the full eligible setup is available).
+- Keep public v2.0.2 Slipstream trust retrieval and ordinary TLS verification.
+- All managed runtimes remain pinned to authenticated v2.0.2 asset bytes.
+
+Release requirements:
+Exact source CI, authenticated-runtime/system acceptance and draft preparation
+must pass before signing. The owner's existing Windows-local production root
+signs only the reviewed exact manifest. Publication verifies the signature and
+every artifact hash, exact source/preparation CI, signed fresh-installer staging/update
+acceptance and the previous-Latest lease. CI cannot sign or choose a new root.
+
+The final signed runner stages the actual installer with --no-run and exercises
+the original 2.0.2 Update menu in private Linux namespaces with simulated
+systemd. It preserves a real SQLite opening and TLS/trust identities. This is
+not full interactive first-account onboarding or live Caddy/Slipstream traffic;
+those two transport services are administratively inactive in that fixture.
+
+The panel menu/export does not ship or activate the separate app Free catalog.
+No claim is made that the owner's reported connection failures have been
+diagnosed as certificate failures. Controlled tests do not certify final
+physical apps, every ISP, physical ARM64, independent off-site root custody,
+WARP provider registration, exact simultaneous-device limits or complete
+fresh-target runtime/Caddy/firewall/provider recovery.

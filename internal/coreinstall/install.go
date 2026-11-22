@@ -44,7 +44,7 @@ func ServiceName(name string) string { return "rovunet-core-" + name }
 // Proto is the transport-layer protocol a core listens on.
 func Proto(protocol string) string {
 	switch protocol {
-	case "ss2022":
+	case "ss2022", "ss2022-aes128", "ss-aead-chacha20":
 		return "tcp,udp"
 	case "hysteria2", "wireguard", "amneziawg", "tuic", "mieru-udp":
 		return "udp"
@@ -168,17 +168,17 @@ func List() ([]Meta, error) {
 	return out, nil
 }
 
-// EnsureXray installs the Xray core published with the panel's own release,
-// verified against that release's SHA256SUMS. An existing binary is kept.
+// EnsureXray installs Xray from the selected runtime release, authenticated
+// against its signed manifest. An existing binary is kept.
 func EnsureXray() error {
 	if _, err := os.Stat(XrayPath); err == nil {
 		return nil
 	}
-	url := fmt.Sprintf("%s/xray-%s-%s", binary.RuntimeDownloadBase(), runtime.GOOS, runtime.GOARCH)
+	asset := fmt.Sprintf("xray-%s-%s", runtime.GOOS, runtime.GOARCH)
 	if err := os.MkdirAll(filepath.Dir(XrayPath), 0755); err != nil {
 		return err
 	}
-	tmp, err := binary.Download(url, filepath.Dir(XrayPath))
+	tmp, err := binary.DownloadRuntime(asset, filepath.Dir(XrayPath))
 	if err != nil {
 		return fmt.Errorf("download xray: %w", err)
 	}

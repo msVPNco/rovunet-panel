@@ -1,6 +1,10 @@
 package clientcfg
 
-import "sort"
+import (
+	"sort"
+
+	"github.com/msVPNco/rovunet-panel/internal/protocols"
+)
 
 // Output order is a fixed presentation policy. It is not a measurement of
 // latency, throughput or reliability on the user's network.
@@ -34,6 +38,9 @@ func TunnelRank(transport string) int {
 
 // CoreRank is the position of an Xray core protocol in the output.
 func CoreRank(protocol string) int {
+	if protocols.IsShadowsocks(protocol) {
+		return 100
+	}
 	switch protocol {
 	case "tlsvision":
 		return 10
@@ -53,8 +60,6 @@ func CoreRank(protocol string) int {
 		return 80
 	case "anytls":
 		return 90
-	case "ss2022":
-		return 100
 	case "vlessenc":
 		return 110
 	case "trojan":
