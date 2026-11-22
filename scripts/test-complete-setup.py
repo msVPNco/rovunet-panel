@@ -84,6 +84,18 @@ def feeds():
 def snapshot(root):
     return {str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
 
+def seed_existing_service(unit_dir,state,name):
+    """Pair each synthetic old process with its installed unit, as in production."""
+    unit='rovunet-core-'+name+'.service'
+    path=unit_dir/unit
+    path.write_text('[Unit]\nDescription=Synthetic existing core '+name+'\n'
+                    '[Service]\nType=simple\nExecStart=/bin/sleep 240\n'
+                    '[Install]\nWantedBy=multi-user.target\n')
+    path.chmod(0o644)
+    process=subprocess.Popen(['/bin/sleep','240'])
+    (state/(unit+'.pid')).write_text(str(process.pid))
+    return process
+
 def replacement_evidence(old, old_files, saved_options):
     """Require completed retirement, unchanged private backup, and live new rules."""
     root=old.parent/'core-replacements'
@@ -194,8 +206,9 @@ def child(a):
         # both TCP/UDP ownership and rules to survive removal of the old UDP core.
         old_owners={}
         for name in old_names:
-            p=subprocess.Popen(['/bin/sleep','240']);processes[name]=p
-            (state/('rovunet-core-'+name+'.service.pid')).write_text(str(p.pid))
+            # service.Stop checks the installed unit before calling systemctl.
+            # A PID without a unit is not a coherent existing-service fixture.
+            processes[name]=seed_existing_service(pathlib.Path('/etc/systemd/system'),state,name)
             meta=dict(line.split('=',1) for line in (old/name/'meta').read_text().splitlines() if '=' in line)
             for transport in meta['proto'].split(','):
                 port=meta['port'];key=port+'/'+transport
@@ -224,7 +237,12 @@ def child(a):
         evidence=replacement_evidence(old,old_files,saved_options)
         assert pathlib.Path('/usr/local/bin/xray').read_bytes()==legacy
         for name,p in processes.items():
-            if name in retired:assert p.poll() is not None, 'Retired service still runs: '+name
+            if name in retired:
+                unit=pathlib.Path('/etc/systemd/system')/('rovunet-core-'+name+'.service')
+                pidfile=state/(unit.name+'.pid')
+                assert p.poll() is not None, ('Retired service still runs: '+name+
+                    ' pid='+str(p.pid)+' unit_exists='+str(unit.exists())+' pidfile_exists='+str(pidfile.exists()))
+                assert not unit.exists() and not pidfile.exists(), 'Retired service state remains: '+name
             else:assert p.poll() is None, 'Unrelated process was stopped: '+name
         owners=json.loads((old.parent/'firewall-owners.json').read_text())
         for key,entry in old_owners.items():
@@ -291,8 +309,11 @@ def main():
         env=dict(os.environ,**{'ROVUNET_COMPLETE_PARENT_'+n.upper():os.readlink('/proc/self/ns/'+n) for n in ('mnt','net','pid')})
         result=subprocess.run(['unshare','--mount','--net','--pid','--mount-proc','--kill-child','--fork']+argv,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,env=env)
         (root/'complete-setup-integration.log').write_bytes(result.stdout)
+        calls=work/'systemd/calls'
+        if calls.exists():shutil.copyfile(calls,root/'complete-setup-systemctl.log')
         print(result.stdout.decode())
         if result.returncode:
+            if calls.exists():print('systemctl call trace (tail)\n'+calls.read_text()[-12000:])
             for file in sorted((work/'systemd').glob('*.log')):print(file.name+'\n'+file.read_text(errors='replace')[-4000:])
             if (work/'first-setup.log').exists():print((work/'first-setup.log').read_text())
             raise SystemExit(result.returncode)
