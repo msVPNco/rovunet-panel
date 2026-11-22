@@ -1,0 +1,195 @@
+name: Prepare or publish reviewed v2.1.0
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Prepare an unsigned draft, or publish an existing production-signed candidate
+        type: choice
+        options: [prepare, publish]
+        default: prepare
+        required: true
+      source_commit:
+        description: Exact reviewed source SHA (prepare must run on that same branch head)
+        type: string
+        required: true
+      draft_id:
+        description: Existing prepared draft ID (publish only)
+        type: string
+      manifest_base64:
+        description: Base64 of the reviewed production-signed manifest (publish only)
+        type: string
+      signature_base64:
+        description: Base64 of its existing Windows-vault signature (publish only)
+        type: string
+      final_acceptance_base64:
+        description: Base64 of the separately verified final signed-install/update VM receipt (publish only)
+        type: string
+      final_acceptance_sha256:
+        description: Independently reviewed SHA-256 of that final acceptance receipt (publish only)
+        type: string
+  # These exact branch names make the reviewed route usable by the GitHub
+  # connector. Ordinary release/v2.1.0-* source pushes only run source CI.
+  push:
+    branches: ['release-prepare/v2.1.0', 'release-publish/v2.1.0']
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: reviewed-release-v2.1.0
+  cancel-in-progress: false
+
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+  GOTOOLCHAIN: local
+  GOTELEMETRY: 'off'
+
+jobs:
+  prepare:
+    if: github.repository == 'msVPNco/rovunet-panel' && ((github.event_name == 'push' && github.ref == 'refs/heads/release-prepare/v2.1.0') || (github.event_name == 'workflow_dispatch' && inputs.operation == 'prepare'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: production-release
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_COMMIT: ${{ inputs.source_commit || github.sha }}
+      PREPARATION: ${{ runner.temp }}/rovunet-v2.1.0-candidate
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.source_commit || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.4'
+      - name: Prepare exact source and authenticated immutable runtime bundle
+        run: |
+          python3 scripts/test-prepare-v2.1.0-release.py
+          go mod download
+          python3 scripts/prepare-v2.1.0-release.py build --source "$SOURCE_COMMIT" --work "$PREPARATION"
+
+      - name: Validate Shadowsocks with reviewed Xray
+        timeout-minutes: 20
+        run: |
+          go_bin=$(command -v go)
+          modcache=$(go env GOMODCACHE)
+          cache="$PREPARATION/isolated-go-cache"
+          mkdir -p "$cache" "$PREPARATION/runtime-fixture"
+          # Runtime admission writes a provenance sidecar beside its engine.
+          # Keep that fixture outside the immutable candidate asset directory.
+          cp "$PREPARATION/assets/xray-linux-amd64" "$PREPARATION/runtime-fixture/xray"
+          cmp "$PREPARATION/assets/xray-linux-amd64" "$PREPARATION/runtime-fixture/xray"
+          # Execute current candidate source against authenticated 2.0.2 bytes.
+          # All three tests and every required AES128/ChaCha subcase must pass;
+          # record-gate rejects skips and missing test families.
+          sudo unshare --mount --net --pid --fork --mount-proc --kill-child \
+            env "PATH=$PATH" ROVUNET_REVIEW25_ISOLATED=github-ci CI=true \
+            GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory "GIT_CONFIG_VALUE_0=$PWD" \
+            bash -euc '
+              test "$$" -eq 1
+              mount --make-rprivate /
+              ip link set lo up
+              for d in /etc /var/lib /tmp /root /run /usr/local/bin; do mount -t tmpfs tmpfs "$d"; done
+              mkdir -p /etc/ssl /etc/systemd/system
+              printf "%s\n" "[req]" "distinguished_name=dn" "[dn]" "CN=localhost" >/tmp/openssl.cnf
+              export OPENSSL_CONF=/tmp/openssl.cnf TMPDIR=/tmp
+              export GOCACHE="$3" GOMODCACHE="$2" XRAY="$4"
+              export GOMAXPROCS=4 GOFLAGS=-p=4 GOPROXY=off GOTOOLCHAIN=local GOENV=off
+              "$1" test -count=1 -timeout=15m -json \
+                -run "^(TestGeneratedConfigWithXray|TestManagedProtocolsRuntime|TestShadowsocksUDPPayload)$" \
+                ./internal/coreplan ./internal/coreinstall
+            ' exact-runtime "$go_bin" "$modcache" "$cache" "$PREPARATION/runtime-fixture/xray" \
+              | tee "$PREPARATION/exact-runtime-tests.jsonl"
+          python3 scripts/prepare-v2.1.0-release.py record-gate --work "$PREPARATION" --gate shadowsocks --log "$PREPARATION/exact-runtime-tests.jsonl"
+
+      - name: Exercise preserved AmneziaWG with candidate
+        run: |
+          go build -o "$PREPARATION/awg-helper" ./internal/coreinstall/testdata/awg-helper
+          mkdir -p "$PREPARATION/awg-test"
+          sudo python3 -u scripts/test-managed-awg.py \
+            --panel "$PREPARATION/assets/rovunet-linux-amd64" --helper "$PREPARATION/awg-helper" \
+            --engine "$PREPARATION/assets/amneziawg-go-linux-amd64" \
+            --tool "$PREPARATION/assets/awg-linux-amd64" --work "$PREPARATION/awg-test"
+          python3 scripts/prepare-v2.1.0-release.py record-gate --work "$PREPARATION" --gate amneziawg
+
+      - name: Exercise candidate complete setup
+        run: |
+          sudo env "PATH=$PATH" "GOPATH=$(go env GOPATH)" "GOCACHE=$(go env GOCACHE)" \
+            GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory "GIT_CONFIG_VALUE_0=$PWD" \
+            python3 scripts/test-complete-setup.py \
+            --panel "$PREPARATION/assets/rovunet-linux-amd64" --xray "$PREPARATION/assets/xray-linux-amd64" \
+            --engine "$PREPARATION/assets/amneziawg-go-linux-amd64" --tool "$PREPARATION/assets/awg-linux-amd64" \
+            --sing-box "$PREPARATION/assets/sing-box-linux-amd64" --mita "$PREPARATION/assets/mita-linux-amd64" \
+            --work "$PREPARATION/complete-setup"
+          python3 scripts/prepare-v2.1.0-release.py record-gate --work "$PREPARATION" --gate complete-setup
+
+      - name: Exercise candidate boundaries and recovery
+        run: |
+          sudo python3 scripts/test-bootstrap.py --work "$PREPARATION/bootstrap"
+          sudo python3 scripts/test-subscription-boundary.py --panel "$PREPARATION/assets/rovunet-linux-amd64" \
+            --work "$PREPARATION/subscription-boundary"
+          sudo python3 scripts/test-encrypted-backup-cli.py --panel "$PREPARATION/assets/rovunet-linux-amd64" --work "$PREPARATION/encrypted-backup"
+          sudo python3 scripts/test-router-systemd.py --panel "$PREPARATION/assets/rovunet-linux-amd64" --work "$PREPARATION/router-systemd"
+          python3 scripts/prepare-v2.1.0-release.py record-gate --work "$PREPARATION" --gate system-recovery
+
+      - name: Create the tested unsigned draft
+        run: python3 scripts/prepare-v2.1.0-release.py draft --work "$PREPARATION"
+      - name: Retain the exact unsigned signing package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rovunet-v2.1.0-unsigned-signing-package
+          path: |
+            ${{ env.PREPARATION }}/assets/*
+            ${{ env.PREPARATION }}/CANDIDATE.json
+            ${{ env.PREPARATION }}/SIGNING-INSTRUCTIONS.txt
+            ${{ env.PREPARATION }}/FINAL-ACCEPTANCE.template.json
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    if: github.repository == 'msVPNco/rovunet-panel' && ((github.event_name == 'push' && github.ref == 'refs/heads/release-publish/v2.1.0') || (github.event_name == 'workflow_dispatch' && inputs.operation == 'publish'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production-release
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Authenticate the existing Windows-vault signature
+        id: request
+        env:
+          REQUEST_SOURCE: ${{ inputs.source_commit }}
+          REQUEST_DRAFT: ${{ inputs.draft_id }}
+          REQUEST_MANIFEST: ${{ inputs.manifest_base64 }}
+          REQUEST_SIGNATURE: ${{ inputs.signature_base64 }}
+          REQUEST_FINAL_ACCEPTANCE: ${{ inputs.final_acceptance_base64 }}
+          REQUEST_FINAL_ACCEPTANCE_SHA256: ${{ inputs.final_acceptance_sha256 }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, shutil
+          target = pathlib.Path(os.environ['RUNNER_TEMP']) / 'v2.1.0-publication-request.json'
+          if os.environ['GITHUB_EVENT_NAME'] == 'push':
+              shutil.copyfile('release-request-v2.1.0.json', target)
+          else:
+              request = dict(schema=1, tag='v2.1.0', previous_tag='v2.0.2',
+                  source_commit=os.environ['REQUEST_SOURCE'], draft_id=int(os.environ['REQUEST_DRAFT']),
+                  manifest_base64=os.environ['REQUEST_MANIFEST'], signature_base64=os.environ['REQUEST_SIGNATURE'],
+                  final_acceptance_base64=os.environ['REQUEST_FINAL_ACCEPTANCE'],
+                  final_acceptance_sha256=os.environ['REQUEST_FINAL_ACCEPTANCE_SHA256'],
+                  publish_latest=True)
+              target.write_text(json.dumps(request), encoding='utf-8')
+          PY
+          python3 scripts/prepare-v2.1.0-release.py validate-request --request "$RUNNER_TEMP/v2.1.0-publication-request.json"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ steps.request.outputs.source }}
+          persist-credentials: false
+      - name: Verify signed candidate and publish its exact bytes
+        run: |
+          python3 scripts/prepare-v2.1.0-release.py publish \
+            --request "$RUNNER_TEMP/v2.1.0-publication-request.json" \
+            --work "$RUNNER_TEMP/v2.1.0-signed-verification"

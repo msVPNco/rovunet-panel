@@ -35,6 +35,8 @@ func handleSystemUsers(ctx *actions.Context) error {
 		var err error
 		action, err = prompt.Select("Action", []actions.SelectOption{
 			{Value: "add", Label: "Add user"},
+			{Value: "donate", Label: "Free config (50 GB / 30 days)"},
+			{Value: "donation-export", Label: "Export Free config for review"},
 			{Value: "bulk_add", Label: "Add multiple users (random creds)"},
 			{Value: "edit_password", Label: "Edit user password"},
 			{Value: "rotate_link", Label: "Replace subscription link (keep connection credentials)"},
@@ -114,6 +116,33 @@ func handleSystemUsers(ctx *actions.Context) error {
 
 	case "add":
 		if err := createUserInteractive(cfg, out, username, ctx.GetArg("days"), ctx.GetArg("gb")); err != nil {
+			return actions.NewError(actions.SystemUsers, err.Error(), nil)
+		}
+
+	case "donate":
+		if err := createDonationUser(cfg, out, username); err != nil {
+			return actions.NewError(actions.SystemUsers, err.Error(), nil)
+		}
+
+	case "donation-export":
+		if username == "" {
+			var options []actions.SelectOption
+			for _, u := range cfg.Users {
+				if u.Donation {
+					options = append(options, actions.SelectOption{Value: u.Username, Label: u.Username + " (" + limitSummary(u) + ")"})
+				}
+			}
+			if len(options) == 0 {
+				out.Info("No Free config accounts. Choose 'Free config (50 GB / 30 days)' to create one.")
+				return nil
+			}
+			var err error
+			username, err = prompt.Select("Free config account", options)
+			if err != nil {
+				return err
+			}
+		}
+		if err := writeDonationCandidate(cfg, strings.TrimSpace(username), out); err != nil {
 			return actions.NewError(actions.SystemUsers, err.Error(), nil)
 		}
 
@@ -395,6 +424,12 @@ func handleSystemUsers(ctx *actions.Context) error {
 // first prompt (e.g. when the name came in as a CLI arg); pass "" to prompt.
 // Used from both the `users add` action and the post-`tunnel add` offer.
 func createUserInteractive(cfg *config.Config, out actions.OutputWriter, providedUsername, daysArg, gbArg string) error {
+	return createUserInteractiveWithDonation(cfg, out, providedUsername, daysArg, gbArg, false)
+}
+
+// Keep the ordinary onboarding path, but persist the Free config marker with
+// the first account save so a later provisioning failure remains recoverable.
+func createUserInteractiveWithDonation(cfg *config.Config, out actions.OutputWriter, providedUsername, daysArg, gbArg string, donation bool) error {
 	username := providedUsername
 	if username == "" {
 		var err error
@@ -411,9 +446,15 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 		return fmt.Errorf("user %q already exists", username)
 	}
 
-	password, err := prompt.String("Password (leave blank to generate)", "")
-	if err != nil {
-		return err
+	var password string
+	var err error
+	if !donation {
+		password, err = prompt.String("Password (leave blank to generate)", "")
+		if err != nil {
+			return err
+		}
+	} else {
+		daysArg, gbArg = strconv.Itoa(donationDays), strconv.Itoa(donationQuotaGB)
 	}
 	if password == "" {
 		password = system.GeneratePassword(16)
@@ -428,6 +469,7 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 	}
 
 	nu := newUser(username, password, days, gb, time.Now())
+	nu.Donation = donation
 	if err := rememberNewPeriod(cfg, nu); err != nil {
 		return err
 	}
@@ -443,7 +485,10 @@ func createUserInteractive(cfg *config.Config, out actions.OutputWriter, provide
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	if err := finishInstallationAccounting(cfg, map[string]bool{nu.AccountID: true}); err != nil {
+	if err := finishNewUserAccounting(cfg, map[string]bool{nu.AccountID: true}); err != nil {
+		if donation {
+			return fmt.Errorf("Free config account %q is saved; accounting setup is incomplete: %w", username, err)
+		}
 		return err
 	}
 	if cfg.Warp.Enabled {
@@ -552,7 +597,7 @@ func printSubscriptionLink(cfg *config.Config, u config.UserConfig, out actions.
 	if link := SubscriptionURL(cfg, u); link != "" {
 		out.Print("  Subscription link (all configs of " + u.Username + ", for the app's Subscriptions menu):")
 		out.Print("  " + link)
-		out.Print("  Windows 0.1.0 Beta subscription (excludes unsupported AWG / SS2022):")
+		out.Print("  Windows subscription:")
 		out.Print("  " + WindowsSubscriptionURL(cfg, u))
 		out.Print("")
 	}
@@ -643,6 +688,10 @@ func coreProtocolName(protocol string) string {
 		return "AmneziaWG (userspace)"
 	case "ss2022":
 		return "Shadowsocks 2022"
+	case "ss2022-aes128":
+		return "Shadowsocks 2022 AES-128"
+	case "ss-aead-chacha20":
+		return "Shadowsocks ChaCha20-Poly1305"
 	case "trojan":
 		return "Trojan TLS"
 	case "vlessenc":

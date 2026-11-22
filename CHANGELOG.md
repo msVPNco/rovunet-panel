@@ -2,6 +2,14 @@
 
 Changes in Rovunet Panel. Each release's notes come from its section here.
 
+## v2.1.0
+
+- Build from the public v2.0.2 source. Replace the default WireGuard and TUIC cores with Shadowsocks 2022 AES-128 and classic AEAD ChaCha20-Poly1305, using the old saved ports and a private per-core recovery journal. Retain stopped choices, AmneziaWG, the existing AES-256 core and unrelated profiles.
+- Keep the original ordered fixed port choices for fresh setup. Both new Shadowsocks methods use TCP and UDP without a TLS certificate. Preserve account IDs, periods, consumption and saved subscription URLs; refresh that same subscription for the replacement profiles.
+- Add **Users → Free config (50 GB / 30 days)** and a private review export, enforcing the existing finite-account ledger and protocol policy. This panel feature does not release or activate the separate app Free catalog.
+- Pin managed runtime downloads to authenticated v2.0.2 engine assets independently of panel version. Preserve the v2.0.2 Slipstream trust-companion route, TLS verification and original production signing root.
+- See [scope and release acceptance](docs/releases/v2.1.0.md). Public availability requires exact source/runtime tests, the owner's original manifest signature and final signed install/update acceptance.
+
 ## v2.0.1
 
 - Complete setup targets30 unrestricted profiles,29 time-only profiles and six shared-budget finite paths. Add TLS Vision, XHTTP REALITY, AnyTLS, TUIC and separate Mieru TCP/UDP.

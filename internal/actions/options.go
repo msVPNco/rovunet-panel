@@ -17,7 +17,6 @@ var TransportOptions = []SelectOption{
 	{Value: "xray-reality", Label: "VLESS + REALITY — Xray core, fast, no domain or certificate needed (recommended)"},
 	{Value: "xray-xhttp", Label: "VLESS + XHTTP — Xray core, HTTPS-like over TCP, uses NaiveProxy's domain and certificate (recommended)"},
 	{Value: "xray-hysteria2", Label: "Hysteria 2 — Xray core, QUIC over UDP, uses NaiveProxy's certificate (blocked on some networks)"},
-	{Value: "xray-wireguard", Label: "WireGuard — Xray core, UDP, one configuration per user (blocked on some networks)"},
 }
 
 // QuickTransportOptions is the subset shown in the quick wizard.
@@ -48,7 +47,6 @@ var InstallTransportOptions = []SelectOption{
 	{Value: "direct-ssh", Label: "SSH — Direct SSH tunnel"},
 	{Value: "direct-socks5", Label: "SOCKS5 — Direct SOCKS5 proxy"},
 	{Value: "xray-reality", Label: "VLESS + REALITY — Xray core, no domain or certificate needed"},
-	{Value: "xray-wireguard", Label: "WireGuard — Xray core, one configuration per user"},
 	{Value: "xray-xhttp", Label: "VLESS + XHTTP — uses the NaiveProxy domain and certificate"},
 	{Value: "xray-hysteria2", Label: "Hysteria 2 — uses the NaiveProxy domain and certificate"},
 }
@@ -56,7 +54,9 @@ var InstallTransportOptions = []SelectOption{
 func init() {
 	managed := []SelectOption{
 		{Value: "xray-amneziawg", Label: "AmneziaWG — official userspace engine; unlimited/time accounts; Android"},
-		{Value: "xray-ss2022", Label: "Shadowsocks 2022 — separate account keys; Android; deprecated in pinned Xray"},
+		{Value: "xray-ss2022", Label: "Shadowsocks 2022 AES-256 — separate account keys; TCP + UDP"},
+		{Value: "xray-ss2022-aes128", Label: "Shadowsocks 2022 AES-128 — separate account keys; no TLS certificate"},
+		{Value: "xray-ss-aead-chacha20", Label: "Shadowsocks ChaCha20-Poly1305 — separate account passwords; no TLS certificate"},
 		{Value: "xray-trojan", Label: "Trojan TLS — valid domain certificate; deprecated in pinned Xray"},
 		{Value: "xray-vlessenc", Label: "VLESS Encryption — ML-KEM-768 authentication, raw TCP"},
 	}

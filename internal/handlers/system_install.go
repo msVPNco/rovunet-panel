@@ -1268,6 +1268,12 @@ func installCores(cfg *config.Config, out actions.OutputWriter, protocols []stri
 			}
 		case "wireguard":
 			ports = []int{51820, 51821, 51822}
+		case "ss2022-aes128":
+			ports = []int{51820, 51821, 51822}
+			o.DedicatedXray = true
+		case "ss-aead-chacha20":
+			ports = []int{33444, 33445, 33446}
+			o.DedicatedXray = true
 		case "amneziawg":
 			ports = []int{51840, 51841, 51842}
 		case "ss2022":
@@ -1339,7 +1345,11 @@ type coreJob struct{ name, protocol string }
 func coreJobs(protocols []string) []coreJob {
 	var jobs []coreJob
 	for _, p := range protocols {
-		jobs = append(jobs, coreJob{p, p})
+		name := p
+		if p == "ss2022-aes128" || p == "ss-aead-chacha20" {
+			name = "managed-" + p
+		}
+		jobs = append(jobs, coreJob{name, p})
 		if p == "reality" {
 			jobs = append(jobs, coreJob{secondRealityCore, p})
 		}

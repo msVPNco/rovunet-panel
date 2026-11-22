@@ -19,6 +19,19 @@ sudo rovunet users remove                           # remove a user
 
 Give each person their own user, so a lost phone can be revoked alone.
 
+### Free config
+
+In **Users**, choose **Free config (50 GB / 30 days)** to create a separate account with generated credentials. Its 50 GiB allowance is shared by everyone using that account, across its eligible metered profiles, and expires after 30 days. The normal server-side quota and expiry checks apply; unmetered protocols are excluded.
+
+The account's candidate export is stored privately at `/etc/rovunet/donations/<username>.json` (or next to a custom configuration file). **Export Free config for review** repeats the export without resetting credentials, usage, expiry or saved URLs. Export fails while accounting is unavailable, the period is inactive, or its remaining budget is exhausted or fully reserved. A provisioning or export error is reported even when the account has already been saved; recover that account before retrying the export.
+
+```bash
+sudo rovunet users --action donate --username gift-example
+sudo rovunet users --action donation-export --username gift-example
+```
+
+The candidate contains access credentials and remains a private file for review. Creating or exporting it does not publish a public catalog, sign that catalog, or activate the app's Free config option.
+
 ## Getting configurations
 
 | Command | Output |

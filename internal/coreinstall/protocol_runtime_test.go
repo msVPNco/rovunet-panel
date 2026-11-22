@@ -187,7 +187,7 @@ func TestManagedProtocolsRuntime(t *testing.T) {
 	for _, mode := range []struct {
 		protocol  string
 		dedicated bool
-	}{{"ss2022", false}, {"trojan", false}, {"vlessenc", false}, {"ss2022", true}, {"trojan", true}, {"vlessenc", true}} {
+	}{{"ss2022", false}, {"ss2022-aes128", false}, {"ss-aead-chacha20", false}, {"trojan", false}, {"vlessenc", false}, {"ss2022", true}, {"ss2022-aes128", true}, {"ss-aead-chacha20", true}, {"trojan", true}, {"vlessenc", true}} {
 		protocol := mode.protocol
 		label := protocol
 		if mode.dedicated {
@@ -462,8 +462,8 @@ func TestManagedProtocolsRuntime(t *testing.T) {
 			t.Log("two distinct accounts, bidirectional data, per-user counters, idempotent sampling, validated revocation and re-admission passed")
 		})
 	}
-	if got := usage.Totals()["alice"]; got < int64(6*len(payload)) {
-		t.Fatalf("shared account usage across three engines is too low: %d", got)
+	if got := usage.Totals()["alice"]; got < int64(10*len(payload)) {
+		t.Fatalf("shared account usage across five protocols is too low: %d", got)
 	}
-	t.Log("one shared account total includes all three protocol sources without interface/NAT counters")
+	t.Log("one shared account total includes all five protocol sources without interface/NAT counters")
 }

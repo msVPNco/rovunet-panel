@@ -3,9 +3,16 @@
 // separate capabilities.
 package protocols
 
+func IsShadowsocks(protocol string) bool {
+	return protocol == "ss2022" || protocol == "ss2022-aes128" || protocol == "ss-aead-chacha20"
+}
+
 func Metered(protocol string) bool {
+	if IsShadowsocks(protocol) {
+		return true
+	}
 	switch protocol {
-	case "vless", "reality", "xhttp", "ss2022", "trojan", "vlessenc":
+	case "vless", "reality", "xhttp", "trojan", "vlessenc":
 		return true
 	}
 	return false

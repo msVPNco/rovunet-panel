@@ -8,12 +8,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/msVPNco/rovunet-panel/internal/coreplan"
 )
 
 // These protocols have a per-user manager in the pinned Xray. rmu rejects
 // future sessions; that API does not promise to terminate established streams.
 func liveUserProtocol(protocol string) bool {
-	return protocol == "ss2022" || protocol == "trojan" || protocol == "vlessenc"
+	return coreplan.IsShadowsocks(protocol) || protocol == "trojan" || protocol == "vlessenc"
 }
 
 type liveConfig struct {

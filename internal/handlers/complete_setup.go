@@ -26,19 +26,20 @@ type completeCoreSpec struct {
 	ports          []int
 }
 
-// Names remain stable across fresh installation and upgrades from older tags.
+// Existing names stay stable except for the two explicitly requested default
+// replacements, whose per-core migration preserves their saved listener ports.
 var completeCoreSpecs = []completeCoreSpec{
 	{"reality", "reality", []int{9443, 2096, 8880}},
 	{"reality2", "reality", []int{2087, 2053, 8443}},
 	{"xhttp", "xhttp", []int{2096, 2087, 8880}},
 	{"hysteria2", "hysteria2", []int{8443, 4443, 2096}},
-	{"wireguard", "wireguard", []int{51820, 51821, 51822}},
+	{"managed-ss2022-aes128", "ss2022-aes128", []int{51820, 51821, 51822}},
 	{"managed-awg", "amneziawg", []int{51840, 51841, 51842}},
 	{"managed-ss2022", "ss2022", []int{28444, 28445, 28446}},
 	{"managed-trojan", "trojan", []int{30444, 30445, 30446}},
 	{"managed-vlessenc", "vlessenc", []int{31444, 31445, 31446}},
 	{"managed-anytls", "anytls", []int{32444, 32445, 32446}},
-	{"managed-tuic", "tuic", []int{33444, 33445, 33446}},
+	{"managed-ss-aead-chacha20", "ss-aead-chacha20", []int{33444, 33445, 33446}},
 	{"managed-mieru-tcp", "mieru-tcp", []int{34444, 34445, 34446}},
 	{"managed-mieru-udp", "mieru-udp", []int{35444, 35445, 35446}},
 	{"managed-tlsvision", "tlsvision", []int{36444, 36445, 36446}},
@@ -113,12 +114,13 @@ func HandleCompleteSetup(ctx *actions.Context) error {
 }
 
 type completeSetupOps struct {
-	list     func() ([]coreinstall.Meta, error)
-	install  func(string, coreplan.Options, []config.UserConfig) (string, error)
-	portFree func(int, string) error
-	cert     func(string) (string, string, bool)
-	backup   func(*config.Config) (string, error)
-	reality  func(*coreplan.Options, string) error
+	replaceDefaults func(*config.Config, actions.OutputWriter) (map[string]bool, error)
+	list            func() ([]coreinstall.Meta, error)
+	install         func(string, coreplan.Options, []config.UserConfig) (string, error)
+	portFree        func(int, string) error
+	cert            func(string) (string, string, bool)
+	backup          func(*config.Config) (string, error)
+	reality         func(*coreplan.Options, string) error
 }
 
 func setupBackup(cfg *config.Config) (string, error) {
@@ -153,8 +155,9 @@ func setupBackupAt(cfg *config.Config, dir string) (string, error) {
 	return path, errors.Join(writeErr, syncErr, closeErr)
 }
 
-// EnsureCompleteSetup adds missing cores only. Existing names, stopped services,
-// credentials and runtime files are not adopted or replaced by this operation.
+// EnsureCompleteSetup replaces the two selected old defaults through a private
+// recovery journal, then adds missing cores. Unrelated cores and stopped choices
+// retain their saved settings and credentials.
 func EnsureCompleteSetup(cfg *config.Config, out actions.OutputWriter) error {
 	if err := os.MkdirAll(config.DefaultConfigDir, 0750); err != nil {
 		return err
@@ -179,7 +182,8 @@ func EnsureCompleteSetup(cfg *config.Config, out actions.OutputWriter) error {
 		return err
 	}
 	ops := completeSetupOps{
-		list: coreinstall.List, install: coreinstall.InstallForUsers, portFree: coreinstall.PortFree,
+		replaceDefaults: migrateCompleteReplacements,
+		list:            coreinstall.List, install: coreinstall.InstallForUsers, portFree: coreinstall.PortFree,
 		cert: func(domain string) (string, string, bool) {
 			crt, key, found := waitCaddyCert(out, domain, 90*time.Second)
 			if !found || validSetupCertificate(crt, key, domain) != nil {
@@ -222,6 +226,16 @@ func validSetupCertificate(crt, key, domain string) error {
 }
 
 func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops completeSetupOps) error {
+	blocked := map[string]bool{}
+	if ops.replaceDefaults != nil {
+		var err error
+		blocked, err = ops.replaceDefaults(cfg, out)
+		if err != nil {
+			// A completed replacement remains usable if a later one fails.
+			// Publish only applied cores and retain all existing subscription URLs.
+			return errors.Join(err, WriteSubscriptions(cfg, out))
+		}
+	}
 	list, err := ops.list()
 	if err != nil {
 		return err
@@ -258,6 +272,9 @@ func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops c
 	backedUp := false
 	var problems []error
 	for _, spec := range completeCoreSpecs {
+		if blocked[spec.protocol] {
+			continue
+		}
 		name := spec.name
 		if spec.protocol == "reality" {
 			if (spec.name == "reality" && realities >= 1) || (spec.name == "reality2" && realities >= 2) {
@@ -269,7 +286,7 @@ func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops c
 		if names[name] && spec.protocol == "reality" && !names["reality"] {
 			name = "reality"
 		}
-		if !eligible && !(bridge != nil && coreplan.BridgeProtocol(spec.protocol)) && (coreplan.Supplemental(spec.protocol) || spec.protocol == "amneziawg" || spec.protocol == "ss2022" || spec.protocol == "trojan" || spec.protocol == "vlessenc" || spec.protocol == "wireguard" || spec.protocol == "hysteria2") {
+		if !eligible && !(bridge != nil && coreplan.BridgeProtocol(spec.protocol)) && (coreplan.Supplemental(spec.protocol) || spec.protocol == "amneziawg" || coreplan.IsShadowsocks(spec.protocol) || spec.protocol == "trojan" || spec.protocol == "vlessenc" || spec.protocol == "wireguard" || spec.protocol == "hysteria2") {
 			out.Info("Automatic setup: " + spec.protocol + " excluded for traffic-limited/expired accounts")
 			continue
 		}
@@ -313,7 +330,7 @@ func ensureCompleteSetupWith(cfg *config.Config, out actions.OutputWriter, ops c
 		if bridge != nil && coreplan.BridgeProtocol(spec.protocol) {
 			o.QuotaBridge = bridge
 		}
-		o.DedicatedXray = o.QuotaBridge != nil || spec.protocol == "tlsvision" || spec.protocol == "xhttp-reality" || spec.protocol == "ss2022" || spec.protocol == "trojan" || spec.protocol == "vlessenc"
+		o.DedicatedXray = o.QuotaBridge != nil || spec.protocol == "tlsvision" || spec.protocol == "xhttp-reality" || coreplan.IsShadowsocks(spec.protocol) || spec.protocol == "trojan" || spec.protocol == "vlessenc"
 		o.HysteriaSalamander, o.HysteriaObfsConfigured = spec.protocol == "hysteria2", spec.protocol == "hysteria2"
 		if !backedUp {
 			path, err := ops.backup(cfg)

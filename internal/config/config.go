@@ -76,6 +76,9 @@ type UserConfig struct {
 	ExpiresAt string `json:"expires_at,omitempty"`
 	// QuotaGB is the traffic limit in GB; 0 means unlimited.
 	QuotaGB int `json:"quota_gb,omitempty"`
+	// Donation marks a dedicated Free config account. Its shared 50 GiB quota
+	// and 30-day lifetime use the ordinary server-side finite-account policy.
+	Donation bool `json:"donation,omitempty"`
 	// SubToken is the unguessable name of the user's subscription file. It is
 	// replaced when the password changes, which retires the old link.
 	SubToken string `json:"sub_token,omitempty"`
