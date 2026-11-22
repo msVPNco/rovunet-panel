@@ -3,6 +3,8 @@ package handlers
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"strconv"
 	"os"
 	"sort"
 	"strings"
@@ -470,34 +472,42 @@ func readUptime() string {
 	return fmt.Sprintf("%dm", m)
 }
 
+// interfaceTraffic reports host uplink counters, not billable tunnel usage.
+// Sum eligible uplinks; returning the first non-loopback interface silently
+// drops a second NIC (e.g. eth1) on multi-homed hosts.
 func interfaceTraffic() (uint64, uint64) {
 	f, err := os.Open("/proc/net/dev")
-	if err != nil {
-		return 0, 0
-	}
+	if err != nil { return 0, 0 }
 	defer f.Close()
+	return parseInterfaceTraffic(f)
+}
 
-	scanner := bufio.NewScanner(f)
+func parseInterfaceTraffic(r io.Reader) (uint64, uint64) {
+	var rxTotal, txTotal uint64
+	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		idx := strings.Index(line, ":")
-		if idx < 0 {
-			continue
-		}
+		if idx < 0 { continue }
 		iface := strings.TrimSpace(line[:idx])
-		if iface == "lo" {
+		// Avoid counting packets twice through a tun/veth/docker/bridge path.
+		if iface == "lo" || strings.HasPrefix(iface, "veth") ||
+			strings.HasPrefix(iface, "docker") || strings.HasPrefix(iface, "br-") ||
+			strings.HasPrefix(iface, "virbr") || strings.HasPrefix(iface, "tun") ||
+			strings.HasPrefix(iface, "tap") || strings.HasPrefix(iface, "wg") ||
+			strings.HasPrefix(iface, "tailscale") || strings.HasPrefix(iface, "cni") ||
+			strings.HasPrefix(iface, "dummy") || strings.HasPrefix(iface, "ifb") {
 			continue
 		}
 		fields := strings.Fields(line[idx+1:])
-		if len(fields) < 10 {
-			continue
-		}
-		var rx, tx uint64
-		fmt.Sscanf(fields[0], "%d", &rx)
-		fmt.Sscanf(fields[8], "%d", &tx)
-		return rx, tx
+		if len(fields) < 16 { continue }
+		rx, e1 := strconv.ParseUint(fields[0], 10, 64)
+		tx, e2 := strconv.ParseUint(fields[8], 10, 64)
+		if e1 != nil || e2 != nil { continue }
+		rxTotal += rx
+		txTotal += tx
 	}
-	return 0, 0
+	return rxTotal, txTotal
 }
 
 func memoryUsage() (uint64, uint64) {
