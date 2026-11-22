@@ -40,7 +40,7 @@ type runtimeUpgradeJournal struct {
 }
 
 var stageReleaseRuntime = func(asset, dir string) (string, error) {
-	return binary.Download(binary.RuntimeDownloadBase()+"/"+asset, dir)
+	return binary.DownloadRuntime(asset, dir)
 }
 var runtimeUpgradeRestart = func(unit string) error {
 	if err := collectCore(strings.TrimPrefix(unit, "rovunet-core-")); err != nil && !errors.Is(err, usage.ErrUnsampledTraffic) {

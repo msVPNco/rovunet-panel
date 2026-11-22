@@ -33,6 +33,8 @@ func init() {
 		Inputs: []InputField{
 			{Key: "action", Label: "Action", Required: true, Options: []SelectOption{
 				{Value: "add", Label: "Add user"},
+				{Value: "donate", Label: "Donated config (50 GB / 30 days)"},
+				{Value: "donation-export", Label: "Export existing donated config for review"},
 				{Value: "bulk_add", Label: "Add multiple users (random creds)"},
 				{Value: "edit_password", Label: "Edit user password"},
 				{Value: "rotate_link", Label: "Replace subscription link (keep connection credentials)"},
@@ -41,7 +43,7 @@ func init() {
 				{Value: "list", Label: "List users"},
 				{Value: "configs", Label: "Show all configs (every tunnel and user)"},
 			}},
-			{Key: "username", Label: "Username", DependsOn: "action", DependsOnValues: []string{"add", "edit_password", "rotate_link", "remove", "renew"}},
+			{Key: "username", Label: "Username", DependsOn: "action", DependsOnValues: []string{"add", "donate", "donation-export", "edit_password", "rotate_link", "remove", "renew"}},
 			{Key: "password", Label: "New password (leave blank to generate)", DependsOn: "action", DependsOnValues: []string{"edit_password"}},
 			{Key: "count", Label: "How many users", DependsOn: "action", DependsOnValues: []string{"bulk_add"}},
 			{Key: "prefix", Label: "Username prefix", DependsOn: "action", DependsOnValues: []string{"bulk_add"}},

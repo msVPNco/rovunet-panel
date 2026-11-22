@@ -816,7 +816,7 @@ func handleSystemInstall(ctx *actions.Context) error {
 
 	ensureServerAddress(cfg, out, allTunnels)
 	if complete {
-		out.Info("Preparing reviewed protocol engines before account setup...")
+		out.Info("Preparing reviewed protocol engines from release " + binary.RuntimeReleaseTag + " before account setup...")
 		var protocols []string
 		for _, spec := range completeCoreSpecs {
 			protocols = append(protocols, spec.protocol)
