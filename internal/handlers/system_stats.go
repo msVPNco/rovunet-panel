@@ -3,6 +3,8 @@ package handlers
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"strconv"
 	"os"
 	"sort"
 	"strings"
@@ -18,6 +20,7 @@ import (
 var sparkRunes = []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
 
 const graphWidth = 40
+const statsTunnelPageSize = 10
 
 func handleSystemStats(ctx *actions.Context) error {
 	fd := int(os.Stdin.Fd())
@@ -39,8 +42,9 @@ func handleSystemStats(ctx *actions.Context) error {
 	prevIdle, prevTotal := readCPUStat()
 	prevRX, prevTX := interfaceTraffic()
 
-	// Quit on q / Q / Ctrl-C.
+	// Quit on q / Q / Ctrl-C. Use n/p to page through all tunnels.
 	quit := make(chan struct{})
+	pageKeys := make(chan byte, 8)
 	go func() {
 		buf := make([]byte, 1)
 		for {
@@ -48,6 +52,9 @@ func handleSystemStats(ctx *actions.Context) error {
 			if n > 0 && (buf[0] == 'q' || buf[0] == 'Q' || buf[0] == 3) {
 				close(quit)
 				return
+			}
+			if n > 0 && (buf[0] == 'n' || buf[0] == 'p') {
+				select { case pageKeys <- buf[0]: default: }
 			}
 		}
 	}()
@@ -59,12 +66,19 @@ func handleSystemStats(ctx *actions.Context) error {
 
 	// Clear screen and draw initial blank state.
 	fmt.Print("\033[H\033[2J")
-	drawDashboard(cpuHist, ramHist, rxHist, txHist, 0, 0, 0, 0, 0, 0, nil)
+	page := 0
+	drawDashboard(cpuHist, ramHist, rxHist, txHist, 0, 0, 0, 0, 0, 0, nil, page)
 
 	for {
 		select {
 		case <-quit:
 			return nil
+		case key := <-pageKeys:
+			if key == 'n' {
+				page++
+			} else if page > 0 {
+				page--
+			}
 		case <-ticker.C:
 			// CPU delta.
 			idle, total := readCPUStat()
@@ -99,10 +113,11 @@ func handleSystemStats(ctx *actions.Context) error {
 			txHist = appendCapped(txHist, txRate)
 
 			tunnels := activeTunnels(cfg)
+			_, page, _ = pagedTunnels(tunnels, page, statsTunnelPageSize)
 
 			drawDashboard(cpuHist, ramHist, rxHist, txHist,
 				cpuPct, ramPct, rxRate, txRate,
-				totalMB, usedMB, tunnels)
+				totalMB, usedMB, tunnels, page)
 		}
 	}
 }
@@ -116,7 +131,7 @@ type tunnelInfo struct {
 	status    string
 }
 
-// activeTunnels returns up to 10 tunnels with their status.
+// activeTunnels returns every configured non-direct tunnel with its status.
 // DNSTT tunnels also generate a noizdns variant row (same service).
 func activeTunnels(cfg *config.Config) []tunnelInfo {
 	if cfg == nil || len(cfg.Tunnels) == 0 {
@@ -164,10 +179,20 @@ func activeTunnels(cfg *config.Config) []tunnelInfo {
 		return infos[i].tag < infos[j].tag
 	})
 
-	if len(infos) > 10 {
-		infos = infos[:10]
-	}
 	return infos
+}
+
+// pagedTunnels keeps the screen bounded without hiding protocols.
+func pagedTunnels(infos []tunnelInfo, page, size int) ([]tunnelInfo, int, int) {
+	if size <= 0 { size = statsTunnelPageSize }
+	if len(infos) == 0 { return nil, 0, 0 }
+	pages := (len(infos) + size - 1) / size
+	if page < 0 { page = 0 }
+	if page >= pages { page = pages - 1 }
+	start := page * size
+	end := start + size
+	if end > len(infos) { end = len(infos) }
+	return infos[start:end], page, pages
 }
 
 // appendCapped appends v to s and trims to graphWidth.
@@ -198,7 +223,7 @@ const (
 
 func drawDashboard(cpuH, ramH, rxH, txH []float64,
 	cpuPct, ramPct, rxRate, txRate float64,
-	totalMB, usedMB uint64, tunnels []tunnelInfo) {
+	totalMB, usedMB uint64, tunnels []tunnelInfo, page int) {
 
 	var b strings.Builder
 	b.WriteString("\033[H") // cursor home
@@ -243,7 +268,12 @@ func drawDashboard(cpuH, ramH, rxH, txH []float64,
 		cDim, formatBytes(uint64(histMax(txH))), cReset))
 
 	// Tunnels
-	b.WriteString(fmt.Sprintf("  %s%sTunnels%s\r\n", cBold, cLabel, cReset))
+	visibleTunnels, pageIndex, pageCount := pagedTunnels(tunnels, page, statsTunnelPageSize)
+	tunnelHeading := fmt.Sprintf("Tunnels (%d total)", len(tunnels))
+	if pageCount > 1 {
+		tunnelHeading = fmt.Sprintf("Tunnels (%d total; page %d/%d)", len(tunnels), pageIndex+1, pageCount)
+	}
+	b.WriteString(fmt.Sprintf("  %s%s%s%s\r\n", cBold, cLabel, tunnelHeading, cReset))
 	b.WriteString(fmt.Sprintf("  %s────────────────────────────────────────────────────────────%s\r\n",
 		cDivider, cReset))
 	if len(tunnels) == 0 {
@@ -251,7 +281,7 @@ func drawDashboard(cpuH, ramH, rxH, txH []float64,
 	} else {
 		b.WriteString(fmt.Sprintf("  %s%-16s %-12s %-7s %-22s %s%s\r\n",
 			cDim, "TAG", "TYPE", "BACKEND", "DOMAIN", "STATUS", cReset))
-		for _, t := range tunnels {
+		for _, t := range visibleTunnels {
 			dot := cFail + "●" + cReset
 			statusText := cFail + t.status + cReset
 			if t.status == "active" {
@@ -287,7 +317,7 @@ func drawDashboard(cpuH, ramH, rxH, txH []float64,
 		}
 	}
 
-	b.WriteString(fmt.Sprintf("\r\n  %sPress q or Ctrl+C to exit%s\r\n", cDim, cReset))
+	b.WriteString(fmt.Sprintf("\r\n  %sPress n/p for next/previous page, q or Ctrl+C to exit%s\r\n", cDim, cReset))
 	b.WriteString("\033[J") // clear to end of screen
 
 	fmt.Print(b.String())
@@ -443,34 +473,42 @@ func readUptime() string {
 	return fmt.Sprintf("%dm", m)
 }
 
+// interfaceTraffic reports host uplink counters, not billable tunnel usage.
+// Sum eligible uplinks; returning the first non-loopback interface silently
+// drops a second NIC (e.g. eth1) on multi-homed hosts.
 func interfaceTraffic() (uint64, uint64) {
 	f, err := os.Open("/proc/net/dev")
-	if err != nil {
-		return 0, 0
-	}
+	if err != nil { return 0, 0 }
 	defer f.Close()
+	return parseInterfaceTraffic(f)
+}
 
-	scanner := bufio.NewScanner(f)
+func parseInterfaceTraffic(r io.Reader) (uint64, uint64) {
+	var rxTotal, txTotal uint64
+	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		idx := strings.Index(line, ":")
-		if idx < 0 {
-			continue
-		}
+		if idx < 0 { continue }
 		iface := strings.TrimSpace(line[:idx])
-		if iface == "lo" {
+		// Avoid counting packets twice through a tun/veth/docker/bridge path.
+		if iface == "lo" || strings.HasPrefix(iface, "veth") ||
+			strings.HasPrefix(iface, "docker") || strings.HasPrefix(iface, "br-") ||
+			strings.HasPrefix(iface, "virbr") || strings.HasPrefix(iface, "tun") ||
+			strings.HasPrefix(iface, "tap") || strings.HasPrefix(iface, "wg") ||
+			strings.HasPrefix(iface, "tailscale") || strings.HasPrefix(iface, "cni") ||
+			strings.HasPrefix(iface, "dummy") || strings.HasPrefix(iface, "ifb") {
 			continue
 		}
 		fields := strings.Fields(line[idx+1:])
-		if len(fields) < 10 {
-			continue
-		}
-		var rx, tx uint64
-		fmt.Sscanf(fields[0], "%d", &rx)
-		fmt.Sscanf(fields[8], "%d", &tx)
-		return rx, tx
+		if len(fields) < 16 { continue }
+		rx, e1 := strconv.ParseUint(fields[0], 10, 64)
+		tx, e2 := strconv.ParseUint(fields[8], 10, 64)
+		if e1 != nil || e2 != nil { continue }
+		rxTotal += rx
+		txTotal += tx
 	}
-	return 0, 0
+	return rxTotal, txTotal
 }
 
 func memoryUsage() (uint64, uint64) {
