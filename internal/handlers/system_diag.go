@@ -335,11 +335,18 @@ func handleSystemDiag(ctx *actions.Context) error {
 	}
 
 	// ── Xray cores ──────────────────────────────────────────
-	cores, _ := coreinstall.List()
-	if len(cores) > 0 {
-		out.Print("")
-		out.Print(fmt.Sprintf("  Managed cores (%d installed)", len(cores)))
-		out.Print("  ──────────")
+	cores, coreListErr := coreinstall.List()
+	out.Print("")
+	out.Print(fmt.Sprintf("  Managed cores (%d installed)", len(cores)))
+	out.Print("  ──────────")
+	severity, detail := diagnosticCoreInventoryFinding(len(cores), coreListErr)
+	switch severity {
+	case "error":
+		check("Managed core inventory", false, detail)
+	case "warning":
+		info("Managed core inventory", detail)
+	}
+	if coreListErr == nil && len(cores) > 0 {
 		certCores := 0
 		for _, c := range cores {
 			if b, e := os.ReadFile(filepath.Join(coreinstall.Root, c.Name, "state.json")); e == nil {
@@ -444,6 +451,18 @@ func handleSystemDiag(ctx *actions.Context) error {
 		return fmt.Errorf("diagnostics found %d failed checks", fail)
 	}
 	return nil
+}
+
+// diagnosticCoreInventoryFinding makes missing managed cores visible without
+// classifying an intentional custom installation as a broken service.
+func diagnosticCoreInventoryFinding(count int, err error) (severity, detail string) {
+	if err != nil {
+		return "error", "cannot inspect managed cores: " + err.Error()
+	}
+	if count == 0 {
+		return "warning", "none installed; only base tunnels are checked (custom setup may be intentional; complete setup is not verified)"
+	}
+	return "", ""
 }
 
 func diagnosticCoreExpectedActive(data []byte) (bool, string, error) {
